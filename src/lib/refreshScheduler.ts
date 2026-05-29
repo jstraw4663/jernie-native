@@ -22,5 +22,5 @@ export function markRead(sessionKey: string): void {
 }
 
 export function invalidate(sessionKey: string): void {
-  storage.delete(storageKey(sessionKey));
+  storage.remove(storageKey(sessionKey));
 }

@@ -4,7 +4,7 @@ jest.mock('react-native-mmkv', () => {
     createMMKV: jest.fn().mockReturnValue({
       getString: (key: string) => store[key] ?? null,
       set: (key: string, value: string) => { store[key] = value; },
-      delete: (key: string) => { delete store[key]; },
+      remove: (key: string) => { delete store[key]; },
     }),
   };
 });
