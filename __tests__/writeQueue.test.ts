@@ -12,7 +12,7 @@ jest.mock('react-native-mmkv', () => {
   };
 });
 
-import { enqueue, enqueueMany, removeWhere, flush, getQueue } from '@/src/lib/writeQueue';
+import { enqueue, enqueueMany, removeWhere, flush, getQueue, subscribe } from '@/src/lib/writeQueue';
 
 beforeEach(() => {
   // Reset queue between tests by flushing all
@@ -58,4 +58,16 @@ test('enqueue generates unique ids', () => {
   enqueue('/path/b', 2);
   const q = getQueue();
   expect(q[0].id).not.toBe(q[1].id);
+});
+
+test('subscribe callback fires with count after mutations', () => {
+  const cb = jest.fn();
+  const unsub = subscribe(cb);
+  enqueue('/path/a', 1);
+  expect(cb).toHaveBeenCalledWith(1);
+  flush();
+  expect(cb).toHaveBeenCalledWith(0);
+  unsub();
+  enqueue('/path/b', 2);
+  expect(cb).toHaveBeenCalledTimes(2); // no more calls after unsubscribe
 });

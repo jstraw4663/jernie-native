@@ -42,6 +42,7 @@ export function enqueue(path: string, value: unknown): void {
   const entries = loadQueue();
   entries.push({ id: generateId(), path, value, timestamp: Date.now() });
   saveQueue(entries);
+  notifySubscribers();
 }
 
 export function enqueueMany(items: { path: string; value: unknown }[]): void {
@@ -51,19 +52,27 @@ export function enqueueMany(items: { path: string; value: unknown }[]): void {
     entries.push({ id: generateId(), path: item.path, value: item.value, timestamp: now });
   }
   saveQueue(entries);
+  notifySubscribers();
 }
 
 export function removeWhere(predicate: (e: WriteQueueEntry) => boolean): void {
   const entries = loadQueue().filter((e) => !predicate(e));
   saveQueue(entries);
+  notifySubscribers();
 }
 
 export function flush(): void {
   saveQueue([]);
+  notifySubscribers();
 }
 
 type Subscriber = (count: number) => void;
 const subscribers = new Set<Subscriber>();
+
+function notifySubscribers(): void {
+  const count = loadQueue().length;
+  subscribers.forEach((fn) => fn(count));
+}
 
 export function subscribe(fn: Subscriber): () => void {
   subscribers.add(fn);
