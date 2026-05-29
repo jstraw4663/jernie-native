@@ -1,25 +1,42 @@
 {
   "expo": {
-    "name": "jernie-native",
+    "name": "Jernie",
     "slug": "jernie-native",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0D2B3E"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.jernie.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Jernie uses your location to show nearby places."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0D2B3E"
       },
-      "predictiveBackGestureEnabled": false
+      "package": "com.jernie.app"
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      ["react-native-mmkv", { "ios": { "enableLocalAuthentication": false } }],
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-firebase/database",
+      "@react-native-firebase/firestore"
+    ],
+    "scheme": "jernie",
+    "experiments": {
+      "typedRoutes": true
     }
   }
 }
