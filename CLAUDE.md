@@ -13,6 +13,7 @@ eas update --branch preview --message "..."      # push JS update to testers
 ## Key API notes
 
 - **MMKV v4:** Use `createMMKV({ id: 'name' })` — NOT `new MMKV()`. The constructor was removed in v4.
+- **Fraunces font filenames:** Google Fonts uses 4 axes — actual files are `Fraunces[SOFT,WONK,opsz,wght].ttf` and `Fraunces-Italic[SOFT,WONK,opsz,wght].ttf` (not `[opsz,wght]` as originally spec'd). Use these in `useFonts()` in `app/_layout.tsx`.
   ```typescript
   import { createMMKV } from 'react-native-mmkv';
   const storage = createMMKV({ id: 'jernie-write-queue' });
