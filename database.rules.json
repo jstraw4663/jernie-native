@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "trips": {
+      "$tripId": {
+        ".read": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/memberHandles/' + auth.uid).exists())",
+        ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/memberHandles/' + auth.uid).exists() || !data.exists())"
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Enrichment: any authenticated user can read; only Cloud Functions write
+    match /place_enrichment/{tripId}/places/{placeId} {
+      allow read: if request.auth != null;
+      allow write: if false;  // Cloud Functions only
+    }
+    match /trail_enrichment/{tripId}/trails/{placeId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    match /hotel_enrichment/{tripId}/hotels/{bookingId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}
