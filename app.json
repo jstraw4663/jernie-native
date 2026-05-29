@@ -14,6 +14,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.jernie.app",
+      "newArchEnabled": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Jernie uses your location to show nearby places."
       }
@@ -23,7 +24,14 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0D2B3E"
       },
-      "package": "com.jernie.app"
+      "package": "com.jernie.app",
+      "newArchEnabled": true
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/placeholder"
     },
     "plugins": [
       "expo-router",
