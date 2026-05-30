@@ -131,7 +131,7 @@ export interface RestaurantBooking {
   type: 'restaurant';
   restaurantName: string;
   date: string;         // YYYY-MM-DD
-  time?: string;        // "7:30 PM"
+  time?: string;        // "H:MM AM/PM", e.g. "7:30 PM". Absent = walk-in / no specific time.
   partySize?: number;
   confirmationCode?: string;
 }
