@@ -124,7 +124,19 @@ export interface RentalBooking {
   confirmationCode?: string;
 }
 
-export type Booking = FlightBooking | HotelBooking | RentalBooking;
+export interface RestaurantBooking {
+  id: string;
+  tripId: string;
+  stopId: string;
+  type: 'restaurant';
+  restaurantName: string;
+  date: string;         // YYYY-MM-DD
+  time?: string;        // "7:30 PM"
+  partySize?: number;
+  confirmationCode?: string;
+}
+
+export type Booking = FlightBooking | HotelBooking | RentalBooking | RestaurantBooking;
 
 // ── Itinerary ───────────────────────────────────────────────────────────────
 
