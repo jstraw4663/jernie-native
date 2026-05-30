@@ -15,8 +15,10 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.jernie.app",
       "newArchEnabled": true,
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Jernie uses your location to show nearby places."
+        "NSLocationWhenInUseUsageDescription": "Jernie uses your location to show nearby places.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -25,7 +27,8 @@
         "backgroundColor": "#0D2B3E"
       },
       "package": "com.jernie.app",
-      "newArchEnabled": true
+      "newArchEnabled": true,
+      "googleServicesFile": "./google-services.json"
     },
     "runtimeVersion": {
       "policy": "sdkVersion"
@@ -42,6 +45,13 @@
     "scheme": "jernie",
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a85eae0d-8910-4bf2-9822-3fafe8cc9ebb"
+      }
+    },
+    "owner": "jstraw4663"
   }
 }
