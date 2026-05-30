@@ -70,6 +70,7 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
 }
 
 function hexWithAlpha(hex: string, alpha: number): string {
+  if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) return `rgba(0,0,0,${alpha})`;
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
@@ -98,7 +99,7 @@ const styles = StyleSheet.create({
   dateLabel: { ...Typography.roles.meta,  color: Core.textMuted },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   itemCount:  { ...Typography.roles.meta, color: Core.textMuted },
-  chevron:    { fontSize: 20, color: Core.textMuted, transform: [{ rotate: '0deg' }] },
+  chevron:    { fontSize: 20, color: Core.textMuted },
   chevronOpen: { transform: [{ rotate: '90deg' }] },
   itemList: { paddingBottom: Spacing.sm },
   itemRow: {

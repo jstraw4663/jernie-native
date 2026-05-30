@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import type { Trip, Stop, Booking } from '@/src/types';
+import type { Trip, Stop } from '@/src/types';
 import { Core, Typography, Radius, Shadow, Spacing } from '@/src/design/tokens';
 
 type SetupKey = keyof Trip['setupIntent'];
@@ -15,7 +15,6 @@ const SETUP_ROWS: Array<{ key: SetupKey; emoji: string; label: string; cta: stri
 interface CTACardZoneProps {
   trip: Trip;
   stops: Stop[];
-  bookings: Booking[];
   onDismiss: () => void;
 }
 

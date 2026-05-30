@@ -4,17 +4,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Trip, Stop } from '@/src/types';
 import { Typography, Radius, Spacing, Semantic } from '@/src/design/tokens';
+import { formatDateRange } from '@/src/utils/dates';
 
 interface HeroLayerProps {
   trip: Trip;
   activeStop: Stop;
-}
-
-function formatDateRange(start: string, end: string): string {
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const s = new Date(start + 'T12:00:00');
-  const e = new Date(end + 'T12:00:00');
-  return `${months[s.getMonth()]} ${s.getDate()}–${e.getDate()}`;
 }
 
 export function HeroLayer({ trip, activeStop }: HeroLayerProps) {

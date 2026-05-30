@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import type { Stop } from '@/src/types';
 import { Core, Semantic, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { formatDateRange } from '@/src/utils/dates';
 
 interface StopsStripProps {
   stops: Stop[];
@@ -17,13 +18,6 @@ function getStopState(stop: Stop, activeStopId: string | null, stops: Stop[]): S
   const myIdx = stops.findIndex(s => s.id === stop.id);
   if (activeIdx >= 0 && myIdx < activeIdx) return 'past';
   return 'future';
-}
-
-function formatDateRange(start: string, end: string): string {
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const s = new Date(start + 'T12:00:00');
-  const e = new Date(end + 'T12:00:00');
-  return `${months[s.getMonth()]} ${s.getDate()}–${e.getDate()}`;
 }
 
 export function StopsStrip({ stops, activeStopId, onStopPress }: StopsStripProps) {

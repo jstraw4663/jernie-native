@@ -61,7 +61,6 @@ export default function JernieTab() {
             <CTACardZone
               trip={DEV_TRIP}
               stops={DEV_STOPS}
-              bookings={DEV_BOOKINGS}
               onDismiss={() => setCtaDismissed(true)}
             />
           )}
