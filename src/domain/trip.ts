@@ -1,4 +1,4 @@
-import type { ItineraryDay } from '@/src/types';
+import type { ItineraryDay, Stop } from '@/src/types';
 import { getDevNow } from '@/src/utils/devTime';
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
@@ -125,4 +125,19 @@ export function getFlightRefreshIntervalMs(
   if (msToDepart > 4 * 60 * 60 * 1000) return 60 * 60 * 1000;
   if (msToDepart > 60 * 60 * 1000) return 20 * 60 * 1000;
   return 5 * 60 * 1000;
+}
+
+// ── Active stop detection ─────────────────────────────────────────────────────
+
+/**
+ * Returns the id of the active stop based on today's date.
+ * Pre-trip → first stop. During trip → matching stop. Post-trip → last stop.
+ */
+export function getActiveStopId(stops: Stop[], now: Date): string | null {
+  if (stops.length === 0) return null;
+  const todayIso = now.toISOString().split('T')[0];
+  const current = stops.find(s => todayIso >= s.dates.start && todayIso < s.dates.end);
+  if (current) return current.id;
+  if (todayIso < stops[0].dates.start) return stops[0].id;
+  return stops[stops.length - 1].id;
 }

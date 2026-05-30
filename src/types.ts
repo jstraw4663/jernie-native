@@ -136,6 +136,7 @@ export interface ItineraryItem {
   placeId?: string;
   bookingId?: string;
   label?: string;       // custom items
+  time?: string;
   category?: ItineraryItemCategory;
   order: number;
   locked?: boolean;

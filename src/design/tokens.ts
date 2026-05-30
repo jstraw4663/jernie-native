@@ -101,6 +101,7 @@ export const Typography = {
     h1Bold:    { fontSize: 28, lineHeight: 34, fontWeight: '700' as const, fontFamily: 'Fraunces' },
     h2:        { fontSize: 22, lineHeight: 28, fontWeight: '400' as const, fontFamily: 'Fraunces' },
     h2Italic:  { fontSize: 22, lineHeight: 28, fontWeight: '400' as const, fontFamily: 'Fraunces', fontStyle: 'italic' as const },
+    h2Bold:    { fontSize: 22, lineHeight: 28, fontWeight: '700' as const, fontFamily: 'Fraunces' },
     h3:        { fontSize: 18, lineHeight: 24, fontWeight: '600' as const, fontFamily: 'DMSans' },
     body:      { fontSize: 16, lineHeight: 26, fontWeight: '400' as const, fontFamily: 'DMSans' },
     bodyBold:  { fontSize: 16, lineHeight: 26, fontWeight: '700' as const, fontFamily: 'DMSans' },

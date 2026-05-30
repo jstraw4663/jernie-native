@@ -9,8 +9,9 @@ import {
   getAutoExpandDayIndex,
   getFlightPhase,
   getRentalPhase,
+  getActiveStopId,
 } from '@/src/domain/trip';
-import type { ItineraryDay } from '@/src/types';
+import type { ItineraryDay, Stop } from '@/src/types';
 
 // parseFlightDate
 test('parseFlightDate handles ISO string', () => {
@@ -105,4 +106,40 @@ test('getRentalPhase: return-day when today === dropoff', () => {
 
 test('getRentalPhase: returned when today > dropoff', () => {
   expect(getRentalPhase('2026-05-26', '2026-05-29', new Date('2026-05-30'))).toBe('returned');
+});
+
+// getActiveStopId
+const TEST_STOPS: Stop[] = [
+  {
+    id: 'stop-a', tripId: 't1', city: 'Portland', region: 'ME', emoji: '🦞',
+    lat: 43.6615, lon: -70.2553,
+    dates: { start: '2026-07-10', end: '2026-07-12' },
+    color: '#2C5880', order: 0,
+  },
+  {
+    id: 'stop-b', tripId: 't1', city: 'Bar Harbor', region: 'ME', emoji: '⛵',
+    lat: 44.3876, lon: -68.2039,
+    dates: { start: '2026-07-12', end: '2026-07-15' },
+    color: '#2F6B47', order: 1,
+  },
+];
+
+test('getActiveStopId: returns first stop when pre-trip', () => {
+  expect(getActiveStopId(TEST_STOPS, new Date('2026-06-01T12:00:00'))).toBe('stop-a');
+});
+
+test('getActiveStopId: returns matching stop during trip (first stop)', () => {
+  expect(getActiveStopId(TEST_STOPS, new Date('2026-07-10T12:00:00'))).toBe('stop-a');
+});
+
+test('getActiveStopId: returns matching stop during trip (second stop)', () => {
+  expect(getActiveStopId(TEST_STOPS, new Date('2026-07-12T12:00:00'))).toBe('stop-b');
+});
+
+test('getActiveStopId: returns last stop post-trip', () => {
+  expect(getActiveStopId(TEST_STOPS, new Date('2026-07-20T12:00:00'))).toBe('stop-b');
+});
+
+test('getActiveStopId: returns null for empty stops array', () => {
+  expect(getActiveStopId([], new Date())).toBeNull();
 });
