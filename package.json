@@ -21,6 +21,7 @@
     "react-native-gesture-handler": "~2.31.1",
     "react-native-mmkv": "^4.3.1",
     "react-native-reanimated": "4.3.1",
+    "react-native-worklets": "^0.8.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
