@@ -62,6 +62,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.card,
     backgroundColor: Core.surface,
     marginHorizontal: Spacing.md,
+    marginTop: -4,
     paddingTop: Spacing.base,
     overflow: 'hidden',
   },
