@@ -7,7 +7,7 @@ module.exports = {
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
     splash: {
-      image: "./assets/splash.png",
+      image: "./assets/splash-icon.png",
       resizeMode: "contain",
       backgroundColor: "#0D2B3E",
     },
@@ -25,7 +25,7 @@ module.exports = {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
+        foregroundImage: "./assets/android-icon-foreground.png",
         backgroundColor: "#0D2B3E",
       },
       package: "com.jernie.app",
