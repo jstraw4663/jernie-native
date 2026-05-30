@@ -1,10 +1,21 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 import type { ItineraryDay, ItineraryItemCategory } from '@/src/types';
 import { Core, TypeColors, Typography, Radius, Spacing } from '@/src/design/tokens';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+// Height of each item row (paddingVertical:6 × 2 + ~32px text line height)
+const ITEM_ROW_HEIGHT = 44;
+const ITEM_LIST_BOTTOM_PAD = Spacing.sm; // 8px
 
 const CATEGORY_COLOR: Partial<Record<ItineraryItemCategory, string>> = {
   flight:     TypeColors.flight,
@@ -28,6 +39,34 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
   const dateLabel = `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
   const sortedItems = [...day.items].sort((a, b) => a.order - b.order);
 
+  // Calculated from item count — no off-screen measurement needed
+  const contentHeight = day.items.length * ITEM_ROW_HEIGHT + ITEM_LIST_BOTTOM_PAD;
+
+  const animatedHeight = useSharedValue(0);
+  const chevronProgress = useSharedValue(0);
+
+  useEffect(() => {
+    animatedHeight.value = withSpring(isExpanded ? contentHeight : 0, {
+      stiffness: 380,
+      damping: 35,
+    });
+    chevronProgress.value = withSpring(isExpanded ? 1 : 0, {
+      stiffness: 380,
+      damping: 35,
+    });
+  }, [isExpanded, contentHeight]);
+
+  const itemListStyle = useAnimatedStyle(() => ({
+    height: animatedHeight.value,
+    overflow: 'hidden',
+  }));
+
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{
+      rotate: `${interpolate(chevronProgress.value, [0, 1], [0, 90], Extrapolation.CLAMP)}deg`,
+    }],
+  }));
+
   return (
     <View style={styles.wrapper}>
       <TouchableOpacity onPress={onPress} style={styles.header} activeOpacity={0.7}>
@@ -42,11 +81,15 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
         </View>
         <View style={styles.headerRight}>
           <Text style={styles.itemCount}>{day.items.length} item{day.items.length !== 1 ? 's' : ''}</Text>
-          <Text style={[styles.chevron, isExpanded && styles.chevronOpen]}>›</Text>
+          {/* Chevron wrapped in Animated.View for rotation */}
+          <Animated.View style={chevronStyle}>
+            <Text style={styles.chevron}>›</Text>
+          </Animated.View>
         </View>
       </TouchableOpacity>
 
-      {isExpanded && (
+      {/* Always rendered — height springs to 0 when collapsed */}
+      <Animated.View style={itemListStyle}>
         <View style={styles.itemList}>
           {sortedItems.map(item => {
             const cat = item.category;
@@ -64,7 +107,7 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
             );
           })}
         </View>
-      )}
+      </Animated.View>
     </View>
   );
 }
@@ -100,7 +143,7 @@ const styles = StyleSheet.create({
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   itemCount:  { ...Typography.roles.meta, color: Core.textMuted },
   chevron:    { fontSize: 20, color: Core.textMuted },
-  chevronOpen: { transform: [{ rotate: '90deg' }] },
+  // chevronOpen removed — rotation is now Reanimated-driven
   itemList: { paddingBottom: Spacing.sm },
   itemRow: {
     flexDirection: 'row',
