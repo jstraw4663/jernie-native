@@ -30,12 +30,6 @@
       "newArchEnabled": true,
       "googleServicesFile": "./google-services.json"
     },
-    "runtimeVersion": {
-      "policy": "sdkVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/placeholder"
-    },
     "plugins": [
       "expo-router",
       "expo-font",
