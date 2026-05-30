@@ -38,6 +38,21 @@ module.exports = {
       "expo-font",
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
+      [
+        "expo-build-properties",
+        {
+          ios: {
+            extraPods: [
+              { name: "GoogleUtilities", modular_headers: true },
+              { name: "FirebaseAuthInterop", modular_headers: true },
+              { name: "FirebaseAppCheckInterop", modular_headers: true },
+              { name: "RecaptchaInterop", modular_headers: true },
+              { name: "FirebaseFirestoreInternal", modular_headers: true },
+              { name: "leveldb-library", modular_headers: true },
+            ],
+          },
+        },
+      ],
     ],
     scheme: "jernie",
     experiments: {
