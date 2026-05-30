@@ -10,10 +10,10 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    Fraunces: require('../assets/fonts/Fraunces[SOFT,WONK,opsz,wght].ttf'),
-    'Fraunces-Italic': require('../assets/fonts/Fraunces-Italic[SOFT,WONK,opsz,wght].ttf'),
-    DMSans: require('../assets/fonts/DMSans[opsz,wght].ttf'),
-    'DMSans-Italic': require('../assets/fonts/DMSans-Italic[opsz,wght].ttf'),
+    Fraunces: require('../assets/fonts/Fraunces.ttf'),
+    'Fraunces-Italic': require('../assets/fonts/Fraunces-Italic.ttf'),
+    DMSans: require('../assets/fonts/DMSans.ttf'),
+    'DMSans-Italic': require('../assets/fonts/DMSans-Italic.ttf'),
     DMMono: require('../assets/fonts/DMMono-Regular.ttf'),
     'DMMono-Medium': require('../assets/fonts/DMMono-Medium.ttf'),
     'DMMono-Italic': require('../assets/fonts/DMMono-Italic.ttf'),
