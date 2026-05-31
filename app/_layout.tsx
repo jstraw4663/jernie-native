@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ConnectivityProvider } from '@/src/contexts/ConnectivityContext';
 import { SheetProvider } from '@/src/contexts/SheetContext';
 import { initAuth } from '@/src/lib/firebase';
+import { maybeSeedDevData } from '@/src/lib/devSeed';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -20,7 +21,9 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    initAuth().catch(console.error);
+    initAuth()
+      .then(() => maybeSeedDevData())
+      .catch(console.error);
   }, []);
 
   useEffect(() => {
