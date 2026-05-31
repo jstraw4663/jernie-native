@@ -6,6 +6,7 @@ import Animated, {
   useAnimatedRef,
   scrollTo,
   runOnJS,
+  runOnUI,
 } from 'react-native-reanimated';
 import { createMMKV } from 'react-native-mmkv';
 import { DEV_TRIP, DEV_STOPS, DEV_BOOKINGS, DEV_ITINERARY } from '@/src/fixtures/devTrip';
@@ -64,7 +65,10 @@ export default function JernieTab() {
   const handleStopPress = useCallback((stopId: string) => {
     const offset = sectionOffsets.current[stopId];
     if (offset !== undefined) {
-      scrollTo(scrollRef, 0, offset, true);
+      runOnUI(() => {
+        'worklet';
+        scrollTo(scrollRef, 0, offset, true);
+      })();
     }
   }, [scrollRef]);
 

@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Trip, Stop } from '@/src/types';
 import { Typography, Radius, Spacing, Semantic } from '@/src/design/tokens';
 import { formatDateRange } from '@/src/utils/dates';
+import { getDevNow } from '@/src/utils/devTime';
 
 interface HeroLayerProps {
   trip: Trip;
@@ -21,6 +22,12 @@ interface HeroLayerProps {
 
 export function HeroLayer({ trip, activeStop, visibleStop, scrollY }: HeroLayerProps) {
   const insets = useSafeAreaInsets();
+
+  const todayIso = getDevNow().toISOString().split('T')[0];
+  const phaseLabel =
+    todayIso < activeStop.dates.start ? 'Pre-trip' :
+    todayIso < activeStop.dates.end   ? 'In trip'  :
+                                         'Post-trip';
 
   // Animated container height: 280px → 120px
   const heroStyle = useAnimatedStyle(() => ({
@@ -42,7 +49,7 @@ export function HeroLayer({ trip, activeStop, visibleStop, scrollY }: HeroLayerP
       {/* LinearGradient fills the animated container */}
       <LinearGradient
         colors={trip.colorPack.heroGradient}
-        style={[StyleSheet.absoluteFill, styles.gradient]}
+        style={StyleSheet.absoluteFill}
       />
 
       {/* Expanded layout — fades out as hero shrinks */}
@@ -58,7 +65,7 @@ export function HeroLayer({ trip, activeStop, visibleStop, scrollY }: HeroLayerP
             <Text style={styles.tripPillText}>{trip.name}</Text>
           </View>
           <View style={styles.phasePill}>
-            <Text style={styles.phaseText}>Pre-trip</Text>
+            <Text style={styles.phaseText}>{phaseLabel}</Text>
           </View>
         </View>
 
@@ -76,7 +83,7 @@ export function HeroLayer({ trip, activeStop, visibleStop, scrollY }: HeroLayerP
           {visibleStop.emoji}{'  '}{visibleStop.city}
         </Text>
         <View style={styles.phasePill}>
-          <Text style={styles.phaseText}>Pre-trip</Text>
+          <Text style={styles.phaseText}>{phaseLabel}</Text>
         </View>
       </Animated.View>
     </Animated.View>
@@ -90,10 +97,7 @@ const styles = StyleSheet.create({
     marginBottom: -4,
     overflow: 'hidden',
   },
-  gradient: {
-    borderBottomLeftRadius: Radius.hero,
-    borderBottomRightRadius: Radius.hero,
-  },
+  gradient: {},
   expandedContent: {
     flex: 1,
     paddingHorizontal: Spacing.base,
