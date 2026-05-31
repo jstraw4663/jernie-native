@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
@@ -16,7 +16,7 @@ import { HeroLayer } from '@/src/features/jernie/HeroLayer';
 import { CTACardZone } from '@/src/features/jernie/CTACardZone';
 import { StopsStrip } from '@/src/features/jernie/StopsStrip';
 import { StopSection } from '@/src/features/jernie/StopSection';
-import { Core } from '@/src/design/tokens';
+import { Brand, Core, Spacing } from '@/src/design/tokens';
 import type { Booking } from '@/src/types';
 
 const uiStorage = createMMKV({ id: 'jernie-ui' });
@@ -25,7 +25,8 @@ const uiStorage = createMMKV({ id: 'jernie-ui' });
 const STICKY_HEADER_HEIGHT = 130;
 
 export default function JernieTab() {
-  const { trip, stops, bookings, itinerary } = useTripContext();
+  const { trip, stops, bookings, itinerary, status, refetch } = useTripContext();
+  const isRefreshing = status === 'loading';
 
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const sectionOffsets = useRef<Record<string, number>>({});
@@ -119,9 +120,21 @@ export default function JernieTab() {
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustKeyboardInsets={false}
         style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={refetch}
+            tintColor={Brand.gold}
+          />
+        }
       >
         {/* 0 — always-rendered wrapper keeps stickyHeaderIndices[0] stable when CTA dismissed */}
         <View>
+          {isRefreshing && (
+            <View style={styles.refreshIndicator}>
+              <ActivityIndicator color={Brand.gold} />
+            </View>
+          )}
           {!ctaDismissed && (
             <CTACardZone
               trip={trip}
@@ -160,5 +173,6 @@ export default function JernieTab() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Core.bg },
   scrollView: { flex: 1 },
+  refreshIndicator: { paddingVertical: Spacing.base, alignItems: 'center' },
   bottomPad: { height: 48 },
 });

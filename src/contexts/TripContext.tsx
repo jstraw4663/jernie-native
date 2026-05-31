@@ -16,6 +16,8 @@ export interface TripContextValue {
   confirms: Record<string, boolean>;
   setConfirm: (itemId: string, confirmed: boolean) => void;
   fromCache: boolean;
+  status: 'loading' | 'ready' | 'error';
+  refetch: () => void;
 }
 
 const TripContext = createContext<TripContextValue | null>(null);
@@ -63,6 +65,8 @@ export function TripProvider({ tripId, children }: TripProviderProps) {
     confirms: confirmsState.confirms,
     setConfirm: confirmsState.setConfirm,
     fromCache: tripData.fromCache,
+    status: tripData.status,
+    refetch: tripData.retry,
   };
 
   return (
