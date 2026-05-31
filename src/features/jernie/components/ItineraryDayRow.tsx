@@ -160,7 +160,16 @@ const styles = StyleSheet.create({
   chevron:    { fontSize: 20, color: Core.textMuted },
   // chevronOpen removed — rotation is now Reanimated-driven
   animatedContainer: { overflow: 'hidden' },
-  itemList: { paddingBottom: Spacing.sm },
+  // position:absolute takes itemList out of the flex flow so Yoga measures its natural
+  // height independently of the parent's height:0. Without this, onLayout reports 0
+  // because Yoga constrains flex children to fit inside a height:0 container.
+  itemList: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: Spacing.sm,
+  },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
