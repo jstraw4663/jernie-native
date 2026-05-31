@@ -1,0 +1,101 @@
+import { useState, useEffect, useCallback } from 'react';
+import { createMMKV } from 'react-native-mmkv';
+import { database, authReady } from '@/src/lib/firebase';
+import type { Trip, Stop, Booking, ItineraryDay, TripColorPackRef, SetupIntent } from '@/src/types';
+
+const cacheStorage = createMMKV({ id: 'jernie-trip-cache' });
+
+export interface TripDataState {
+  trip: Trip | null;
+  stops: Stop[];
+  bookings: Booking[];
+  itinerary: Record<string, ItineraryDay[]>;
+  status: 'loading' | 'ready' | 'error';
+  fromCache: boolean;
+  retry: () => void;
+}
+
+interface CachedSnapshot {
+  trip: Trip;
+  stops: Stop[];
+  bookings: Booking[];
+  itinerary: Record<string, ItineraryDay[]>;
+  cachedAt: number;
+}
+
+// Exported for unit testing. Converts a raw RTDB snapshot value into typed domain objects.
+// RTDB stores collections as keyed objects; this injects keys as `id` and sorts appropriately.
+export function normalizeTripSnapshot(val: Record<string, unknown>): {
+  trip: Trip;
+  stops: Stop[];
+  bookings: Booking[];
+  itinerary: Record<string, ItineraryDay[]>;
+} {
+  const trip: Trip = {
+    id: val.id as string,
+    name: val.name as string,
+    ownerUid: val.ownerUid as string,
+    createdAt: val.createdAt as number,
+    pills: (val.pills as string[]) ?? [],
+    inviteToken: val.inviteToken as string,
+    colorPack: val.colorPack as TripColorPackRef,
+    setupIntent: val.setupIntent as SetupIntent,
+  };
+
+  const rawStops = ((val.stops ?? {}) as Record<string, Omit<Stop, 'id'> & { id?: string }>);
+  const stops: Stop[] = Object.entries(rawStops)
+    .map(([key, s]) => ({ ...s, id: s.id ?? key } as Stop))
+    .sort((a, b) => a.order - b.order);
+
+  const rawBookings = ((val.bookings ?? {}) as Record<string, Omit<Booking, 'id'> & { id?: string }>);
+  const bookings: Booking[] = Object.entries(rawBookings)
+    .map(([key, b]) => ({ ...b, id: b.id ?? key } as Booking));
+
+  const rawItinerary = ((val.itinerary ?? {}) as Record<string, Record<string, Omit<ItineraryDay, 'id'> & { id?: string }>>);
+  const itinerary: Record<string, ItineraryDay[]> = {};
+  for (const [stopId, days] of Object.entries(rawItinerary)) {
+    itinerary[stopId] = Object.entries(days)
+      .map(([key, d]) => ({ ...d, id: d.id ?? key } as ItineraryDay))
+      .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
+  }
+
+  return { trip, stops, bookings, itinerary };
+}
+
+export function useTripData(tripId: string): TripDataState {
+  const cacheKey = `trip_snapshot_${tripId}`;
+
+  const [state, setState] = useState<Omit<TripDataState, 'retry'>>(() => {
+    try {
+      const raw = cacheStorage.getString(cacheKey);
+      if (raw) {
+        const cached = JSON.parse(raw) as CachedSnapshot;
+        return { trip: cached.trip, stops: cached.stops, bookings: cached.bookings, itinerary: cached.itinerary, status: 'loading', fromCache: true };
+      }
+    } catch {}
+    return { trip: null, stops: [], bookings: [], itinerary: {}, status: 'loading', fromCache: false };
+  });
+
+  const doFetch = useCallback(async () => {
+    try {
+      await authReady;
+      const snap = await database().ref(`trips/${tripId}`).once('value');
+      const val = snap.val() as Record<string, unknown> | null;
+      if (!val) throw new Error('no data');
+      const normalized = normalizeTripSnapshot(val);
+      const cached: CachedSnapshot = { ...normalized, cachedAt: Date.now() };
+      cacheStorage.set(cacheKey, JSON.stringify(cached));
+      setState({ ...normalized, status: 'ready', fromCache: false });
+    } catch {
+      setState(prev => ({ ...prev, trip: null, status: 'error' }));
+    }
+  }, [tripId, cacheKey]);
+
+  useEffect(() => {
+    doFetch();
+  }, [doFetch]);
+
+  const retry = useCallback(() => doFetch(), [doFetch]);
+
+  return { ...state, retry };
+}
