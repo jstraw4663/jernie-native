@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, type LayoutChangeEvent } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -13,9 +13,8 @@ import { Core, TypeColors, Typography, Radius, Spacing } from '@/src/design/toke
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-// Height of each item row (paddingVertical:6 × 2 + ~32px text line height)
-const ITEM_ROW_HEIGHT = 44;
-const ITEM_LIST_BOTTOM_PAD = Spacing.sm; // 8px
+// Matches Animation.springs.lazy from the Jernie PWA
+const SPRING = { stiffness: 130, damping: 19 };
 
 const CATEGORY_COLOR: Partial<Record<ItineraryItemCategory, string>> = {
   flight:     TypeColors.flight,
@@ -39,31 +38,33 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
   const dateLabel = `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
   const sortedItems = [...day.items].sort((a, b) => a.order - b.order);
 
-  // Calculated from item count — no off-screen measurement needed
-  const contentHeight = useMemo(
-    () => day.items.length * ITEM_ROW_HEIGHT + ITEM_LIST_BOTTOM_PAD,
-    [day.items.length]
+  // Measure the actual rendered content height via onLayout.
+  // Avoids the fragile ITEM_ROW_HEIGHT estimate (body lineHeight 26 + padding 12 = 38px, not 44).
+  const naturalHeight = useRef(0);
+
+  const animatedHeight = useSharedValue(0);   // snapped to real height after first layout
+  const chevronProgress = useSharedValue(isExpanded ? 1 : 0);
+
+  // prevExpanded comparison guards the effect from firing on mount.
+  const prevExpanded = useRef(isExpanded);
+
+  const handleContentLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      const h = e.nativeEvent.layout.height;
+      if (h <= 0 || naturalHeight.current > 0) return;
+      naturalHeight.current = h;
+      // Snap to correct position on first measurement — no spring on mount.
+      animatedHeight.value = isExpanded ? h : 0;
+    },
+    [isExpanded],
   );
 
-  const animatedHeight = useSharedValue(isExpanded ? contentHeight : 0);
-  const chevronProgress = useSharedValue(isExpanded ? 1 : 0);
-  const didMount = useRef(false);
-
   useEffect(() => {
-    // Skip on mount — shared values are already initialised to the correct position above.
-    if (!didMount.current) {
-      didMount.current = true;
-      return;
-    }
-    animatedHeight.value = withSpring(isExpanded ? contentHeight : 0, {
-      stiffness: 220,
-      damping: 28,
-    });
-    chevronProgress.value = withSpring(isExpanded ? 1 : 0, {
-      stiffness: 220,
-      damping: 28,
-    });
-  }, [isExpanded, contentHeight]);
+    if (prevExpanded.current === isExpanded) return;
+    prevExpanded.current = isExpanded;
+    animatedHeight.value = withSpring(isExpanded ? naturalHeight.current : 0, SPRING);
+    chevronProgress.value = withSpring(isExpanded ? 1 : 0, SPRING);
+  }, [isExpanded]);
 
   const itemListStyle = useAnimatedStyle(() => ({
     height: animatedHeight.value,
@@ -98,7 +99,7 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
 
       {/* Always rendered — height springs to 0 when collapsed */}
       <Animated.View style={[styles.animatedContainer, itemListStyle]}>
-        <View style={styles.itemList}>
+        <View style={styles.itemList} onLayout={handleContentLayout}>
           {sortedItems.map(item => {
             const cat = item.category;
             const color = (cat ? CATEGORY_COLOR[cat] : undefined) ?? Core.textMuted;
