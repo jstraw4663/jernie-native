@@ -13,8 +13,11 @@ import { Core, TypeColors, Typography, Radius, Spacing } from '@/src/design/toke
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-// Matches Animation.springs.lazy from the Jernie PWA
-const SPRING = { stiffness: 130, damping: 19 };
+// Open: lazy bouncy spring matching PWA feel. Close: overdamped so it never undershoots 0.
+// An underdamped close spring oscillates below height=0, which React Native clamps to 0,
+// creating a visible "flicker open" as the spring bounces back above 0.
+const SPRING_OPEN  = { stiffness: 130, damping: 19 };
+const SPRING_CLOSE = { stiffness: 200, damping: 30 };
 
 const CATEGORY_COLOR: Partial<Record<ItineraryItemCategory, string>> = {
   flight:     TypeColors.flight,
@@ -62,12 +65,15 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
   useEffect(() => {
     if (prevExpanded.current === isExpanded) return;
     prevExpanded.current = isExpanded;
-    animatedHeight.value = withSpring(isExpanded ? naturalHeight.current : 0, SPRING);
-    chevronProgress.value = withSpring(isExpanded ? 1 : 0, SPRING);
+    const spring = isExpanded ? SPRING_OPEN : SPRING_CLOSE;
+    animatedHeight.value = withSpring(isExpanded ? naturalHeight.current : 0, spring);
+    chevronProgress.value = withSpring(isExpanded ? 1 : 0, spring);
   }, [isExpanded]);
 
   const itemListStyle = useAnimatedStyle(() => ({
-    height: animatedHeight.value,
+    // Math.max prevents negative height during spring undershoot, which would
+    // cause a flicker (RN clamps negative height to 0 → looks open → springs back → closed).
+    height: Math.max(0, animatedHeight.value),
   }));
 
   const chevronStyle = useAnimatedStyle(() => ({

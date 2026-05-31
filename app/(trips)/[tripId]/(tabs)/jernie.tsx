@@ -1,5 +1,13 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { ScrollView, View, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedRef,
+  scrollTo,
+  runOnJS,
+  runOnUI,
+} from 'react-native-reanimated';
 import { createMMKV } from 'react-native-mmkv';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { getActiveStopId, getAutoExpandDayIndex } from '@/src/domain/trip';
@@ -13,11 +21,15 @@ import type { Booking } from '@/src/types';
 
 const uiStorage = createMMKV({ id: 'jernie-ui' });
 
+// Approx height of sticky CTA zone + StopsStrip — used for scroll-based stop tracking
+const STICKY_HEADER_HEIGHT = 130;
+
 export default function JernieTab() {
   const { trip, stops, bookings, itinerary } = useTripContext();
 
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const sectionOffsets = useRef<Record<string, number>>({});
+  const scrollY = useSharedValue(0);
 
   const now = getDevNow();
   const activeStopId = getActiveStopId(stops, now);
@@ -27,6 +39,11 @@ export default function JernieTab() {
   const [ctaDismissed, setCtaDismissed] = useState(
     () => uiStorage.getBoolean(ctaKey) ?? false,
   );
+
+  const [visibleStopId, setVisibleStopId] = useState<string>(
+    activeStopId ?? stops[0]?.id ?? '',
+  );
+  const visibleStop = stops.find(s => s.id === visibleStopId) ?? stops[0];
 
   const [expandedDayIds, setExpandedDayIds] = useState<Record<string, string | null>>(() =>
     Object.fromEntries(stops.map(s => {
@@ -62,23 +79,48 @@ export default function JernieTab() {
   const handleStopPress = useCallback((stopId: string) => {
     const offset = sectionOffsets.current[stopId];
     if (offset !== undefined) {
-      scrollRef.current?.scrollTo({ y: offset, animated: true });
+      runOnUI(() => { 'worklet'; scrollTo(scrollRef, 0, offset, true); })();
     }
-  }, []);
+  }, [scrollRef]);
+
+  function updateVisibleStop(y: number) {
+    const offsets = sectionOffsets.current;
+    let newId = stops[0]?.id ?? '';
+    for (const stop of stops) {
+      const offset = offsets[stop.id];
+      if (offset !== undefined && y >= offset - STICKY_HEADER_HEIGHT) newId = stop.id;
+    }
+    setVisibleStopId(prev => (prev === newId ? prev : newId));
+  }
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+      runOnJS(updateVisibleStop)(event.contentOffset.y);
+    },
+  });
 
   return (
     <View style={styles.container}>
-      <ScrollView
+      {/* Hero lives outside the ScrollView — stays pinned at top, collapses on scroll */}
+      <HeroLayer
+        trip={trip}
+        activeStop={activeStop}
+        visibleStop={visibleStop}
+        scrollY={scrollY}
+      />
+
+      <Animated.ScrollView
         ref={scrollRef}
-        stickyHeaderIndices={[1, 2]}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        stickyHeaderIndices={[0, 1]}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustKeyboardInsets={false}
+        style={styles.scrollView}
       >
-        {/* 0 — scrolls away */}
-        <HeroLayer trip={trip} activeStop={activeStop} />
-
-        {/* 1 — always-rendered wrapper keeps stickyHeaderIndices[1] stable when CTA dismissed */}
+        {/* 0 — always-rendered wrapper keeps stickyHeaderIndices[0] stable when CTA dismissed */}
         <View>
           {!ctaDismissed && (
             <CTACardZone
@@ -89,14 +131,14 @@ export default function JernieTab() {
           )}
         </View>
 
-        {/* 2 — stacks below CTA when both are sticky */}
+        {/* 1 — stacks below CTA when both are sticky */}
         <StopsStrip
           stops={stops}
-          activeStopId={activeStopId}
+          activeStopId={visibleStopId}
           onStopPress={handleStopPress}
         />
 
-        {/* 3+ */}
+        {/* 2+ — one section per stop */}
         {stops.map(stop => (
           <StopSection
             key={stop.id}
@@ -110,12 +152,13 @@ export default function JernieTab() {
         ))}
 
         <View style={styles.bottomPad} />
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Core.bg },
+  scrollView: { flex: 1 },
   bottomPad: { height: 48 },
 });
