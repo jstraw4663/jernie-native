@@ -87,7 +87,7 @@ export function useTripData(tripId: string): TripDataState {
       cacheStorage.set(cacheKey, JSON.stringify(cached));
       setState({ ...normalized, status: 'ready', fromCache: false });
     } catch {
-      setState(prev => ({ ...prev, trip: null, status: 'error' }));
+      setState(prev => ({ ...prev, status: 'error' }));
     }
   }, [tripId, cacheKey]);
 

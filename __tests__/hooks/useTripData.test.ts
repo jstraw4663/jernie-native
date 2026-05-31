@@ -1,13 +1,13 @@
-jest.mock('react-native-mmkv', () => {
-  const store: Record<string, string> = {};
-  return {
-    createMMKV: jest.fn().mockReturnValue({
-      getString: (key: string) => store[key] ?? undefined,
-      set: (key: string, value: string) => { store[key] = value; },
-      remove: (key: string) => { delete store[key]; },
-    }),
-  };
-});
+// MMKV store shared between mock and tests — allows reset in beforeEach
+const _mmkvStore: Record<string, string> = {};
+
+jest.mock('react-native-mmkv', () => ({
+  createMMKV: () => ({
+    getString: (key: string) => _mmkvStore[key] ?? undefined,
+    set: (key: string, value: string) => { _mmkvStore[key] = value; },
+    remove: (key: string) => { delete _mmkvStore[key]; },
+  }),
+}));
 
 jest.mock('@react-native-firebase/database');
 jest.mock('@/src/lib/firebase', () => ({
@@ -99,6 +99,8 @@ import database, { mockOnce } from '@react-native-firebase/database';
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // Reset MMKV store between tests so cached state doesn't bleed
+  Object.keys(_mmkvStore).forEach(k => delete _mmkvStore[k]);
 });
 
 describe('useTripData', () => {
