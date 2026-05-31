@@ -108,24 +108,25 @@ export default function JernieTab() {
 
   return (
     <View style={styles.container}>
+      {/* Hero lives outside the ScrollView so it stays at the top of the screen */}
+      <HeroLayer
+        trip={DEV_TRIP}
+        activeStop={activeStop}
+        visibleStop={visibleStop}
+        scrollY={scrollY}
+      />
+
       <Animated.ScrollView
         ref={scrollRef}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-        stickyHeaderIndices={[1, 2]}
+        stickyHeaderIndices={[0, 1]}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustKeyboardInsets={false}
+        style={styles.scrollView}
       >
-        {/* 0 — scrolls away, collapses */}
-        <HeroLayer
-          trip={DEV_TRIP}
-          activeStop={activeStop}
-          visibleStop={visibleStop}
-          scrollY={scrollY}
-        />
-
-        {/* 1 — always-rendered wrapper keeps stickyHeaderIndices[1] stable */}
+        {/* 0 — always-rendered wrapper keeps stickyHeaderIndices[0] stable */}
         <View>
           {!ctaDismissed && (
             <CTACardZone
@@ -136,14 +137,14 @@ export default function JernieTab() {
           )}
         </View>
 
-        {/* 2 — stacks below CTA when both are sticky */}
+        {/* 1 — stacks below CTA when both are sticky */}
         <StopsStrip
           stops={DEV_STOPS}
           activeStopId={visibleStopId}
           onStopPress={handleStopPress}
         />
 
-        {/* 3+ — one section per stop */}
+        {/* 2+ — one section per stop */}
         {DEV_STOPS.map(stop => (
           <StopSection
             key={stop.id}
@@ -164,5 +165,6 @@ export default function JernieTab() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Core.bg },
+  scrollView: { flex: 1 },
   bottomPad: { height: 48 },
 });

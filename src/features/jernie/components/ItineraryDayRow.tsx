@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -47,15 +47,21 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
 
   const animatedHeight = useSharedValue(isExpanded ? contentHeight : 0);
   const chevronProgress = useSharedValue(isExpanded ? 1 : 0);
+  const didMount = useRef(false);
 
   useEffect(() => {
+    // Skip on mount — shared values are already initialised to the correct position above.
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
     animatedHeight.value = withSpring(isExpanded ? contentHeight : 0, {
-      stiffness: 380,
-      damping: 35,
+      stiffness: 220,
+      damping: 28,
     });
     chevronProgress.value = withSpring(isExpanded ? 1 : 0, {
-      stiffness: 380,
-      damping: 35,
+      stiffness: 220,
+      damping: 28,
     });
   }, [isExpanded, contentHeight]);
 
