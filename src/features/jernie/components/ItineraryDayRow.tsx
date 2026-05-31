@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -40,10 +40,13 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
   const sortedItems = [...day.items].sort((a, b) => a.order - b.order);
 
   // Calculated from item count — no off-screen measurement needed
-  const contentHeight = day.items.length * ITEM_ROW_HEIGHT + ITEM_LIST_BOTTOM_PAD;
+  const contentHeight = useMemo(
+    () => day.items.length * ITEM_ROW_HEIGHT + ITEM_LIST_BOTTOM_PAD,
+    [day.items.length]
+  );
 
-  const animatedHeight = useSharedValue(0);
-  const chevronProgress = useSharedValue(0);
+  const animatedHeight = useSharedValue(isExpanded ? contentHeight : 0);
+  const chevronProgress = useSharedValue(isExpanded ? 1 : 0);
 
   useEffect(() => {
     animatedHeight.value = withSpring(isExpanded ? contentHeight : 0, {
@@ -58,7 +61,6 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
 
   const itemListStyle = useAnimatedStyle(() => ({
     height: animatedHeight.value,
-    overflow: 'hidden',
   }));
 
   const chevronStyle = useAnimatedStyle(() => ({
@@ -89,7 +91,7 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
       </TouchableOpacity>
 
       {/* Always rendered — height springs to 0 when collapsed */}
-      <Animated.View style={itemListStyle}>
+      <Animated.View style={[styles.animatedContainer, itemListStyle]}>
         <View style={styles.itemList}>
           {sortedItems.map(item => {
             const cat = item.category;
@@ -144,6 +146,7 @@ const styles = StyleSheet.create({
   itemCount:  { ...Typography.roles.meta, color: Core.textMuted },
   chevron:    { fontSize: 20, color: Core.textMuted },
   // chevronOpen removed — rotation is now Reanimated-driven
+  animatedContainer: { overflow: 'hidden' },
   itemList: { paddingBottom: Spacing.sm },
   itemRow: {
     flexDirection: 'row',
