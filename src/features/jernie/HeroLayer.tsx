@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, {
   useAnimatedStyle,
+  useSharedValue,
   interpolate,
   Extrapolation,
 } from 'react-native-reanimated';
@@ -15,12 +16,15 @@ import { getDevNow } from '@/src/utils/devTime';
 
 interface HeroLayerProps {
   trip: Trip;
-  activeStop: Stop;   // date-based — drives phase pill label
-  visibleStop: Stop;  // scroll-position — drives compact strip city/emoji
-  scrollY: SharedValue<number>;
+  activeStop: Stop;              // date-based — drives phase pill label
+  visibleStop?: Stop;            // scroll-position — drives compact strip city/emoji (optional)
+  scrollY?: SharedValue<number>; // when omitted, hero renders at full height without animation
 }
 
 export function HeroLayer({ trip, activeStop, visibleStop, scrollY }: HeroLayerProps) {
+  const effectiveVisibleStop = visibleStop ?? activeStop;
+  const _fallbackScrollY = useSharedValue(0);
+  const effectiveScrollY = scrollY ?? _fallbackScrollY;
   const insets = useSafeAreaInsets();
 
   const todayIso = getDevNow().toISOString().split('T')[0];
@@ -31,17 +35,17 @@ export function HeroLayer({ trip, activeStop, visibleStop, scrollY }: HeroLayerP
 
   // Animated container height: 280px → 120px
   const heroStyle = useAnimatedStyle(() => ({
-    height: interpolate(scrollY.value, [0, 120], [280, 120], Extrapolation.CLAMP),
+    height: interpolate(effectiveScrollY.value, [0, 120], [280, 120], Extrapolation.CLAMP),
   }));
 
   // Expanded content (pills + large city + subtitle): fades out 0→80
   const expandedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, 80], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(effectiveScrollY.value, [0, 80], [1, 0], Extrapolation.CLAMP),
   }));
 
   // Compact strip (emoji + city + phase pill): fades in 80→120
   const compactStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [80, 120], [0, 1], Extrapolation.CLAMP),
+    opacity: interpolate(effectiveScrollY.value, [80, 120], [0, 1], Extrapolation.CLAMP),
   }));
 
   return (
@@ -80,7 +84,7 @@ export function HeroLayer({ trip, activeStop, visibleStop, scrollY }: HeroLayerP
       {/* Compact strip — fades in as hero shrinks, pinned to bottom */}
       <Animated.View style={[styles.compactStrip, compactStyle]}>
         <Text style={styles.compactCity}>
-          {visibleStop.emoji}{'  '}{visibleStop.city}
+          {effectiveVisibleStop.emoji}{'  '}{effectiveVisibleStop.city}
         </Text>
         <View style={styles.phasePill}>
           <Text style={styles.phaseText}>{phaseLabel}</Text>

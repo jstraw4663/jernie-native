@@ -1,15 +1,7 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedScrollHandler,
-  useAnimatedRef,
-  scrollTo,
-  runOnJS,
-  runOnUI,
-} from 'react-native-reanimated';
+import { ScrollView, View, StyleSheet } from 'react-native';
 import { createMMKV } from 'react-native-mmkv';
-import { DEV_TRIP, DEV_STOPS, DEV_BOOKINGS, DEV_ITINERARY } from '@/src/fixtures/devTrip';
+import { useTripContext } from '@/src/contexts/TripContext';
 import { getActiveStopId, getAutoExpandDayIndex } from '@/src/domain/trip';
 import { getDevNow } from '@/src/utils/devTime';
 import { HeroLayer } from '@/src/features/jernie/HeroLayer';
@@ -17,35 +9,28 @@ import { CTACardZone } from '@/src/features/jernie/CTACardZone';
 import { StopsStrip } from '@/src/features/jernie/StopsStrip';
 import { StopSection } from '@/src/features/jernie/StopSection';
 import { Core } from '@/src/design/tokens';
+import type { Booking } from '@/src/types';
 
 const uiStorage = createMMKV({ id: 'jernie-ui' });
 
-// Approximate combined height of sticky CTA zone + StopsStrip.
-// Used to trigger stop-pill highlight when a section header enters the viewport.
-const STICKY_HEADER_HEIGHT = 130;
-
 export default function JernieTab() {
-  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const { trip, stops, bookings, itinerary } = useTripContext();
+
+  const scrollRef = useRef<ScrollView>(null);
   const sectionOffsets = useRef<Record<string, number>>({});
-  const scrollY = useSharedValue(0);
 
   const now = getDevNow();
-  const activeStopId = getActiveStopId(DEV_STOPS, now);
-  const activeStop = DEV_STOPS.find(s => s.id === activeStopId) ?? DEV_STOPS[0];
+  const activeStopId = getActiveStopId(stops, now);
+  const activeStop = stops.find(s => s.id === activeStopId) ?? stops[0];
 
-  const ctaKey = `cta_dismissed_${DEV_TRIP.id}`;
+  const ctaKey = `cta_dismissed_${trip.id}`;
   const [ctaDismissed, setCtaDismissed] = useState(
-    () => uiStorage.getBoolean(ctaKey) ?? false
+    () => uiStorage.getBoolean(ctaKey) ?? false,
   );
-
-  const [visibleStopId, setVisibleStopId] = useState<string>(
-    activeStopId ?? DEV_STOPS[0].id
-  );
-  const visibleStop = DEV_STOPS.find(s => s.id === visibleStopId) ?? DEV_STOPS[0];
 
   const [expandedDayIds, setExpandedDayIds] = useState<Record<string, string | null>>(() =>
-    Object.fromEntries(DEV_STOPS.map(s => {
-      const days = DEV_ITINERARY[s.id] ?? [];
+    Object.fromEntries(stops.map(s => {
+      const days = itinerary[s.id] ?? [];
       const idx = getAutoExpandDayIndex(days, now);
       return [s.id, idx >= 0 ? (days[idx]?.id ?? null) : null];
     }))
@@ -57,100 +42,70 @@ export default function JernieTab() {
 
   const bookingsByStop = useMemo(
     () => Object.fromEntries(
-      DEV_STOPS.map(s => [s.id, DEV_BOOKINGS.filter(b => b.stopId === s.id)])
+      stops.map(s => [s.id, bookings.filter((b: Booking) => b.stopId === s.id)])
     ),
-    [] // fixture data is module-level constant — no deps needed
+    [stops, bookings],
   );
 
-  const handleStopPress = useCallback((stopId: string) => {
-    const offset = sectionOffsets.current[stopId];
-    if (offset !== undefined) {
-      runOnUI(() => {
-        'worklet';
-        scrollTo(scrollRef, 0, offset, true);
-      })();
-    }
-  }, [scrollRef]);
-
-  const handleDayPress = useCallback((stopId: string, dayId: string | null) => {
-    setExpandedDayId(stopId, dayId);
-  }, []);
-
-  const handleSectionLayout = useCallback((stopId: string, y: number) => {
-    sectionOffsets.current[stopId] = y;
-  }, []);
-
-  // Runs on JS thread via runOnJS — determines which stop section is visible
-  function updateVisibleStop(y: number) {
-    const offsets = sectionOffsets.current;
-    let newId = DEV_STOPS[0].id;
-    for (const stop of DEV_STOPS) {
-      const offset = offsets[stop.id];
-      if (offset !== undefined && y >= offset - STICKY_HEADER_HEIGHT) {
-        newId = stop.id;
-      }
-    }
-    // Guard prevents re-render on every scroll event when stop hasn't changed
-    setVisibleStopId(prev => (prev === newId ? prev : newId));
-  }
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-      runOnJS(updateVisibleStop)(event.contentOffset.y);
-    },
-  });
-
-  function handleDismissCTA() {
+  const handleDismissCTA = useCallback(() => {
     uiStorage.set(ctaKey, true);
     setCtaDismissed(true);
+  }, [ctaKey]);
+
+  const handleDayPress = useCallback(
+    (stopId: string, dayId: string | null) => setExpandedDayId(stopId, dayId),
+    [],
+  );
+
+  const handleSectionLayout = useCallback(
+    (stopId: string, y: number) => { sectionOffsets.current[stopId] = y; },
+    [],
+  );
+
+  function handleStopPress(stopId: string) {
+    const offset = sectionOffsets.current[stopId];
+    if (offset !== undefined) {
+      scrollRef.current?.scrollTo({ y: offset, animated: true });
+    }
   }
 
   return (
     <View style={styles.container}>
-      {/* Hero lives outside the ScrollView so it stays at the top of the screen */}
-      <HeroLayer
-        trip={DEV_TRIP}
-        activeStop={activeStop}
-        visibleStop={visibleStop}
-        scrollY={scrollY}
-      />
-
-      <Animated.ScrollView
+      <ScrollView
         ref={scrollRef}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        stickyHeaderIndices={[0, 1]}
+        stickyHeaderIndices={[1, 2]}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="never"
         automaticallyAdjustKeyboardInsets={false}
-        style={styles.scrollView}
       >
-        {/* 0 — always-rendered wrapper keeps stickyHeaderIndices[0] stable */}
+        {/* 0 — scrolls away */}
+        <HeroLayer trip={trip} activeStop={activeStop} />
+
+        {/* 1 — always-rendered wrapper keeps stickyHeaderIndices[1] stable when CTA dismissed */}
         <View>
           {!ctaDismissed && (
             <CTACardZone
-              trip={DEV_TRIP}
-              stops={DEV_STOPS}
+              trip={trip}
+              stops={stops}
               onDismiss={handleDismissCTA}
             />
           )}
         </View>
 
-        {/* 1 — stacks below CTA when both are sticky */}
+        {/* 2 — stacks below CTA when both are sticky */}
         <StopsStrip
-          stops={DEV_STOPS}
-          activeStopId={visibleStopId}
+          stops={stops}
+          activeStopId={activeStopId}
           onStopPress={handleStopPress}
         />
 
-        {/* 2+ — one section per stop */}
-        {DEV_STOPS.map(stop => (
+        {/* 3+ */}
+        {stops.map(stop => (
           <StopSection
             key={stop.id}
             stop={stop}
             bookings={bookingsByStop[stop.id] ?? []}
-            days={DEV_ITINERARY[stop.id] ?? []}
+            days={itinerary[stop.id] ?? []}
             expandedDayId={expandedDayIds[stop.id] ?? null}
             onDayPress={dayId => handleDayPress(stop.id, dayId)}
             onSectionLayout={y => handleSectionLayout(stop.id, y)}
@@ -158,13 +113,12 @@ export default function JernieTab() {
         ))}
 
         <View style={styles.bottomPad} />
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Core.bg },
-  scrollView: { flex: 1 },
   bottomPad: { height: 48 },
 });
