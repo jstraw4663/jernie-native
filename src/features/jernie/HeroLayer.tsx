@@ -1,5 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Trip, Stop } from '@/src/types';
@@ -8,42 +14,88 @@ import { formatDateRange } from '@/src/utils/dates';
 
 interface HeroLayerProps {
   trip: Trip;
-  activeStop: Stop;
+  activeStop: Stop;   // date-based — drives phase pill label
+  visibleStop: Stop;  // scroll-position — drives compact strip city/emoji
+  scrollY: SharedValue<number>;
 }
 
-export function HeroLayer({ trip, activeStop }: HeroLayerProps) {
+export function HeroLayer({ trip, activeStop, visibleStop, scrollY }: HeroLayerProps) {
   const insets = useSafeAreaInsets();
 
+  // Animated container height: 280px → 120px
+  const heroStyle = useAnimatedStyle(() => ({
+    height: interpolate(scrollY.value, [0, 120], [280, 120], Extrapolation.CLAMP),
+  }));
+
+  // Expanded content (pills + large city + subtitle): fades out 0→80
+  const expandedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, 80], [1, 0], Extrapolation.CLAMP),
+  }));
+
+  // Compact strip (emoji + city + phase pill): fades in 80→120
+  const compactStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [80, 120], [0, 1], Extrapolation.CLAMP),
+  }));
+
   return (
-    <LinearGradient
-      colors={trip.colorPack.heroGradient}
-      style={[styles.hero, { paddingTop: insets.top + Spacing.base }]}
-    >
-      <View style={styles.pillRow}>
-        <View style={styles.tripPill}>
-          <Text style={styles.tripPillText}>{trip.name}</Text>
+    <Animated.View style={[styles.container, heroStyle]}>
+      {/* LinearGradient fills the animated container */}
+      <LinearGradient
+        colors={trip.colorPack.heroGradient}
+        style={[StyleSheet.absoluteFill, styles.gradient]}
+      />
+
+      {/* Expanded layout — fades out as hero shrinks */}
+      <Animated.View
+        style={[
+          styles.expandedContent,
+          { paddingTop: insets.top + Spacing.base },
+          expandedStyle,
+        ]}
+      >
+        <View style={styles.pillRow}>
+          <View style={styles.tripPill}>
+            <Text style={styles.tripPillText}>{trip.name}</Text>
+          </View>
+          <View style={styles.phasePill}>
+            <Text style={styles.phaseText}>Pre-trip</Text>
+          </View>
         </View>
+
+        <View style={styles.bottom}>
+          <Text style={styles.city}>{activeStop.city}</Text>
+          <Text style={styles.subtitle}>
+            {formatDateRange(activeStop.dates.start, activeStop.dates.end)} · {activeStop.city}, {activeStop.region}
+          </Text>
+        </View>
+      </Animated.View>
+
+      {/* Compact strip — fades in as hero shrinks, pinned to bottom */}
+      <Animated.View style={[styles.compactStrip, compactStyle]}>
+        <Text style={styles.compactCity}>
+          {visibleStop.emoji}{'  '}{visibleStop.city}
+        </Text>
         <View style={styles.phasePill}>
           <Text style={styles.phaseText}>Pre-trip</Text>
         </View>
-      </View>
-
-      <View style={styles.bottom}>
-        <Text style={styles.city}>{activeStop.city}</Text>
-        <Text style={styles.subtitle}>
-          {formatDateRange(activeStop.dates.start, activeStop.dates.end)} · {activeStop.city}, {activeStop.region}
-        </Text>
-      </View>
-    </LinearGradient>
+      </Animated.View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: {
-    height: 280,
+  container: {
     borderBottomLeftRadius: Radius.hero,
     borderBottomRightRadius: Radius.hero,
     marginBottom: -4,
+    overflow: 'hidden',
+  },
+  gradient: {
+    borderBottomLeftRadius: Radius.hero,
+    borderBottomRightRadius: Radius.hero,
+  },
+  expandedContent: {
+    flex: 1,
     paddingHorizontal: Spacing.base,
     justifyContent: 'space-between',
   },
@@ -82,5 +134,18 @@ const styles = StyleSheet.create({
   subtitle: {
     ...Typography.roles.meta,
     color: 'rgba(255,255,255,0.7)',
+  },
+  compactStrip: {
+    position: 'absolute',
+    bottom: Spacing.xl,
+    left: Spacing.base,
+    right: Spacing.base,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  compactCity: {
+    ...Typography.roles.h3,
+    color: '#FFFFFF',
   },
 });
