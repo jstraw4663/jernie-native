@@ -97,7 +97,6 @@ const styles = StyleSheet.create({
     marginBottom: -4,
     overflow: 'hidden',
   },
-  gradient: {},
   expandedContent: {
     flex: 1,
     paddingHorizontal: Spacing.base,
