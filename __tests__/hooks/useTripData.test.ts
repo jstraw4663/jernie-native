@@ -142,6 +142,18 @@ describe('useTripData', () => {
     expect(r2.current.fromCache).toBe(true);
   });
 
+  test('cached trip is preserved when re-fetch fails', async () => {
+    // Seed the MMKV cache directly before mounting
+    const { trip } = normalizeTripSnapshot(BASE);
+    _mmkvStore['trip_snapshot_trip-cached'] = JSON.stringify({
+      trip, stops: [], bookings: [], itinerary: {}, cachedAt: Date.now(),
+    });
+    (mockOnce as jest.Mock).mockRejectedValue(new Error('network error'));
+    const { result } = renderHook(() => useTripData('trip-cached'));
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    expect(result.current.trip?.id).toBe('trip-1');  // cached trip must survive
+  });
+
   test('retry re-triggers fetch', async () => {
     (mockOnce as jest.Mock).mockRejectedValue(new Error('fail'));
     const { result } = renderHook(() => useTripData('trip-1'));

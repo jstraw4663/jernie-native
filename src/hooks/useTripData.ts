@@ -77,6 +77,7 @@ export function useTripData(tripId: string): TripDataState {
   });
 
   const doFetch = useCallback(async () => {
+    setState(prev => ({ ...prev, status: 'loading' }));
     try {
       await authReady;
       const snap = await database().ref(`trips/${tripId}`).once('value');
