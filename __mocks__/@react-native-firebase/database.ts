@@ -1,3 +1,5 @@
+/// <reference types="@types/jest" />
+
 // Jest manual mock for @react-native-firebase/database.
 // This module is a JSI native module and cannot run in Node.js.
 // Activated automatically when jest.mock('@react-native-firebase/database') is called.
