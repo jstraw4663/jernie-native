@@ -36,10 +36,6 @@ export default function JernieTab() {
     }))
   );
 
-  function setExpandedDayId(stopId: string, dayId: string | null) {
-    setExpandedDayIds(prev => ({ ...prev, [stopId]: dayId }));
-  }
-
   const bookingsByStop = useMemo(
     () => Object.fromEntries(
       stops.map(s => [s.id, bookings.filter((b: Booking) => b.stopId === s.id)])
@@ -53,7 +49,8 @@ export default function JernieTab() {
   }, [ctaKey]);
 
   const handleDayPress = useCallback(
-    (stopId: string, dayId: string | null) => setExpandedDayId(stopId, dayId),
+    (stopId: string, dayId: string | null) =>
+      setExpandedDayIds(prev => ({ ...prev, [stopId]: dayId })),
     [],
   );
 
@@ -62,12 +59,12 @@ export default function JernieTab() {
     [],
   );
 
-  function handleStopPress(stopId: string) {
+  const handleStopPress = useCallback((stopId: string) => {
     const offset = sectionOffsets.current[stopId];
     if (offset !== undefined) {
       scrollRef.current?.scrollTo({ y: offset, animated: true });
     }
-  }
+  }, []);
 
   return (
     <View style={styles.container}>
