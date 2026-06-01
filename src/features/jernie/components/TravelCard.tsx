@@ -1,76 +1,141 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import type { Booking, BookingType } from '@/src/types';
-import { Core, TypeColors, Typography, Radius, Shadow, Spacing } from '@/src/design/tokens';
-
-const BOOKING_TYPE_COLOR: Record<BookingType, string> = {
-  flight:     TypeColors.flight,
-  hotel:      TypeColors.stay,
-  rental:     TypeColors.car,
-  restaurant: TypeColors.food,
-};
+import type { Booking } from '@/src/types';
+import { Brand, Core, TypeColors, Typography, Radius, Shadow, Spacing } from '@/src/design/tokens';
+import { hexWithAlpha } from '@/src/utils/colors';
 
 interface TravelCardProps {
   booking: Booking;
+  stopColor: string;
 }
 
-export function TravelCard({ booking }: TravelCardProps) {
-  const accentColor = BOOKING_TYPE_COLOR[booking.type];
+export function TravelCard({ booking, stopColor }: TravelCardProps) {
+  if (booking.type === 'flight')     return <FlightCard booking={booking} />;
+  if (booking.type === 'hotel')      return <HotelCard  booking={booking} stopColor={stopColor} />;
+  if (booking.type === 'rental')     return <RentalCard booking={booking} stopColor={stopColor} />;
+  if (booking.type === 'restaurant') return <RestaurantCard booking={booking} />;
+  return null;
+}
+
+// ── Flight card — dark navy gradient ──────────────────────────────────────────
+
+function FlightCard({ booking }: { booking: Extract<Booking, { type: 'flight' }> }) {
   return (
-    <View style={[styles.card, Shadow.cardResting]}>
-      <View style={[styles.accent, { backgroundColor: accentColor }]} />
-      <View style={styles.content}>
-        {booking.type === 'flight'  && <FlightContent  booking={booking} />}
-        {booking.type === 'hotel'   && <HotelContent   booking={booking} />}
-        {booking.type === 'rental'  && <RentalContent  booking={booking} />}
+    <View style={[styles.flightCard, Shadow.cardHover]}>
+      <View style={styles.flightTop}>
+        <Text style={styles.flightTag}>{booking.airline} · {booking.flightNumber}</Text>
+        <View style={styles.onTimeChip}>
+          <Text style={styles.onTimeText}>On time</Text>
+        </View>
+      </View>
+
+      <View style={styles.flightRoute}>
+        <View style={styles.routeEndpoint}>
+          <Text style={styles.airportCode}>{booking.origin}</Text>
+          <Text style={styles.flightTime}>{booking.departureTime}</Text>
+        </View>
+        <Text style={styles.routeArrow}>→</Text>
+        <View style={[styles.routeEndpoint, styles.routeEndpointRight]}>
+          <Text style={styles.airportCode}>{booking.destination}</Text>
+          <Text style={styles.flightTime}>{booking.arrivalTime}</Text>
+        </View>
+      </View>
+
+      {booking.confirmationCode && (
+        <View style={styles.flightFooter}>
+          <Text style={styles.flightFooterLabel}>Confirmation</Text>
+          <Text style={styles.flightFooterValue}>{booking.confirmationCode}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ── Hotel card — stop-color tinted surface ────────────────────────────────────
+
+function HotelCard({ booking, stopColor }: { booking: Extract<Booking, { type: 'hotel' }>, stopColor: string }) {
+  const nights = daysBetween(booking.checkIn, booking.checkOut);
+  return (
+    <View
+      style={[
+        styles.surfaceCard,
+        { borderColor: hexWithAlpha(stopColor, 0.18) },
+      ]}
+    >
+      <View style={[styles.typeIcon, { backgroundColor: hexWithAlpha(stopColor, 0.12) }]}>
+        <Text style={styles.typeEmoji}>🏨</Text>
+      </View>
+      <View style={styles.surfaceCardBody}>
+        <Text style={styles.surfaceCardName}>{booking.hotelName}</Text>
+        <Text style={styles.surfaceCardMeta}>
+          {shortDate(booking.checkIn)} – {shortDate(booking.checkOut)}
+        </Text>
+        <Text style={[styles.surfaceCardAccent, { color: stopColor }]}>
+          {nights} night{nights !== 1 ? 's' : ''}
+        </Text>
       </View>
     </View>
   );
 }
 
-function FlightContent({ booking }: { booking: Extract<Booking, { type: 'flight' }> }) {
+// ── Rental card — stop-color tinted surface ───────────────────────────────────
+
+function RentalCard({ booking, stopColor }: { booking: Extract<Booking, { type: 'rental' }>, stopColor: string }) {
   return (
-    <>
-      <Text style={styles.label}>{booking.airline} · {booking.flightNumber}</Text>
-      <Text style={styles.h3}>{booking.origin} → {booking.destination}</Text>
-      <View style={styles.row}>
-        <Text style={styles.mono}>{booking.departureTime}</Text>
-        <Text style={styles.monoFaint}> – </Text>
-        <Text style={styles.mono}>{booking.arrivalTime}</Text>
+    <View
+      style={[
+        styles.surfaceCard,
+        { borderColor: hexWithAlpha(stopColor, 0.18) },
+      ]}
+    >
+      <View style={[styles.typeIcon, { backgroundColor: hexWithAlpha(stopColor, 0.12) }]}>
+        <Text style={styles.typeEmoji}>🚗</Text>
       </View>
-      <View style={[styles.statusPill, { backgroundColor: '#D1F0DF' }]}>
-        <Text style={[styles.statusText, { color: '#3E7B52' }]}>On time</Text>
+      <View style={styles.surfaceCardBody}>
+        <Text style={styles.surfaceCardName}>
+          {booking.company}{booking.carType ? ` · ${booking.carType}` : ''}
+        </Text>
+        <Text style={styles.surfaceCardMeta}>
+          {shortDate(booking.pickupDate)} – {shortDate(booking.dropoffDate)}
+        </Text>
+        <Text style={styles.surfaceCardMeta}>{booking.pickupLocation}</Text>
       </View>
-    </>
+    </View>
   );
 }
 
-function HotelContent({ booking }: { booking: Extract<Booking, { type: 'hotel' }> }) {
-  const nights = daysBetween(booking.checkIn, booking.checkOut);
+// ── Restaurant card — food-color tinted surface ───────────────────────────────
+
+function RestaurantCard({ booking }: { booking: Extract<Booking, { type: 'restaurant' }> }) {
+  const foodColor = TypeColors.food;
   return (
-    <>
-      <Text style={styles.h3}>{booking.hotelName}</Text>
-      <Text style={styles.meta}>{shortDate(booking.checkIn)} – {shortDate(booking.checkOut)}</Text>
-      <Text style={styles.mono}>{nights} night{nights !== 1 ? 's' : ''}</Text>
-    </>
+    <View
+      style={[
+        styles.surfaceCard,
+        { borderColor: hexWithAlpha(foodColor, 0.18) },
+      ]}
+    >
+      <View style={[styles.typeIcon, { backgroundColor: hexWithAlpha(foodColor, 0.10) }]}>
+        <Text style={styles.typeEmoji}>🍽️</Text>
+      </View>
+      <View style={styles.surfaceCardBody}>
+        <Text style={styles.surfaceCardName}>{booking.restaurantName}</Text>
+        <Text style={styles.surfaceCardMeta}>{shortDate(booking.date)}{booking.time ? ` · ${booking.time}` : ''}</Text>
+        {booking.partySize && (
+          <Text style={[styles.surfaceCardAccent, { color: foodColor }]}>
+            Party of {booking.partySize}
+          </Text>
+        )}
+      </View>
+    </View>
   );
 }
 
-function RentalContent({ booking }: { booking: Extract<Booking, { type: 'rental' }> }) {
-  return (
-    <>
-      <Text style={styles.h3}>{booking.pickupLocation}</Text>
-      <Text style={styles.meta}>{shortDate(booking.pickupDate)} – {shortDate(booking.dropoffDate)}</Text>
-      <Text style={styles.meta}>
-        {booking.company}{booking.carType ? ` · ${booking.carType}` : ''}
-      </Text>
-    </>
-  );
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function daysBetween(start: string, end: string): number {
   const a = new Date(start + 'T12:00:00');
-  const b = new Date(end + 'T12:00:00');
+  const b = new Date(end   + 'T12:00:00');
   return Math.round((b.getTime() - a.getTime()) / 86_400_000);
 }
 
@@ -80,29 +145,108 @@ function shortDate(iso: string): string {
   return `${months[d.getMonth()]} ${d.getDate()}`;
 }
 
+// ── Styles ────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    borderRadius: Radius.list,
-    backgroundColor: Core.surface,
+  // Flight card
+  flightCard: {
     marginHorizontal: Spacing.base,
     marginBottom: Spacing.sm,
-    overflow: 'hidden',
+    borderRadius: 18,
+    backgroundColor: Brand.navy,
+    padding: 14,
   },
-  accent: { width: 3 },
-  content: { flex: 1, padding: Spacing.md },
-  label:      { ...Typography.roles.label,     color: Core.textMuted, marginBottom: 2 },
-  h3:         { ...Typography.roles.h3,        color: Core.text,      marginBottom: 4 },
-  meta:       { ...Typography.roles.meta,      color: Core.textMuted, marginBottom: 2 },
-  row:        { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  mono:       { ...Typography.roles.mono,      color: Core.text },
-  monoFaint:  { ...Typography.roles.mono,      color: Core.textMuted },
-  statusPill: {
-    alignSelf: 'flex-start',
+  flightTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  flightTag: {
+    ...Typography.roles.labelCaps,
+    color: 'rgba(255,255,255,0.55)',
+    letterSpacing: 0.8,
+  },
+  onTimeChip: {
+    height: 20,
     paddingHorizontal: 8,
-    paddingVertical: 2,
     borderRadius: Radius.full,
-    marginTop: 4,
+    backgroundColor: 'rgba(62,123,82,0.30)',
+    borderWidth: 1,
+    borderColor: 'rgba(100,200,140,0.30)',
+    justifyContent: 'center',
   },
-  statusText: { ...Typography.roles.labelCaps },
+  onTimeText: {
+    ...Typography.roles.labelCaps,
+    color: '#a0f0c0',
+    letterSpacing: 0.5,
+  },
+  flightRoute: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  routeEndpoint: { flex: 1, alignItems: 'flex-start' },
+  routeEndpointRight: { alignItems: 'flex-end' },
+  airportCode: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    color: Core.white,
+    fontFamily: 'DMSans',
+  },
+  flightTime: {
+    ...Typography.roles.label,
+    color: 'rgba(255,255,255,0.65)',
+    marginTop: 2,
+  },
+  routeArrow: {
+    fontSize: 18,
+    color: 'rgba(255,255,255,0.35)',
+    paddingHorizontal: 8,
+  },
+  flightFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.10)',
+  },
+  flightFooterLabel: {
+    ...Typography.roles.labelCaps,
+    color: 'rgba(255,255,255,0.40)',
+    letterSpacing: 0.7,
+  },
+  flightFooterValue: {
+    ...Typography.roles.label,
+    color: 'rgba(255,255,255,0.90)',
+  },
+  // Surface cards (hotel, rental, restaurant)
+  surfaceCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    marginHorizontal: Spacing.base,
+    marginBottom: Spacing.sm,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    backgroundColor: Core.surface,
+    padding: Spacing.md,
+    ...Shadow.cardResting,
+  },
+  typeIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: Radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  typeEmoji: { fontSize: 17 },
+  surfaceCardBody:   { flex: 1 },
+  surfaceCardName:   { ...Typography.roles.label, fontWeight: '700' as const, color: Core.text, marginBottom: 3 },
+  surfaceCardMeta:   { ...Typography.roles.meta, color: Core.textMuted, marginBottom: 1 },
+  surfaceCardAccent: { ...Typography.roles.label, marginTop: 3 },
 });
