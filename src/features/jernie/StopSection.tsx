@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { Stop, Booking, ItineraryDay } from '@/src/types';
-import { Core, Typography, Spacing } from '@/src/design/tokens';
+import { Core, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { formatDateRange } from '@/src/utils/dates';
+import { hexWithAlpha } from '@/src/utils/colors';
 import { TravelCard } from './components/TravelCard';
 import { ItineraryDayRow } from './components/ItineraryDayRow';
 
@@ -15,49 +17,76 @@ interface StopSectionProps {
 }
 
 export function StopSection({
-  stop,
-  bookings,
-  days,
-  expandedDayId,
-  onDayPress,
-  onSectionLayout,
+  stop, bookings, days, expandedDayId, onDayPress, onSectionLayout,
 }: StopSectionProps) {
   return (
     <View onLayout={e => onSectionLayout(e.nativeEvent.layout.y)}>
-      <View style={[styles.sectionHeader, { borderLeftColor: stop.color }]}>
-        <Text style={styles.emoji}>{stop.emoji}</Text>
-        <Text style={styles.cityName}>{stop.city}</Text>
+      {/* Stop header — tinted rounded card */}
+      <View
+        style={[
+          styles.headerCard,
+          {
+            backgroundColor: hexWithAlpha(stop.color, 0.07),
+            borderColor:     hexWithAlpha(stop.color, 0.18),
+          },
+        ]}
+      >
+        <View style={[styles.emojiSquare, { backgroundColor: hexWithAlpha(stop.color, 0.15) }]}>
+          <Text style={styles.emoji}>{stop.emoji}</Text>
+        </View>
+        <View>
+          <Text style={styles.cityName}>{stop.city}</Text>
+          <Text style={styles.dates}>{formatDateRange(stop.dates.start, stop.dates.end)}</Text>
+        </View>
       </View>
 
+      {/* Travel cards — pass stopColor for tinted hotel/rental cards */}
       {bookings.map(booking => (
-        <TravelCard key={booking.id} booking={booking} />
+        <TravelCard key={booking.id} booking={booking} stopColor={stop.color} />
       ))}
 
-      {days.map((day, idx) => (
-        <ItineraryDayRow
-          key={day.id}
-          day={day}
-          dayNumber={idx + 1}
-          stopColor={stop.color}
-          isExpanded={expandedDayId === day.id}
-          onPress={() => onDayPress(expandedDayId === day.id ? null : day.id)}
-        />
-      ))}
+      {/* Day cards — grouped with gap */}
+      <View style={styles.daysWrapper}>
+        {days.map((day, idx) => (
+          <ItineraryDayRow
+            key={day.id}
+            day={day}
+            dayNumber={idx + 1}
+            stopColor={stop.color}
+            isExpanded={expandedDayId === day.id}
+            onPress={() => onDayPress(expandedDayId === day.id ? null : day.id)}
+          />
+        ))}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionHeader: {
+  headerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    borderLeftWidth: 3,
-    paddingVertical: Spacing.base,
-    paddingHorizontal: Spacing.base,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderRadius: Radius.xl,
+    margin: Spacing.sm,
     marginTop: Spacing.base,
-    backgroundColor: Core.bg,
+    padding: Spacing.md,
   },
-  emoji:    { fontSize: 20 },
+  emojiSquare: {
+    width: 34,
+    height: 34,
+    borderRadius: Radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emoji:    { fontSize: 18 },
   cityName: { ...Typography.roles.h2Bold, color: Core.text },
+  dates:    { ...Typography.roles.meta,   color: Core.textMuted, marginTop: 2 },
+  daysWrapper: {
+    marginHorizontal: Spacing.base,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.base,
+    gap: 6,
+  },
 });
