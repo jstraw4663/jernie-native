@@ -27,7 +27,8 @@ export default function JernieTab() {
   const initialIdx = Math.max(0, stops.findIndex(s => s.id === activeStopId));
   const [viewedIdx, setViewedIdx] = useState(initialIdx);
 
-  const pagerRef = useRef<ScrollView>(null);
+  const pagerRef    = useRef<ScrollView>(null);
+  const lastPageRef = useRef(initialIdx);
 
   const ctaKey = `cta_dismissed_${trip.id}`;
   const [ctaDismissed, setCtaDismissed] = useState(
@@ -69,10 +70,26 @@ export default function JernieTab() {
     }
   }, [stops]);
 
-  // After swipe settles → sync viewed stop to new page
+  // During swipe — update strip at the 50% crossover point
+  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.max(0, Math.min(
+      Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH),
+      stops.length - 1,
+    ));
+    if (idx !== lastPageRef.current) {
+      lastPageRef.current = idx;
+      setViewedIdx(idx);
+    }
+  }, [stops.length]);
+
+  // After swipe settles — ensure final position is locked in
   const handlePageChange = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-    setViewedIdx(Math.max(0, Math.min(idx, stops.length - 1)));
+    const idx = Math.max(0, Math.min(
+      Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH),
+      stops.length - 1,
+    ));
+    lastPageRef.current = idx;
+    setViewedIdx(idx);
   }, [stops.length]);
 
   return (
@@ -104,6 +121,7 @@ export default function JernieTab() {
         horizontal
         pagingEnabled
         scrollEventThrottle={16}
+        onScroll={handleScroll}
         onMomentumScrollEnd={handlePageChange}
         showsHorizontalScrollIndicator={false}
         style={styles.pager}
