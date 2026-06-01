@@ -27,8 +27,9 @@ export default function JernieTab() {
   const initialIdx = Math.max(0, stops.findIndex(s => s.id === activeStopId));
   const [viewedIdx, setViewedIdx] = useState(initialIdx);
 
-  const pagerRef    = useRef<ScrollView>(null);
-  const lastPageRef = useRef(initialIdx);
+  const pagerRef      = useRef<ScrollView>(null);
+  const lastPageRef   = useRef(initialIdx);
+  const originPageRef = useRef(initialIdx); // page index when drag began
 
   const ctaKey = `cta_dismissed_${trip.id}`;
   const [ctaDismissed, setCtaDismissed] = useState(
@@ -60,6 +61,34 @@ export default function JernieTab() {
       setExpandedDayIds(prev => ({ ...prev, [stopId]: dayId })),
     [],
   );
+
+  // Capture which page the drag originated from (before the 50% crossover updates lastPageRef)
+  const handleScrollBeginDrag = useCallback(() => {
+    originPageRef.current = lastPageRef.current;
+  }, []);
+
+  // Weighted swipe: require deliberate velocity OR distance from the origin page
+  const handleScrollEndDrag = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const x   = e.nativeEvent.contentOffset.x;
+    const vx  = e.nativeEvent.velocity?.x ?? 0;
+    const origin    = originPageRef.current;
+    const originX   = origin * SCREEN_WIDTH;
+    const delta     = x - originX;
+
+    const VELOCITY_THRESH = 0.45;            // pt/ms — requires a deliberate flick
+    const DISTANCE_THRESH = SCREEN_WIDTH * 0.32; // 32% of screen width
+
+    const meetsThreshold =
+      Math.abs(vx) >= VELOCITY_THRESH || Math.abs(delta) >= DISTANCE_THRESH;
+
+    if (!meetsThreshold) {
+      // Snap back to the origin page and reset strip
+      pagerRef.current?.scrollTo({ x: originX, animated: true });
+      lastPageRef.current = origin;
+      setViewedIdx(origin);
+    }
+    // Above threshold: let pagingEnabled snap to the nearest page naturally
+  }, []);
 
   // Tap a stop dot/pill → jump pager to that stop's page
   const handleStopPress = useCallback((stopId: string) => {
@@ -121,7 +150,9 @@ export default function JernieTab() {
         horizontal
         pagingEnabled
         scrollEventThrottle={16}
+        onScrollBeginDrag={handleScrollBeginDrag}
         onScroll={handleScroll}
+        onScrollEndDrag={handleScrollEndDrag}
         onMomentumScrollEnd={handlePageChange}
         showsHorizontalScrollIndicator={false}
         style={styles.pager}

@@ -1,5 +1,8 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withSpring,
+} from 'react-native-reanimated';
 import type { Stop } from '@/src/types';
 import { Core, Semantic, Typography, Radius, Shadow } from '@/src/design/tokens';
 import { formatDateRange } from '@/src/utils/dates';
@@ -11,22 +14,46 @@ interface StopsStripProps {
   onStopPress: (stopId: string) => void;
 }
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
 const STRIP_HEIGHT = 76;
 const H_PADDING    = 20;
+const PILL_WIDTH   = 160;   // minWidth of active pill — keep in sync with styles.activePill
+const DOT_WIDTH    = 56;    // fixed width of each non-active stop slot
+const CONN_WIDTH   = 40;    // fixed width of each connector segment
 const MUTED_LINE   = 'rgba(120,113,106,0.18)';
+
+// Horizontal translation that centers the active pill (at idx) within the strip
+function computeOffset(idx: number): number {
+  return (SCREEN_WIDTH - PILL_WIDTH) / 2 - H_PADDING - idx * (DOT_WIDTH + CONN_WIDTH);
+}
+
+const SPRING = { damping: 24, stiffness: 240 } as const;
 
 export function StopsStrip({ stops, activeStopId, onStopPress }: StopsStripProps) {
   const activeIdx  = stops.findIndex(s => s.id === activeStopId);
-  const activeStop = stops[activeIdx] ?? stops[0];
+  const safeIdx    = activeIdx >= 0 ? activeIdx : 0;
+  const activeStop = stops[safeIdx];
+
+  const translateX   = useSharedValue(computeOffset(safeIdx));
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    translateX.value = withSpring(computeOffset(safeIdx), SPRING);
+  }, [safeIdx]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
 
   return (
     <View style={styles.container}>
-      <View style={styles.row}>
+      <Animated.View style={[styles.row, animatedStyle]}>
         {stops.map((stop, idx) => {
           const isActive = stop.id === activeStopId;
-          const isPast   = activeIdx >= 0 && idx < activeIdx;
-          // Segment before this stop is colored when we've reached or passed it
-          const segmentColored = activeIdx > 0 && idx <= activeIdx;
+          const isPast   = safeIdx >= 0 && idx < safeIdx;
+          // Segment before this stop is colored once we've reached or passed it
+          const segmentColored = safeIdx > 0 && idx <= safeIdx;
 
           return (
             <React.Fragment key={stop.id}>
@@ -83,7 +110,7 @@ export function StopsStrip({ stops, activeStopId, onStopPress }: StopsStripProps
             </React.Fragment>
           );
         })}
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -97,18 +124,17 @@ const styles = StyleSheet.create({
     borderColor: Core.border,
     paddingHorizontal: H_PADDING,
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
   },
-  // Connector line segment between two adjacent stops
   connector: {
-    flex: 1,
+    width: CONN_WIDTH,
     height: 2,
   },
-  // Active stop — expanded pill
+  // Active stop — expanded pill, width kept at PILL_WIDTH constant above
   activePill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -119,7 +145,7 @@ const styles = StyleSheet.create({
     paddingLeft: 7,
     paddingRight: 14,
     paddingVertical: 7,
-    minWidth: 160,
+    width: PILL_WIDTH,
   },
   activeEmojiCircle: {
     width: 40,
@@ -131,11 +157,11 @@ const styles = StyleSheet.create({
   activeEmoji: { fontSize: 21 },
   activeCity:  { ...Typography.roles.label, fontWeight: '700' as const },
   activeDates: { ...Typography.roles.meta, color: Core.textMuted, marginTop: 2 },
-  // Dot stops (past / future)
+  // Dot stops (past / future), width kept at DOT_WIDTH constant above
   dotStop: {
     alignItems: 'center',
     gap: 5,
-    width: 56,
+    width: DOT_WIDTH,
   },
   dot: {
     width: 30,
