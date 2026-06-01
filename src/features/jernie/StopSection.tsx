@@ -13,14 +13,13 @@ interface StopSectionProps {
   days: ItineraryDay[];
   expandedDayId: string | null;
   onDayPress: (dayId: string | null) => void;
-  onSectionLayout: (y: number) => void;
 }
 
 export function StopSection({
-  stop, bookings, days, expandedDayId, onDayPress, onSectionLayout,
+  stop, bookings, days, expandedDayId, onDayPress,
 }: StopSectionProps) {
   return (
-    <View onLayout={e => onSectionLayout(e.nativeEvent.layout.y)}>
+    <View>
       {/* Stop header — tinted rounded card */}
       <View
         style={[

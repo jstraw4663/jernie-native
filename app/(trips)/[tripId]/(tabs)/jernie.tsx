@@ -1,13 +1,8 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { View, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedScrollHandler,
-  useAnimatedRef,
-  scrollTo,
-  runOnJS,
-  runOnUI,
-} from 'react-native-reanimated';
+import {
+  View, StyleSheet, ScrollView, RefreshControl,
+  Dimensions, NativeSyntheticEvent, NativeScrollEvent,
+} from 'react-native';
 import { createMMKV } from 'react-native-mmkv';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { getActiveStopId, getAutoExpandDayIndex } from '@/src/domain/trip';
@@ -16,35 +11,28 @@ import { HeroLayer } from '@/src/features/jernie/HeroLayer';
 import { CTACardZone } from '@/src/features/jernie/CTACardZone';
 import { StopsStrip } from '@/src/features/jernie/StopsStrip';
 import { StopSection } from '@/src/features/jernie/StopSection';
-import { Brand, Core, Spacing } from '@/src/design/tokens';
+import { Brand, Core } from '@/src/design/tokens';
 import type { Booking } from '@/src/types';
 
 const uiStorage = createMMKV({ id: 'jernie-ui' });
-
-// Approx height of sticky CTA zone + StopsStrip — used for scroll-based stop tracking
-const STICKY_HEADER_HEIGHT = 130;
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function JernieTab() {
   const { trip, stops, bookings, itinerary, status, refetch } = useTripContext();
-  const isRefreshing = status === 'loading';
-
-  const scrollRef = useAnimatedRef<Animated.ScrollView>();
-  const sectionOffsets = useRef<Record<string, number>>({});
-  const scrollY = useSharedValue(0);
 
   const now = getDevNow();
   const activeStopId = getActiveStopId(stops, now);
   const activeStop = stops.find(s => s.id === activeStopId) ?? stops[0];
 
+  const initialIdx = Math.max(0, stops.findIndex(s => s.id === activeStopId));
+  const [viewedIdx, setViewedIdx] = useState(initialIdx);
+
+  const pagerRef = useRef<ScrollView>(null);
+
   const ctaKey = `cta_dismissed_${trip.id}`;
   const [ctaDismissed, setCtaDismissed] = useState(
     () => uiStorage.getBoolean(ctaKey) ?? false,
   );
-
-  const [visibleStopId, setVisibleStopId] = useState<string>(
-    activeStopId ?? stops[0]?.id ?? '',
-  );
-  const visibleStop = stops.find(s => s.id === visibleStopId) ?? stops[0];
 
   const [expandedDayIds, setExpandedDayIds] = useState<Record<string, string | null>>(() =>
     Object.fromEntries(stops.map(s => {
@@ -72,107 +60,88 @@ export default function JernieTab() {
     [],
   );
 
-  const handleSectionLayout = useCallback(
-    (stopId: string, y: number) => { sectionOffsets.current[stopId] = y; },
-    [],
-  );
-
+  // Tap a stop dot/pill → jump pager to that stop's page
   const handleStopPress = useCallback((stopId: string) => {
-    const offset = sectionOffsets.current[stopId];
-    if (offset !== undefined) {
-      runOnUI(() => { 'worklet'; scrollTo(scrollRef, 0, offset, true); })();
+    const idx = stops.findIndex(s => s.id === stopId);
+    if (idx >= 0) {
+      pagerRef.current?.scrollTo({ x: idx * SCREEN_WIDTH, animated: true });
+      setViewedIdx(idx);
     }
-  }, [scrollRef]);
+  }, [stops]);
 
-  function updateVisibleStop(y: number) {
-    const offsets = sectionOffsets.current;
-    let newId = stops[0]?.id ?? '';
-    for (const stop of stops) {
-      const offset = offsets[stop.id];
-      if (offset !== undefined && y >= offset - STICKY_HEADER_HEIGHT) newId = stop.id;
-    }
-    setVisibleStopId(prev => (prev === newId ? prev : newId));
-  }
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-      runOnJS(updateVisibleStop)(event.contentOffset.y);
-    },
-  });
+  // After swipe settles → sync viewed stop to new page
+  const handlePageChange = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+    setViewedIdx(Math.max(0, Math.min(idx, stops.length - 1)));
+  }, [stops.length]);
 
   return (
     <View style={styles.container}>
-      {/* Hero lives outside the ScrollView — stays pinned at top, collapses on scroll */}
       <HeroLayer
         trip={trip}
         activeStop={activeStop}
-        visibleStop={visibleStop}
-        scrollY={scrollY}
+        visibleStop={stops[viewedIdx] ?? activeStop}
       />
 
-      <Animated.ScrollView
-        ref={scrollRef}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        stickyHeaderIndices={[0, 1]}
-        showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustKeyboardInsets={false}
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={refetch}
-            tintColor={Brand.gold}
-          />
-        }
-      >
-        {/* 0 — always-rendered wrapper keeps stickyHeaderIndices[0] stable when CTA dismissed */}
-        <View>
-          {isRefreshing && (
-            <View style={styles.refreshIndicator}>
-              <ActivityIndicator color={Brand.gold} />
-            </View>
-          )}
-          {!ctaDismissed && (
-            <CTACardZone
-              trip={trip}
-              stops={stops}
-              onDismiss={handleDismissCTA}
-            />
-          )}
-        </View>
-
-        {/* 1 — stacks below CTA when both are sticky */}
-        <StopsStrip
+      {!ctaDismissed && (
+        <CTACardZone
+          trip={trip}
           stops={stops}
-          activeStopId={visibleStopId}
-          onStopPress={handleStopPress}
+          onDismiss={handleDismissCTA}
         />
+      )}
 
-        {/* 2+ — one section per stop */}
+      {/* Fixed strip — active pill tracks the viewed page, not just the real trip position */}
+      <StopsStrip
+        stops={stops}
+        activeStopId={stops[viewedIdx]?.id ?? null}
+        onStopPress={handleStopPress}
+      />
+
+      {/* Horizontal pager — one full page per stop */}
+      <ScrollView
+        ref={pagerRef}
+        horizontal
+        pagingEnabled
+        scrollEventThrottle={16}
+        onMomentumScrollEnd={handlePageChange}
+        showsHorizontalScrollIndicator={false}
+        style={styles.pager}
+        contentOffset={{ x: initialIdx * SCREEN_WIDTH, y: 0 }}
+      >
         {stops.map(stop => (
-          <StopSection
-            key={stop.id}
-            stop={stop}
-            bookings={bookingsByStop[stop.id] ?? []}
-            days={itinerary[stop.id] ?? []}
-            expandedDayId={expandedDayIds[stop.id] ?? null}
-            onDayPress={dayId => handleDayPress(stop.id, dayId)}
-            onSectionLayout={y => handleSectionLayout(stop.id, y)}
-          />
+          <View key={stop.id} style={styles.page}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentInsetAdjustmentBehavior="never"
+              automaticallyAdjustKeyboardInsets={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={status === 'loading'}
+                  onRefresh={refetch}
+                  tintColor={Brand.gold}
+                />
+              }
+            >
+              <StopSection
+                stop={stop}
+                bookings={bookingsByStop[stop.id] ?? []}
+                days={itinerary[stop.id] ?? []}
+                expandedDayId={expandedDayIds[stop.id] ?? null}
+                onDayPress={dayId => handleDayPress(stop.id, dayId)}
+              />
+              <View style={styles.bottomPad} />
+            </ScrollView>
+          </View>
         ))}
-
-        <View style={styles.bottomPad} />
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Core.bg },
-  scrollView: { flex: 1 },
-  refreshIndicator: { paddingVertical: Spacing.base, alignItems: 'center' },
+  pager:     { flex: 1 },
+  page:      { width: SCREEN_WIDTH, flex: 1 },
   bottomPad: { height: 48 },
 });
