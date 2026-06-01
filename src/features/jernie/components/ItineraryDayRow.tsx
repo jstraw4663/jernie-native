@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { ItineraryDay, ItineraryItemCategory } from '@/src/types';
 import { Core, TypeColors, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { hexWithAlpha } from '@/src/utils/colors';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -125,14 +126,6 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
       </Animated.View>
     </View>
   );
-}
-
-function hexWithAlpha(hex: string, alpha: number): string {
-  if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) return `rgba(0,0,0,${alpha})`;
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
 }
 
 const styles = StyleSheet.create({
