@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { SplashScreen, Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { ConnectivityProvider } from '@/src/contexts/ConnectivityContext';
 import { SheetProvider } from '@/src/contexts/SheetContext';
 import { initAuth } from '@/src/lib/firebase';
@@ -36,11 +37,13 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ConnectivityProvider>
-        <SheetProvider>
-          <Stack screenOptions={{ headerShown: false }} />
-        </SheetProvider>
-      </ConnectivityProvider>
+      <BottomSheetModalProvider>
+        <ConnectivityProvider>
+          <SheetProvider>
+            <Stack screenOptions={{ headerShown: false }} />
+          </SheetProvider>
+        </ConnectivityProvider>
+      </BottomSheetModalProvider>
     </GestureHandlerRootView>
   );
 }
