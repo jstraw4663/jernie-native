@@ -70,6 +70,8 @@ export const EntityDetailSheet = React.forwardRef<EntityDetailSheetRef, object>(
       ref={modalRef}
       snapPoints={[SNAP_POINT]}
       enablePanDownToClose
+      enableOverDrag={false}
+      enableDynamicSizing={false}
       backdropComponent={renderBackdrop}
       onChange={handleChange}
       animationConfigs={animationConfigs}
