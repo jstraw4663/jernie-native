@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
+import { useSharedValue } from 'react-native-reanimated';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SheetHero } from './SheetHero';
@@ -35,10 +35,10 @@ export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
   const m = MOCK_FLIGHT;
   const st = STATUS[m.status] ?? STATUS.unknown;
   const scrollY = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler((e) => { 'worklet'; scrollY.value = e.contentOffset.y; });
+  const handleScroll = (e: { nativeEvent: { contentOffset: { y: number } } }) => { scrollY.value = e.nativeEvent.contentOffset.y; };
 
   return (
-    <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} onScroll={scrollHandler} scrollEventThrottle={16}>
+    <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} onScroll={handleScroll} scrollEventThrottle={16}>
       <SheetHero mode="travel" stopColor={Brand.navy} onClose={onClose} scrollY={scrollY}>
         <View style={[s.badge, { backgroundColor: st.bg, borderColor: st.border }]}>
           <Text style={[s.badgeTxt, { color: st.color }]}>{st.label}</Text>

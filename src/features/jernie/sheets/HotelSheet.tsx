@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
+import { useSharedValue } from 'react-native-reanimated';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { SheetHero } from './SheetHero';
 import { InfoSection, DistanceModule } from './SheetParts';
@@ -33,10 +33,10 @@ export function HotelSheet({ booking, stopColor, onClose }: HotelSheetProps) {
   const m = MOCK_HOTEL;
   const n = nights(booking.checkIn, booking.checkOut);
   const scrollY = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler((e) => { 'worklet'; scrollY.value = e.contentOffset.y; });
+  const handleScroll = (e: { nativeEvent: { contentOffset: { y: number } } }) => { scrollY.value = e.nativeEvent.contentOffset.y; };
 
   return (
-    <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} onScroll={scrollHandler} scrollEventThrottle={16}>
+    <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} onScroll={handleScroll} scrollEventThrottle={16}>
       <SheetHero mode="travel" photoUri={m.heroPhoto} stopColor={stopColor} onClose={onClose} scrollY={scrollY}>
         <View style={[s.badge, { backgroundColor: hexWithAlpha(Brand.navySoft, 0.32), borderColor: hexWithAlpha(Brand.navySoft, 0.4) }]}>
           <Text style={[s.badgeTxt, { color: hexWithAlpha(Core.white, 0.80) }]}>Active Stay</Text>
