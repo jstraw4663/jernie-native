@@ -5,7 +5,7 @@ import { SheetHero } from './SheetHero';
 import { InfoSection, PhotoStrip, ReviewRail, QuickActions, DistanceModule } from './SheetParts';
 import { FloatingCTA } from './FloatingCTA';
 import { MOCK_RESTAURANT } from './mockEntityData';
-import { Core, Semantic, Typography, Spacing } from '@/src/design/tokens';
+import { Brand, Core, Semantic, Typography, Spacing } from '@/src/design/tokens';
 
 interface RestaurantSheetProps {
   name: string;
@@ -96,7 +96,7 @@ const s = StyleSheet.create({
   name:       { fontFamily: 'Fraunces', fontSize: 26, color: Core.text, marginBottom: 3, lineHeight: 30 },
   subtitle:   { ...Typography.roles.meta, color: Core.textMuted, lineHeight: 18 },
   ratingCol:  { alignItems: 'flex-end', gap: 3, flexShrink: 0 },
-  stars:      { fontSize: 13, color: '#C89A2B', fontWeight: '700' as const, fontFamily: 'DMSans' },
+  stars:      { fontSize: 13, color: Brand.gold, fontWeight: '700' as const, fontFamily: 'DMSans' },
   ratingCount:{ fontSize: 11, color: Core.textFaint, fontFamily: 'DMSans' },
   price:      { fontSize: 12, color: Core.textMuted, fontFamily: 'DMSans', fontWeight: '500' as const },
   hoursRow:   { flexDirection: 'row', paddingHorizontal: Spacing.base, paddingVertical: Spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Core.border },

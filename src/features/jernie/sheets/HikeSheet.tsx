@@ -5,7 +5,7 @@ import { SheetHero } from './SheetHero';
 import { InfoSection, PhotoStrip, DistanceModule } from './SheetParts';
 import { FloatingCTA } from './FloatingCTA';
 import { MOCK_HIKE } from './mockEntityData';
-import { Core, Typography, Spacing, Radius } from '@/src/design/tokens';
+import { Brand, Core, Typography, Spacing, Radius } from '@/src/design/tokens';
 
 interface HikeSheetProps {
   name: string;
@@ -99,7 +99,7 @@ const s = StyleSheet.create({
   name:       { fontFamily: 'Fraunces', fontSize: 26, color: Core.text, marginBottom: 3, lineHeight: 30 },
   subtitle:   { ...Typography.roles.meta, color: Core.textMuted, lineHeight: 18 },
   ratingCol:  { alignItems: 'flex-end', gap: 3, flexShrink: 0 },
-  stars:      { fontSize: 13, color: '#C89A2B', fontWeight: '700' as const, fontFamily: 'DMSans' },
+  stars:      { fontSize: 13, color: Brand.gold, fontWeight: '700' as const, fontFamily: 'DMSans' },
   ratingCount:{ fontSize: 11, color: Core.textFaint, fontFamily: 'DMSans' },
   statsGrid:  { flexDirection: 'row', paddingHorizontal: Spacing.base, gap: Spacing.sm, marginBottom: Spacing.md },
   statCard:   { flex: 1, backgroundColor: Core.surface, borderWidth: 1, borderColor: Core.border, borderRadius: Radius.lg, padding: 10, alignItems: 'center' },
