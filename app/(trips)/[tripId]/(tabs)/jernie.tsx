@@ -9,6 +9,7 @@ import Animated, {
   useAnimatedStyle,
   interpolate,
   Extrapolation,
+  withSpring,
 } from 'react-native-reanimated';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { getActiveStopId, getAutoExpandDayIndex } from '@/src/domain/trip';
@@ -107,7 +108,7 @@ export default function JernieTab() {
       pagerRef.current?.scrollTo({ x: originX, animated: true });
       lastPageRef.current = origin;
       setViewedIdx(origin);
-      scrollY.value = 0;
+      scrollY.value = withSpring(0, { damping: 60, stiffness: 180, mass: 1.2 });
     }
     // Above threshold: let pagingEnabled snap to the nearest page naturally
   }, []);
@@ -118,7 +119,7 @@ export default function JernieTab() {
     if (idx >= 0) {
       pagerRef.current?.scrollTo({ x: idx * SCREEN_WIDTH, animated: true });
       setViewedIdx(idx);
-      scrollY.value = 0;
+      scrollY.value = withSpring(0, { damping: 60, stiffness: 180, mass: 1.2 });
     }
   }, [stops]);
 
@@ -142,7 +143,7 @@ export default function JernieTab() {
     ));
     lastPageRef.current = idx;
     setViewedIdx(idx);
-    scrollY.value = 0;
+    scrollY.value = withSpring(0, { damping: 60, stiffness: 180, mass: 1.2 });
   }, [stops.length]);
 
   // CTA fades out and collapses as user scrolls — height collapses so the
@@ -206,6 +207,7 @@ export default function JernieTab() {
               onScroll={scrollHandler}
               scrollEventThrottle={16}
               showsVerticalScrollIndicator={false}
+              directionalLockEnabled
               contentInsetAdjustmentBehavior="never"
               automaticallyAdjustKeyboardInsets={false}
               refreshControl={

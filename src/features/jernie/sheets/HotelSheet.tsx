@@ -44,7 +44,7 @@ export function HotelSheet({ booking, stopColor, onClose }: HotelSheetProps) {
         <Text style={s.heroDates}>{shortDate(booking.checkIn)} → {shortDate(booking.checkOut)}</Text>
         <Text style={s.heroMeta}>{n} night{n !== 1 ? 's' : ''}{booking.roomType ? ` · ${booking.roomType}` : ''}</Text>
       </SheetHero>
-      <BottomSheetScrollView style={s.scroll} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
+      <BottomSheetScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
       <View style={s.titleRow}>
         <View style={s.titleLeft}>
           <Text style={s.name}>{booking.hotelName}</Text>
@@ -107,6 +107,7 @@ function TRow({ icon, color, title, sub, last = false }: { icon: string; color: 
 const s = StyleSheet.create({
   root:        { flex: 1 },
   scroll:      { flex: 1 },
+  scrollContent: { paddingBottom: 120 },
   badge:       { alignSelf: 'flex-start', borderRadius: Radius.full, paddingHorizontal: 9, paddingVertical: 3, borderWidth: 1, marginBottom: 8 },
   badgeTxt:    { fontSize: 11, fontWeight: '700' as const, fontFamily: 'DMSans' },
   heroDates:   { fontSize: 26, fontWeight: '800' as const, color: Core.white, fontFamily: 'DMSans', letterSpacing: -0.5, marginBottom: 3 },
