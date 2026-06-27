@@ -1,9 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import type { Stop, Booking, ItineraryDay } from '@/src/types';
-import { Core, Typography, Radius, Spacing } from '@/src/design/tokens';
-import { formatDateRange } from '@/src/utils/dates';
-import { hexWithAlpha } from '@/src/utils/colors';
+import type { Stop, Booking, ItineraryDay, ItineraryItem } from '@/src/types';
+import { Core, Typography, Spacing } from '@/src/design/tokens';
 import { TravelCard } from './components/TravelCard';
 import { ItineraryDayRow } from './components/ItineraryDayRow';
 
@@ -13,79 +11,82 @@ interface StopSectionProps {
   days: ItineraryDay[];
   expandedDayId: string | null;
   onDayPress: (dayId: string | null) => void;
+  onBookingPress?: (booking: Booking) => void;
+  onItemPress?: (item: ItineraryItem) => void;
+}
+
+function SectionLabel({ title }: { title: string }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionLabel}>{title}</Text>
+      <View style={styles.sectionLine} />
+    </View>
+  );
 }
 
 export function StopSection({
-  stop, bookings, days, expandedDayId, onDayPress,
+  stop, bookings, days, expandedDayId, onDayPress, onBookingPress, onItemPress,
 }: StopSectionProps) {
   return (
-    <View>
-      {/* Stop header — tinted rounded card */}
-      <View
-        style={[
-          styles.headerCard,
-          {
-            backgroundColor: hexWithAlpha(stop.color, 0.07),
-            borderColor:     hexWithAlpha(stop.color, 0.18),
-          },
-        ]}
-      >
-        <View style={[styles.emojiSquare, { backgroundColor: hexWithAlpha(stop.color, 0.15) }]}>
-          <Text style={styles.emoji}>{stop.emoji}</Text>
-        </View>
-        <View>
-          <Text style={styles.cityName}>{stop.city}</Text>
-          <Text style={styles.dates}>{formatDateRange(stop.dates.start, stop.dates.end)}</Text>
-        </View>
-      </View>
-
-      {/* Travel cards — pass stopColor for tinted hotel/rental cards */}
+    <View style={styles.container}>
+      {/* Travel bookings */}
       {bookings.map(booking => (
-        <TravelCard key={booking.id} booking={booking} stopColor={stop.color} />
+        <TravelCard
+          key={booking.id}
+          booking={booking}
+          stopColor={stop.color}
+          stopCity={stop.city}
+          onPress={onBookingPress ? () => onBookingPress(booking) : undefined}
+        />
       ))}
 
-      {/* Day cards — grouped with gap */}
-      <View style={styles.daysWrapper}>
-        {days.map((day, idx) => (
-          <ItineraryDayRow
-            key={day.id}
-            day={day}
-            dayNumber={idx + 1}
-            stopColor={stop.color}
-            isExpanded={expandedDayId === day.id}
-            onPress={() => onDayPress(expandedDayId === day.id ? null : day.id)}
-          />
-        ))}
-      </View>
+      {/* Itinerary — day cards */}
+      {days.length > 0 && (
+        <>
+          <SectionLabel title="Itinerary" />
+          <View style={styles.daysWrapper}>
+            {days.map((day, idx) => (
+              <ItineraryDayRow
+                key={day.id}
+                day={day}
+                dayNumber={idx + 1}
+                stopColor={stop.color}
+                isExpanded={expandedDayId === day.id}
+                onPress={() => onDayPress(expandedDayId === day.id ? null : day.id)}
+                onItemPress={onItemPress}
+              />
+            ))}
+          </View>
+        </>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerCard: {
+  container: {
+    paddingTop: Spacing.base,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-    borderWidth: 1,
-    borderRadius: Radius.xl,
-    margin: Spacing.sm,
-    marginTop: Spacing.base,
-    padding: Spacing.md,
+    gap: 10,
+    paddingHorizontal: Spacing.base,
+    paddingTop: Spacing.base,
+    paddingBottom: Spacing.sm,
   },
-  emojiSquare: {
-    width: 34,
-    height: 34,
-    borderRadius: Radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+  sectionLabel: {
+    ...Typography.roles.labelCaps,
+    color: Core.textFaint,
   },
-  emoji:    { fontSize: 18 },
-  cityName: { ...Typography.roles.h2Bold, color: Core.text },
-  dates:    { ...Typography.roles.meta,   color: Core.textMuted, marginTop: 2 },
+  sectionLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Core.border,
+  },
   daysWrapper: {
     marginHorizontal: Spacing.base,
-    marginTop: Spacing.sm,
     marginBottom: Spacing.base,
-    gap: 6,
+    gap: 10,
   },
 });

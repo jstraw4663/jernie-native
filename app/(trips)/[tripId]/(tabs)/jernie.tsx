@@ -3,18 +3,25 @@ import {
   View, StyleSheet, ScrollView, RefreshControl,
   Dimensions, NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
-import { createMMKV } from 'react-native-mmkv';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { getActiveStopId, getAutoExpandDayIndex } from '@/src/domain/trip';
 import { getDevNow } from '@/src/utils/devTime';
 import { HeroLayer } from '@/src/features/jernie/HeroLayer';
-import { CTACardZone } from '@/src/features/jernie/CTACardZone';
+import { SampleCTACarousel } from '@/src/features/jernie/SampleCTACarousel';
 import { StopsStrip } from '@/src/features/jernie/StopsStrip';
 import { StopSection } from '@/src/features/jernie/StopSection';
+import { EntityDetailSheet } from '@/src/features/jernie/sheets/EntityDetailSheet';
+import type { EntityDetailSheetRef } from '@/src/features/jernie/sheets/EntityDetailSheet';
 import { Brand, Core } from '@/src/design/tokens';
-import type { Booking } from '@/src/types';
+import type { Booking, ItineraryItem, Stop } from '@/src/types';
 
-const uiStorage = createMMKV({ id: 'jernie-ui' });
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function JernieTab() {
@@ -30,11 +37,13 @@ export default function JernieTab() {
   const pagerRef      = useRef<ScrollView>(null);
   const lastPageRef   = useRef(initialIdx);
   const originPageRef = useRef(initialIdx); // page index when drag began
+  const entitySheetRef = useRef<EntityDetailSheetRef>(null);
 
-  const ctaKey = `cta_dismissed_${trip.id}`;
-  const [ctaDismissed, setCtaDismissed] = useState(
-    () => uiStorage.getBoolean(ctaKey) ?? false,
-  );
+  const scrollY          = useSharedValue(0);
+  const carouselHeight   = useSharedValue(-1); // -1 = not yet measured
+  const scrollHandler = useAnimatedScrollHandler(event => {
+    scrollY.value = event.contentOffset.y;
+  });
 
   const [expandedDayIds, setExpandedDayIds] = useState<Record<string, string | null>>(() =>
     Object.fromEntries(stops.map(s => {
@@ -51,16 +60,28 @@ export default function JernieTab() {
     [stops, bookings],
   );
 
-  const handleDismissCTA = useCallback(() => {
-    uiStorage.set(ctaKey, true);
-    setCtaDismissed(true);
-  }, [ctaKey]);
-
   const handleDayPress = useCallback(
     (stopId: string, dayId: string | null) =>
       setExpandedDayIds(prev => ({ ...prev, [stopId]: dayId })),
     [],
   );
+
+  const handleBookingPress = useCallback((booking: Booking, stop: Stop) => {
+    if (booking.type === 'hotel') {
+      entitySheetRef.current?.present({ kind: 'hotel', booking, stopColor: stop.color, stopLabel: stop.city });
+    } else if (booking.type === 'flight') {
+      entitySheetRef.current?.present({ kind: 'flight', booking, stopColor: stop.color, stopLabel: stop.city });
+    }
+  }, []);
+
+  const handleItemPress = useCallback((item: ItineraryItem, stop: Stop) => {
+    const label = item.label ?? '';
+    if (item.category === 'restaurant') {
+      entitySheetRef.current?.present({ kind: 'restaurant', name: label, stopLabel: stop.city, stopColor: stop.color });
+    } else if (item.category === 'hike') {
+      entitySheetRef.current?.present({ kind: 'hike', name: label, stopLabel: stop.city, stopColor: stop.color });
+    }
+  }, []);
 
   // Capture which page the drag originated from (before the 50% crossover updates lastPageRef)
   const handleScrollBeginDrag = useCallback(() => {
@@ -86,6 +107,7 @@ export default function JernieTab() {
       pagerRef.current?.scrollTo({ x: originX, animated: true });
       lastPageRef.current = origin;
       setViewedIdx(origin);
+      scrollY.value = 0;
     }
     // Above threshold: let pagingEnabled snap to the nearest page naturally
   }, []);
@@ -96,6 +118,7 @@ export default function JernieTab() {
     if (idx >= 0) {
       pagerRef.current?.scrollTo({ x: idx * SCREEN_WIDTH, animated: true });
       setViewedIdx(idx);
+      scrollY.value = 0;
     }
   }, [stops]);
 
@@ -111,7 +134,7 @@ export default function JernieTab() {
     }
   }, [stops.length]);
 
-  // After swipe settles — ensure final position is locked in
+  // After swipe settles — ensure final position is locked in, reset hero
   const handlePageChange = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.max(0, Math.min(
       Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH),
@@ -119,7 +142,23 @@ export default function JernieTab() {
     ));
     lastPageRef.current = idx;
     setViewedIdx(idx);
+    scrollY.value = 0;
   }, [stops.length]);
+
+  // CTA fades out and collapses as user scrolls — height collapses so the
+  // strip slides up rather than leaving empty space behind the invisible card.
+  // Height is absent until first onLayout fires (sentinel -1) to avoid clipping.
+  const ctaFadeStyle = useAnimatedStyle(() => {
+    // Fade leads (0→120px), height follows (40→180px) so the card dissolves
+    // before the space closes — feels more intentional, less abrupt.
+    const opacity = interpolate(scrollY.value, [0, 120], [1, 0], Extrapolation.CLAMP);
+    if (carouselHeight.value < 0) return { opacity };
+    return {
+      opacity,
+      height: interpolate(scrollY.value, [40, 180], [carouselHeight.value, 0], Extrapolation.CLAMP),
+      overflow: 'hidden',
+    };
+  });
 
   return (
     <View style={styles.container}>
@@ -127,15 +166,18 @@ export default function JernieTab() {
         trip={trip}
         activeStop={activeStop}
         visibleStop={stops[viewedIdx] ?? activeStop}
+        scrollY={scrollY}
       />
 
-      {!ctaDismissed && (
-        <CTACardZone
-          trip={trip}
-          stops={stops}
-          onDismiss={handleDismissCTA}
-        />
-      )}
+      {/* Sample CTA carousel — fades and collapses as user scrolls, reappears at top */}
+      <Animated.View
+        style={ctaFadeStyle}
+        onLayout={e => {
+          if (carouselHeight.value < 0) carouselHeight.value = e.nativeEvent.layout.height;
+        }}
+      >
+        <SampleCTACarousel />
+      </Animated.View>
 
       {/* Fixed strip — active pill tracks the viewed page, not just the real trip position */}
       <StopsStrip
@@ -158,9 +200,11 @@ export default function JernieTab() {
         style={styles.pager}
         contentOffset={{ x: initialIdx * SCREEN_WIDTH, y: 0 }}
       >
-        {stops.map(stop => (
+        {stops.map((stop, idx) => (
           <View key={stop.id} style={styles.page}>
-            <ScrollView
+            <Animated.ScrollView
+              onScroll={scrollHandler}
+              scrollEventThrottle={16}
               showsVerticalScrollIndicator={false}
               contentInsetAdjustmentBehavior="never"
               automaticallyAdjustKeyboardInsets={false}
@@ -178,12 +222,16 @@ export default function JernieTab() {
                 days={itinerary[stop.id] ?? []}
                 expandedDayId={expandedDayIds[stop.id] ?? null}
                 onDayPress={dayId => handleDayPress(stop.id, dayId)}
+                onBookingPress={booking => handleBookingPress(booking, stop)}
+                onItemPress={item => handleItemPress(item, stop)}
               />
               <View style={styles.bottomPad} />
-            </ScrollView>
+            </Animated.ScrollView>
           </View>
         ))}
       </ScrollView>
+
+      <EntityDetailSheet ref={entitySheetRef} />
     </View>
   );
 }

@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { Booking } from '@/src/types';
 import { Brand, Core, TypeColors, Typography, Radius, Shadow, Spacing } from '@/src/design/tokens';
 import { hexWithAlpha } from '@/src/utils/colors';
@@ -7,74 +8,96 @@ import { hexWithAlpha } from '@/src/utils/colors';
 interface TravelCardProps {
   booking: Booking;
   stopColor: string;
+  stopCity?: string;
+  onPress?: () => void;
 }
 
-export function TravelCard({ booking, stopColor }: TravelCardProps) {
-  if (booking.type === 'flight')     return <FlightCard booking={booking} />;
-  if (booking.type === 'hotel')      return <HotelCard  booking={booking} stopColor={stopColor} />;
+export function TravelCard({ booking, stopColor, stopCity, onPress }: TravelCardProps) {
+  if (booking.type === 'flight')     return <FlightCard booking={booking} stopCity={stopCity} onPress={onPress} />;
+  if (booking.type === 'hotel')      return <HotelCard  booking={booking} stopColor={stopColor} onPress={onPress} />;
   if (booking.type === 'rental')     return <RentalCard booking={booking} stopColor={stopColor} />;
-  if (booking.type === 'restaurant') return <RestaurantCard booking={booking} />;
+  if (booking.type === 'restaurant') return <RestaurantCard booking={booking} onPress={onPress} />;
   return null;
 }
 
 // ── Flight card — dark navy gradient ──────────────────────────────────────────
 
-function FlightCard({ booking }: { booking: Extract<Booking, { type: 'flight' }> }) {
+function FlightCard({
+  booking,
+  stopCity,
+  onPress,
+}: {
+  booking: Extract<Booking, { type: 'flight' }>;
+  stopCity?: string;
+  onPress?: () => void;
+}) {
   return (
-    <View style={[styles.flightCard, Shadow.cardHover]}>
-      <View style={styles.flightTop}>
-        <Text style={styles.flightTag}>{booking.airline} · {booking.flightNumber}</Text>
-        <View style={styles.onTimeChip}>
-          <Text style={styles.onTimeText}>On time</Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={onPress ? 0.85 : 1} disabled={!onPress}>
+      <LinearGradient
+        colors={[Brand.navy, '#1E4566']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.flightCard}
+      >
+        <View style={styles.flightTop}>
+          <Text style={styles.flightTag}>{booking.airline} · {booking.flightNumber}</Text>
+          <View style={styles.onTimeChip}>
+            <Text style={styles.onTimeText}>On time</Text>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.flightRoute}>
-        <View style={styles.routeEndpoint}>
-          <Text style={styles.airportCode}>{booking.origin}</Text>
-          <Text style={styles.flightTime}>{booking.departureTime}</Text>
+        <View style={styles.flightRoute}>
+          <View style={styles.routeEndpoint}>
+            <Text style={styles.airportCode}>{booking.origin}</Text>
+            <Text style={styles.flightTime}>{booking.departureTime}</Text>
+          </View>
+          <Text style={styles.routeArrow}>→</Text>
+          <View style={[styles.routeEndpoint, styles.routeEndpointRight]}>
+            <Text style={styles.airportCode}>{booking.destination}</Text>
+            <Text style={styles.flightTime}>{booking.arrivalTime}</Text>
+            {stopCity && <Text style={styles.airportCity}>{stopCity}</Text>}
+          </View>
         </View>
-        <Text style={styles.routeArrow}>→</Text>
-        <View style={[styles.routeEndpoint, styles.routeEndpointRight]}>
-          <Text style={styles.airportCode}>{booking.destination}</Text>
-          <Text style={styles.flightTime}>{booking.arrivalTime}</Text>
-        </View>
-      </View>
 
-      {booking.confirmationCode && (
-        <View style={styles.flightFooter}>
-          <Text style={styles.flightFooterLabel}>Confirmation</Text>
-          <Text style={styles.flightFooterValue}>{booking.confirmationCode}</Text>
-        </View>
-      )}
-    </View>
+        {booking.confirmationCode && (
+          <View style={styles.flightFooter}>
+            <View style={styles.flightFooterBlock}>
+              <Text style={styles.flightFooterLabel}>Confirmation</Text>
+              <Text style={styles.flightFooterValue}>{booking.confirmationCode}</Text>
+            </View>
+          </View>
+        )}
+      </LinearGradient>
+    </TouchableOpacity>
   );
 }
 
 // ── Hotel card — stop-color tinted surface ────────────────────────────────────
 
-function HotelCard({ booking, stopColor }: { booking: Extract<Booking, { type: 'hotel' }>, stopColor: string }) {
+function HotelCard({ booking, stopColor, onPress }: { booking: Extract<Booking, { type: 'hotel' }>, stopColor: string, onPress?: () => void }) {
   const nights = daysBetween(booking.checkIn, booking.checkOut);
   return (
-    <View
-      style={[
-        styles.surfaceCard,
-        { borderColor: hexWithAlpha(stopColor, 0.18) },
-      ]}
-    >
-      <View style={[styles.typeIcon, { backgroundColor: hexWithAlpha(stopColor, 0.12) }]}>
-        <Text style={styles.typeEmoji}>🏨</Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={onPress ? 0.85 : 1} disabled={!onPress}>
+      <View
+        style={[
+          styles.surfaceCard,
+          { borderColor: hexWithAlpha(stopColor, 0.18) },
+        ]}
+      >
+        <View style={[styles.typeIcon, { backgroundColor: hexWithAlpha(stopColor, 0.12) }]}>
+          <Text style={styles.typeEmoji}>🏨</Text>
+        </View>
+        <View style={styles.surfaceCardBody}>
+          <Text style={styles.surfaceCardName}>{booking.hotelName}</Text>
+          <Text style={styles.surfaceCardMeta}>
+            {shortDate(booking.checkIn)} – {shortDate(booking.checkOut)}
+          </Text>
+          <Text style={[styles.surfaceCardAccent, { color: stopColor }]}>
+            {nights} night{nights !== 1 ? 's' : ''}
+          </Text>
+        </View>
       </View>
-      <View style={styles.surfaceCardBody}>
-        <Text style={styles.surfaceCardName}>{booking.hotelName}</Text>
-        <Text style={styles.surfaceCardMeta}>
-          {shortDate(booking.checkIn)} – {shortDate(booking.checkOut)}
-        </Text>
-        <Text style={[styles.surfaceCardAccent, { color: stopColor }]}>
-          {nights} night{nights !== 1 ? 's' : ''}
-        </Text>
-      </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -106,28 +129,30 @@ function RentalCard({ booking, stopColor }: { booking: Extract<Booking, { type: 
 
 // ── Restaurant card — food-color tinted surface ───────────────────────────────
 
-function RestaurantCard({ booking }: { booking: Extract<Booking, { type: 'restaurant' }> }) {
+function RestaurantCard({ booking, onPress }: { booking: Extract<Booking, { type: 'restaurant' }>, onPress?: () => void }) {
   const foodColor = TypeColors.food;
   return (
-    <View
-      style={[
-        styles.surfaceCard,
-        { borderColor: hexWithAlpha(foodColor, 0.18) },
-      ]}
-    >
-      <View style={[styles.typeIcon, { backgroundColor: hexWithAlpha(foodColor, 0.10) }]}>
-        <Text style={styles.typeEmoji}>🍽️</Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={onPress ? 0.85 : 1} disabled={!onPress}>
+      <View
+        style={[
+          styles.surfaceCard,
+          { borderColor: hexWithAlpha(foodColor, 0.18) },
+        ]}
+      >
+        <View style={[styles.typeIcon, { backgroundColor: hexWithAlpha(foodColor, 0.10) }]}>
+          <Text style={styles.typeEmoji}>🍽️</Text>
+        </View>
+        <View style={styles.surfaceCardBody}>
+          <Text style={styles.surfaceCardName}>{booking.restaurantName}</Text>
+          <Text style={styles.surfaceCardMeta}>{shortDate(booking.date)}{booking.time ? ` · ${booking.time}` : ''}</Text>
+          {booking.partySize && (
+            <Text style={[styles.surfaceCardAccent, { color: foodColor }]}>
+              Party of {booking.partySize}
+            </Text>
+          )}
+        </View>
       </View>
-      <View style={styles.surfaceCardBody}>
-        <Text style={styles.surfaceCardName}>{booking.restaurantName}</Text>
-        <Text style={styles.surfaceCardMeta}>{shortDate(booking.date)}{booking.time ? ` · ${booking.time}` : ''}</Text>
-        {booking.partySize && (
-          <Text style={[styles.surfaceCardAccent, { color: foodColor }]}>
-            Party of {booking.partySize}
-          </Text>
-        )}
-      </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -152,15 +177,19 @@ const styles = StyleSheet.create({
   flightCard: {
     marginHorizontal: Spacing.base,
     marginBottom: Spacing.sm,
-    borderRadius: 18,
-    backgroundColor: Brand.navy,
-    padding: 14,
+    borderRadius: 20,
+    padding: 15,
+    shadowColor: Brand.navy,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    elevation: 8,
   },
   flightTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   flightTag: {
     ...Typography.roles.labelCaps,
@@ -168,8 +197,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   onTimeChip: {
-    height: 20,
-    paddingHorizontal: 8,
+    height: 24,
+    paddingHorizontal: 10,
     borderRadius: Radius.full,
     backgroundColor: 'rgba(62,123,82,0.30)',
     borderWidth: 1,
@@ -185,21 +214,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   routeEndpoint: { flex: 1, alignItems: 'flex-start' },
   routeEndpointRight: { alignItems: 'flex-end' },
   airportCode: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '800',
     letterSpacing: -0.5,
     color: Core.white,
     fontFamily: 'DMSans',
   },
+  airportCity: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.55)',
+    fontFamily: 'DMSans',
+    fontWeight: '500',
+    marginTop: 2,
+  },
   flightTime: {
     ...Typography.roles.label,
-    color: 'rgba(255,255,255,0.65)',
-    marginTop: 2,
+    color: 'rgba(255,255,255,0.70)',
+    marginTop: 4,
   },
   routeArrow: {
     fontSize: 18,
@@ -208,19 +244,25 @@ const styles = StyleSheet.create({
   },
   flightFooter: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingTop: 10,
+    gap: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.10)',
   },
+  flightFooterBlock: { flex: 1 },
   flightFooterLabel: {
-    ...Typography.roles.labelCaps,
+    fontSize: 10,
+    fontFamily: 'DMSans',
+    fontWeight: '600',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
     color: 'rgba(255,255,255,0.40)',
-    letterSpacing: 0.7,
+    marginBottom: 2,
   },
   flightFooterValue: {
-    ...Typography.roles.label,
+    fontSize: 14,
+    fontFamily: 'DMSans',
+    fontWeight: '700',
     color: 'rgba(255,255,255,0.90)',
   },
   // Surface cards (hotel, rental, restaurant)
