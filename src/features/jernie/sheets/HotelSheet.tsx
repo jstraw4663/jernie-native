@@ -36,7 +36,7 @@ export function HotelSheet({ booking, stopColor, onClose }: HotelSheetProps) {
   const handleScroll = (e: { nativeEvent: { contentOffset: { y: number } } }) => { scrollY.value = e.nativeEvent.contentOffset.y; };
 
   return (
-    <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} onScroll={handleScroll} scrollEventThrottle={16}>
+    <View style={s.root}>
       <SheetHero mode="travel" photoUri={m.heroPhoto} stopColor={stopColor} onClose={onClose} scrollY={scrollY}>
         <View style={[s.badge, { backgroundColor: hexWithAlpha(Brand.navySoft, 0.32), borderColor: hexWithAlpha(Brand.navySoft, 0.4) }]}>
           <Text style={[s.badgeTxt, { color: hexWithAlpha(Core.white, 0.80) }]}>Active Stay</Text>
@@ -44,7 +44,7 @@ export function HotelSheet({ booking, stopColor, onClose }: HotelSheetProps) {
         <Text style={s.heroDates}>{shortDate(booking.checkIn)} → {shortDate(booking.checkOut)}</Text>
         <Text style={s.heroMeta}>{n} night{n !== 1 ? 's' : ''}{booking.roomType ? ` · ${booking.roomType}` : ''}</Text>
       </SheetHero>
-
+      <BottomSheetScrollView showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
       <View style={s.titleRow}>
         <View style={s.titleLeft}>
           <Text style={s.name}>{booking.hotelName}</Text>
@@ -85,7 +85,8 @@ export function HotelSheet({ booking, stopColor, onClose }: HotelSheetProps) {
         <DistanceModule label={m.distanceLabel} value={m.distanceValue} stopColor={stopColor} />
       </View>
       <View style={s.bottomPad} />
-    </BottomSheetScrollView>
+      </BottomSheetScrollView>
+    </View>
   );
 }
 
@@ -104,7 +105,7 @@ function TRow({ icon, color, title, sub, last = false }: { icon: string; color: 
 }
 
 const s = StyleSheet.create({
-  scroll:      { flexGrow: 1 },
+  root:        { flex: 1 },
   badge:       { alignSelf: 'flex-start', borderRadius: Radius.full, paddingHorizontal: 9, paddingVertical: 3, borderWidth: 1, marginBottom: 8 },
   badgeTxt:    { fontSize: 11, fontWeight: '700' as const, fontFamily: 'DMSans' },
   heroDates:   { fontSize: 26, fontWeight: '800' as const, color: Core.white, fontFamily: 'DMSans', letterSpacing: -0.5, marginBottom: 3 },

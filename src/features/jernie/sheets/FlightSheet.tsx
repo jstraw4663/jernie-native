@@ -38,7 +38,7 @@ export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
   const handleScroll = (e: { nativeEvent: { contentOffset: { y: number } } }) => { scrollY.value = e.nativeEvent.contentOffset.y; };
 
   return (
-    <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} onScroll={handleScroll} scrollEventThrottle={16}>
+    <View style={s.root}>
       <SheetHero mode="travel" stopColor={Brand.navy} onClose={onClose} scrollY={scrollY}>
         <View style={[s.badge, { backgroundColor: st.bg, borderColor: st.border }]}>
           <Text style={[s.badgeTxt, { color: st.color }]}>{st.label}</Text>
@@ -55,7 +55,7 @@ export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
           </View>
         </View>
       </SheetHero>
-
+      <BottomSheetScrollView showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
       <View style={s.titleBlock}>
         <Text style={s.name}>{booking.origin} → {booking.destination} · {booking.flightNumber}</Text>
         <Text style={s.subtitle}>{booking.airline} · {booking.departureDate}</Text>
@@ -98,7 +98,8 @@ export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
         <DistanceModule label={m.afterLanding.distanceLabel} value={m.afterLanding.distanceValue} stopColor={stopColor} />
       </View>
       <View style={s.bottomPad} />
-    </BottomSheetScrollView>
+      </BottomSheetScrollView>
+    </View>
   );
 }
 
@@ -112,7 +113,7 @@ function MetaItem({ label, value }: { label: string; value: string }) {
 }
 
 const s = StyleSheet.create({
-  scroll:       { flexGrow: 1 },
+  root:         { flex: 1 },
   badge:        { alignSelf: 'flex-start', borderRadius: Radius.full, paddingHorizontal: 9, paddingVertical: 3, borderWidth: 1, marginBottom: 8 },
   badgeTxt:     { fontSize: 11, fontWeight: '700' as const, fontFamily: 'DMSans' },
   heroRoute:    { flexDirection: 'row', alignItems: 'center', gap: 12 },
