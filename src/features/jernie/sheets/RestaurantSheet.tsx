@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { SheetHero } from './SheetHero';
 import { InfoSection, PhotoStrip, ReviewRail, QuickActions, DistanceModule } from './SheetParts';
@@ -17,11 +18,13 @@ interface RestaurantSheetProps {
 export function RestaurantSheet({ name, stopLabel, stopColor, onClose }: RestaurantSheetProps) {
   const [added, setAdded] = useState(false);
   const m = MOCK_RESTAURANT;
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler((e) => { 'worklet'; scrollY.value = e.contentOffset.y; });
   const priceLabel = ['', '$', '$$', '$$$'][m.price] ?? '';
 
   return (
     <View style={s.root}>
-      <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} onScroll={scrollHandler} scrollEventThrottle={16}>
         <SheetHero
           mode="place"
           photoUri={m.heroPhoto}
@@ -30,6 +33,7 @@ export function RestaurantSheet({ name, stopLabel, stopColor, onClose }: Restaur
           stopLabel={stopLabel}
           stopColor={stopColor}
           onClose={onClose}
+          scrollY={scrollY}
         />
 
         <View style={s.titleRow}>

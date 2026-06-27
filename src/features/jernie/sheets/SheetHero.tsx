@@ -1,5 +1,12 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Core, Brand, Spacing, Radius } from '@/src/design/tokens';
 import { stopHeroGradient, hexWithAlpha } from '@/src/utils/colors';
@@ -15,18 +22,31 @@ type PlaceMode = {
 
 type TravelMode = {
   mode: 'travel';
-  photoUri?: string;  // absent → gradient background
+  photoUri?: string;
   stopColor: string;
   children: React.ReactNode;
 };
 
-type SheetHeroProps = (PlaceMode | TravelMode) & { onClose: () => void };
+type SheetHeroProps = (PlaceMode | TravelMode) & {
+  onClose: () => void;
+  scrollY?: SharedValue<number>;
+};
 
 export function SheetHero(props: SheetHeroProps) {
+  const _scrollY = useSharedValue(0);
+  const scrollY = props.scrollY ?? _scrollY;
   const gradientColors = stopHeroGradient(props.stopColor);
 
+  const heroStyle = useAnimatedStyle(() => ({
+    height: interpolate(scrollY.value, [0, 100], [220, 72], Extrapolation.CLAMP),
+  }));
+
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, 60], [1, 0], Extrapolation.CLAMP),
+  }));
+
   return (
-    <View style={s.hero}>
+    <Animated.View style={[s.hero, heroStyle]}>
       {(props.mode === 'place' || props.photoUri) ? (
         <Image
           source={{ uri: props.mode === 'place' ? props.photoUri : (props as TravelMode).photoUri! }}
@@ -51,29 +71,31 @@ export function SheetHero(props: SheetHeroProps) {
         <Text style={s.closeTxt}>✕</Text>
       </TouchableOpacity>
 
-      {props.mode === 'place' ? (
-        <View style={s.heroBottom}>
-          <View style={s.heroEmoji}>
-            <Text style={s.heroEmojiTxt}>{props.emoji}</Text>
-          </View>
-          <View style={s.heroChips}>
-            <View style={s.catChip}>
-              <Text style={s.catChipTxt}>{props.categoryLabel}</Text>
+      <Animated.View style={[StyleSheet.absoluteFill, contentStyle]} pointerEvents="none">
+        {props.mode === 'place' ? (
+          <View style={s.heroBottom}>
+            <View style={s.heroEmoji}>
+              <Text style={s.heroEmojiTxt}>{props.emoji}</Text>
             </View>
-            <View style={[s.stopChip, { backgroundColor: hexWithAlpha(props.stopColor, 0.30), borderColor: hexWithAlpha(props.stopColor, 0.55) }]}>
-              <Text style={s.stopChipTxt}>{props.stopLabel}</Text>
+            <View style={s.heroChips}>
+              <View style={s.catChip}>
+                <Text style={s.catChipTxt}>{props.categoryLabel}</Text>
+              </View>
+              <View style={[s.stopChip, { backgroundColor: hexWithAlpha(props.stopColor, 0.30), borderColor: hexWithAlpha(props.stopColor, 0.55) }]}>
+                <Text style={s.stopChipTxt}>{props.stopLabel}</Text>
+              </View>
             </View>
           </View>
-        </View>
-      ) : (
-        <View style={s.heroTravel}>{props.children}</View>
-      )}
-    </View>
+        ) : (
+          <View style={s.heroTravel}>{props.children}</View>
+        )}
+      </Animated.View>
+    </Animated.View>
   );
 }
 
 const s = StyleSheet.create({
-  hero:        { height: 220, overflow: 'hidden', backgroundColor: Brand.navy },
+  hero:        { overflow: 'hidden', backgroundColor: Brand.navy },
   closeBtn:    { position: 'absolute', top: 14, right: 14, width: Spacing.xxl, height: Spacing.xxl, borderRadius: Radius.xl, backgroundColor: hexWithAlpha(Brand.navy, 0.32), borderWidth: 1, borderColor: hexWithAlpha(Core.white, 0.12), alignItems: 'center', justifyContent: 'center', zIndex: 3 },
   closeTxt:    { fontSize: 14, fontWeight: '600' as const, color: Core.white, fontFamily: 'DMSans' },
   heroBottom:  { position: 'absolute', left: Spacing.base, right: Spacing.base, bottom: Spacing.base, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', zIndex: 2 },

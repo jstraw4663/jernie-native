@@ -1,6 +1,6 @@
 import React, { useCallback, useImperativeHandle, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
-import { BottomSheetModal, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetBackdrop, useBottomSheetSpringConfigs } from '@gorhom/bottom-sheet';
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import { useSheetContext } from '@/src/contexts/SheetContext';
 import type { EntitySheetPayload } from './types';
@@ -20,6 +20,13 @@ export const EntityDetailSheet = React.forwardRef<EntityDetailSheetRef, object>(
   const [payload, setPayload] = useState<EntitySheetPayload | null>(null);
   const { increment, decrement } = useSheetContext();
   const wasOpen = useRef(false);
+  const animationConfigs = useBottomSheetSpringConfigs({
+    damping: 60,
+    stiffness: 180,
+    mass: 1.2,
+    restDisplacementThreshold: 0.01,
+    restSpeedThreshold: 0.01,
+  });
 
   useImperativeHandle(ref, () => ({
     present(p: EntitySheetPayload) {
@@ -62,6 +69,7 @@ export const EntityDetailSheet = React.forwardRef<EntityDetailSheetRef, object>(
       enablePanDownToClose
       backdropComponent={renderBackdrop}
       onChange={handleChange}
+      animationConfigs={animationConfigs}
       handleIndicatorStyle={s.handle}
       backgroundStyle={s.background}
     >
@@ -100,6 +108,6 @@ export const EntityDetailSheet = React.forwardRef<EntityDetailSheetRef, object>(
 });
 
 const s = StyleSheet.create({
-  handle:     { backgroundColor: Core.border, width: 36, height: 4 },
+  handle:     { backgroundColor: Core.textFaint, width: 44, height: 5 },
   background: { backgroundColor: Core.bg, borderRadius: 24 },
 });

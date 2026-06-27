@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { SheetHero } from './SheetHero';
 import { InfoSection, PhotoStrip, DistanceModule } from './SheetParts';
@@ -17,10 +18,12 @@ interface HikeSheetProps {
 export function HikeSheet({ name, stopLabel, stopColor, onClose }: HikeSheetProps) {
   const [added, setAdded] = useState(false);
   const m = MOCK_HIKE;
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler((e) => { 'worklet'; scrollY.value = e.contentOffset.y; });
 
   return (
     <View style={s.root}>
-      <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} onScroll={scrollHandler} scrollEventThrottle={16}>
         <SheetHero
           mode="place"
           photoUri={m.heroPhoto}
@@ -29,6 +32,7 @@ export function HikeSheet({ name, stopLabel, stopColor, onClose }: HikeSheetProp
           stopLabel={stopLabel}
           stopColor={stopColor}
           onClose={onClose}
+          scrollY={scrollY}
         />
 
         <View style={s.titleRow}>
