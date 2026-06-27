@@ -11,7 +11,6 @@ import type { HotelBooking } from '@/src/types';
 interface HotelSheetProps {
   booking: HotelBooking;
   stopColor: string;
-  stopLabel: string;
   onClose: () => void;
 }
 
@@ -36,8 +35,8 @@ export function HotelSheet({ booking, stopColor, onClose }: HotelSheetProps) {
   return (
     <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
       <SheetHero mode="travel" photoUri={m.heroPhoto} stopColor={stopColor} onClose={onClose}>
-        <View style={[s.badge, { backgroundColor: 'rgba(44,88,128,0.32)', borderColor: 'rgba(80,140,210,0.4)' }]}>
-          <Text style={[s.badgeTxt, { color: '#c0dbff' }]}>Active Stay</Text>
+        <View style={[s.badge, { backgroundColor: hexWithAlpha(Brand.navySoft, 0.32), borderColor: hexWithAlpha(Brand.navySoft, 0.4) }]}>
+          <Text style={[s.badgeTxt, { color: hexWithAlpha(Core.white, 0.80) }]}>Active Stay</Text>
         </View>
         <Text style={s.heroDates}>{shortDate(booking.checkIn)} → {shortDate(booking.checkOut)}</Text>
         <Text style={s.heroMeta}>{n} night{n !== 1 ? 's' : ''}{booking.roomType ? ` · ${booking.roomType}` : ''}</Text>
@@ -64,7 +63,7 @@ export function HotelSheet({ booking, stopColor, onClose }: HotelSheetProps) {
           <TRow icon="📅" color={stopColor} title={`Check-out: ${shortDate(booking.checkOut)} · 11:00 AM`} sub={`${n} night${n !== 1 ? 's' : ''} total`} last />
         </View>
 
-        <Text style={[s.sectionTitle, { marginTop: 10 }]}>Amenities</Text>
+        <Text style={[s.sectionTitle, { marginTop: Spacing.sm }]}>Amenities</Text>
         <View style={s.amenityRow}>
           {m.amenities.map(a => (
             <View key={a} style={s.amenity}>
@@ -106,7 +105,7 @@ const s = StyleSheet.create({
   badge:       { alignSelf: 'flex-start', borderRadius: Radius.full, paddingHorizontal: 9, paddingVertical: 3, borderWidth: 1, marginBottom: 8 },
   badgeTxt:    { fontSize: 11, fontWeight: '700' as const, fontFamily: 'DMSans' },
   heroDates:   { fontSize: 26, fontWeight: '800' as const, color: Core.white, fontFamily: 'DMSans', letterSpacing: -0.5, marginBottom: 3 },
-  heroMeta:    { fontSize: 13, color: 'rgba(255,255,255,0.65)', fontFamily: 'DMSans' },
+  heroMeta:    { fontSize: 13, color: hexWithAlpha(Core.white, 0.65), fontFamily: 'DMSans' },
   titleRow:    { padding: Spacing.base, paddingBottom: Spacing.sm, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   titleLeft:   { flex: 1 },
   name:        { fontFamily: 'Fraunces', fontSize: 26, color: Core.text, marginBottom: 3, lineHeight: 30 },
@@ -117,9 +116,9 @@ const s = StyleSheet.create({
   section:     { paddingHorizontal: Spacing.base, paddingTop: Spacing.md },
   sectionTitle:{ fontSize: 11, fontFamily: 'DMSans', fontWeight: '700', letterSpacing: 1.3, textTransform: 'uppercase', color: Core.textFaint, marginBottom: Spacing.sm },
   timeline:    { backgroundColor: Core.surface, borderWidth: 1, borderRadius: Radius.xl, overflow: 'hidden', marginBottom: Spacing.md },
-  tRow:        { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10 },
+  tRow:        { flexDirection: 'row', alignItems: 'center', gap: 10, padding: Spacing.sm },
   tRowBorder:  { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Core.border },
-  tIcon:       { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  tIcon:       { width: 32, height: 32, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
   tIconTxt:    { fontSize: 16 },
   tTitle:      { fontSize: 13, fontWeight: '600' as const, fontFamily: 'DMSans', color: Core.text },
   tSub:        { fontSize: 11, color: Core.textMuted, fontFamily: 'DMSans', marginTop: 1 },

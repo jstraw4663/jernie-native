@@ -5,7 +5,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SheetHero } from './SheetHero';
 import { InfoSection, DistanceModule } from './SheetParts';
 import { MOCK_FLIGHT } from './mockEntityData';
-import { Core, Brand, Spacing, Radius, Typography } from '@/src/design/tokens';
+import { Core, Brand, Semantic, Spacing, Radius, Typography } from '@/src/design/tokens';
+import { hexWithAlpha } from '@/src/utils/colors';
 import type { FlightBooking } from '@/src/types';
 
 interface FlightSheetProps {
@@ -14,12 +15,19 @@ interface FlightSheetProps {
   onClose: () => void;
 }
 
+const STATUS_STYLES: Record<string, { bg: string; border: string; text: string }> = {
+  'on-time':  { bg: hexWithAlpha(Semantic.success, 0.32), border: hexWithAlpha(Semantic.success, 0.35), text: hexWithAlpha(Core.white, 0.88) },
+  'delayed':  { bg: hexWithAlpha(Semantic.warning, 0.32), border: hexWithAlpha(Semantic.warning, 0.40), text: hexWithAlpha(Core.white, 0.88) },
+  'cancelled':{ bg: hexWithAlpha(Semantic.error,   0.32), border: hexWithAlpha(Semantic.error,   0.35), text: hexWithAlpha(Core.white, 0.88) },
+  'default':  { bg: hexWithAlpha(Core.textMuted,   0.32), border: hexWithAlpha(Core.textMuted,   0.35), text: hexWithAlpha(Core.white, 0.80) },
+};
+
 const STATUS: Record<string, { label: string; bg: string; border: string; color: string }> = {
-  on_time:   { label: '● On Time',   bg: 'rgba(62,123,82,0.32)',  border: 'rgba(100,200,140,0.35)', color: '#b0f0c8' },
-  delayed:   { label: '⚠ Delayed',   bg: 'rgba(181,107,0,0.32)',  border: 'rgba(220,160,50,0.4)',   color: '#fdd' },
-  cancelled: { label: '✕ Cancelled', bg: 'rgba(163,72,95,0.32)',  border: 'rgba(200,100,120,0.35)', color: '#fcc' },
-  landed:    { label: '✓ Landed',    bg: 'rgba(62,123,82,0.32)',  border: 'rgba(100,200,140,0.35)', color: '#b0f0c8' },
-  unknown:   { label: '? Unknown',   bg: 'rgba(80,80,80,0.32)',   border: 'rgba(150,150,150,0.35)', color: '#ddd' },
+  on_time:   { label: '● On Time',   bg: STATUS_STYLES['on-time'].bg,   border: STATUS_STYLES['on-time'].border,   color: STATUS_STYLES['on-time'].text },
+  delayed:   { label: '⚠ Delayed',   bg: STATUS_STYLES['delayed'].bg,   border: STATUS_STYLES['delayed'].border,   color: STATUS_STYLES['delayed'].text },
+  cancelled: { label: '✕ Cancelled', bg: STATUS_STYLES['cancelled'].bg, border: STATUS_STYLES['cancelled'].border, color: STATUS_STYLES['cancelled'].text },
+  landed:    { label: '✓ Landed',    bg: STATUS_STYLES['on-time'].bg,   border: STATUS_STYLES['on-time'].border,   color: STATUS_STYLES['on-time'].text },
+  unknown:   { label: '? Unknown',   bg: STATUS_STYLES['default'].bg,   border: STATUS_STYLES['default'].border,   color: STATUS_STYLES['default'].text },
 };
 
 export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
@@ -52,7 +60,7 @@ export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
 
       <View style={s.section}>
         <Text style={s.sectionTitle}>Flight Status</Text>
-        <LinearGradient colors={[Brand.navy, '#1a3d5c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.flightBlock}>
+        <LinearGradient colors={[Brand.navy, Brand.navySoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.flightBlock}>
           <View style={s.flRoute}>
             <View style={s.flEnd}>
               <Text style={s.flAirport}>{booking.origin}</Text>
@@ -106,22 +114,22 @@ const s = StyleSheet.create({
   badgeTxt:     { fontSize: 11, fontWeight: '700' as const, fontFamily: 'DMSans' },
   heroRoute:    { flexDirection: 'row', alignItems: 'center', gap: 12 },
   heroAirport:  { fontSize: 28, fontWeight: '800' as const, color: Core.white, fontFamily: 'DMSans', letterSpacing: -0.5 },
-  heroArrow:    { fontSize: 18, color: 'rgba(255,255,255,0.45)', paddingHorizontal: 4 },
-  heroMeta:     { fontSize: 12, color: 'rgba(255,255,255,0.65)', fontFamily: 'DMSans', marginTop: 3 },
+  heroArrow:    { fontSize: 18, color: hexWithAlpha(Core.white, 0.45), paddingHorizontal: 4 },
+  heroMeta:     { fontSize: 12, color: hexWithAlpha(Core.white, 0.65), fontFamily: 'DMSans', marginTop: 3 },
   titleBlock:   { padding: Spacing.base, paddingBottom: Spacing.sm },
   name:         { fontFamily: 'Fraunces', fontSize: 22, color: Core.text, marginBottom: 3, lineHeight: 26 },
   subtitle:     { ...Typography.roles.meta, color: Core.textMuted, lineHeight: 18 },
   section:      { paddingHorizontal: Spacing.base, paddingTop: Spacing.md },
   sectionTitle: { fontSize: 11, fontFamily: 'DMSans', fontWeight: '700', letterSpacing: 1.3, textTransform: 'uppercase', color: Core.textFaint, marginBottom: Spacing.sm },
   flightBlock:  { borderRadius: Radius.card, padding: Spacing.md, marginBottom: Spacing.sm },
-  flRoute:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  flRoute:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },
   flEnd:        { flex: 1 },
   flEndRight:   { alignItems: 'flex-end' },
   flAirport:    { fontSize: 28, fontWeight: '800' as const, color: Core.white, fontFamily: 'DMSans', letterSpacing: -0.5 },
-  flTime:       { fontSize: 14, fontWeight: '700' as const, color: 'rgba(255,255,255,0.75)', fontFamily: 'DMSans', marginTop: 4 },
-  flArrow:      { color: 'rgba(255,255,255,0.4)', fontSize: 20, paddingHorizontal: 4 },
-  flMeta:       { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
-  flMetaLabel:  { fontSize: 10, fontWeight: '600' as const, fontFamily: 'DMSans', color: 'rgba(255,255,255,0.4)', letterSpacing: 0.8, textTransform: 'uppercase' as const, marginBottom: 2 },
+  flTime:       { fontSize: 14, fontWeight: '700' as const, color: hexWithAlpha(Core.white, 0.75), fontFamily: 'DMSans', marginTop: 4 },
+  flArrow:      { color: hexWithAlpha(Core.white, 0.40), fontSize: 20, paddingHorizontal: 4 },
+  flMeta:       { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 12, borderTopWidth: 1, borderTopColor: hexWithAlpha(Core.white, 0.10) },
+  flMetaLabel:  { fontSize: 10, fontWeight: '600' as const, fontFamily: 'DMSans', color: hexWithAlpha(Core.white, 0.40), letterSpacing: 0.8, textTransform: 'uppercase' as const, marginBottom: 2 },
   flMetaValue:  { fontSize: 15, fontWeight: '700' as const, fontFamily: 'DMSans', color: Core.white },
   distPad:      { paddingHorizontal: Spacing.base },
   bottomPad:    { height: 32 },
