@@ -33,7 +33,7 @@ export function HikeSheet({ name, stopLabel, stopColor, onClose }: HikeSheetProp
         onClose={onClose}
         scrollY={scrollY}
       />
-      <BottomSheetScrollView showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
+      <BottomSheetScrollView style={s.scroll} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
 
         <View style={s.titleRow}>
           <View style={s.titleLeft}>
@@ -97,6 +97,7 @@ function StatCard({ value, label, color }: { value: string; label: string; color
 
 const s = StyleSheet.create({
   root:       { flex: 1 },
+  scroll:     { flex: 1 },
   titleRow:   { padding: Spacing.base, paddingBottom: Spacing.sm, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   titleLeft:  { flex: 1 },
   name:       { fontFamily: 'Fraunces', fontSize: 26, color: Core.text, marginBottom: 3, lineHeight: 30 },

@@ -55,7 +55,7 @@ export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
           </View>
         </View>
       </SheetHero>
-      <BottomSheetScrollView showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
+      <BottomSheetScrollView style={s.scroll} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
       <View style={s.titleBlock}>
         <Text style={s.name}>{booking.origin} → {booking.destination} · {booking.flightNumber}</Text>
         <Text style={s.subtitle}>{booking.airline} · {booking.departureDate}</Text>
@@ -114,6 +114,7 @@ function MetaItem({ label, value }: { label: string; value: string }) {
 
 const s = StyleSheet.create({
   root:         { flex: 1 },
+  scroll:       { flex: 1 },
   badge:        { alignSelf: 'flex-start', borderRadius: Radius.full, paddingHorizontal: 9, paddingVertical: 3, borderWidth: 1, marginBottom: 8 },
   badgeTxt:     { fontSize: 11, fontWeight: '700' as const, fontFamily: 'DMSans' },
   heroRoute:    { flexDirection: 'row', alignItems: 'center', gap: 12 },

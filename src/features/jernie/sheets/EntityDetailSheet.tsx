@@ -1,5 +1,5 @@
 import React, { useCallback, useImperativeHandle, useRef, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native';
 import { BottomSheetModal, BottomSheetBackdrop, useBottomSheetSpringConfigs } from '@gorhom/bottom-sheet';
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import { useSheetContext } from '@/src/contexts/SheetContext';
@@ -14,6 +14,9 @@ export type EntityDetailSheetRef = {
   present: (payload: EntitySheetPayload) => void;
   dismiss: () => void;
 };
+
+const COLLAPSED_HERO_H = 120;
+const SNAP_POINT = Dimensions.get('window').height - COLLAPSED_HERO_H;
 
 export const EntityDetailSheet = React.forwardRef<EntityDetailSheetRef, object>((_, ref) => {
   const modalRef = useRef<BottomSheetModal>(null);
@@ -65,7 +68,7 @@ export const EntityDetailSheet = React.forwardRef<EntityDetailSheetRef, object>(
   return (
     <BottomSheetModal
       ref={modalRef}
-      snapPoints={['95%']}
+      snapPoints={[SNAP_POINT]}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
       onChange={handleChange}
