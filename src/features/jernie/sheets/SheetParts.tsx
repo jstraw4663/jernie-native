@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { Core, Semantic, Typography, Spacing, Radius, Brand } from '@/src/design/tokens';
+import { hexWithAlpha } from '@/src/utils/colors';
 
 // ── InfoSection ───────────────────────────────────────────────────────────────
 
@@ -79,7 +80,7 @@ export function QuickActions({ actions, stopColor }: { actions: readonly string[
       {actions.map((label, i) => (
         <TouchableOpacity
           key={i}
-          style={[s.qaBtn, { backgroundColor: stopColor + '18', borderColor: stopColor + '30' }]}
+          style={[s.qaBtn, { backgroundColor: hexWithAlpha(stopColor, 0.09), borderColor: hexWithAlpha(stopColor, 0.19) }]}
           activeOpacity={0.7}
         >
           <Text style={[s.qaBtnText, { color: stopColor }]}>{label}</Text>

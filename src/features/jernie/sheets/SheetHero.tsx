@@ -42,7 +42,7 @@ export function SheetHero(props: SheetHeroProps) {
       )}
 
       <LinearGradient
-        colors={['rgba(7,13,24,0.12)', 'rgba(7,13,24,0.40)', 'rgba(7,13,24,0.84)']}
+        colors={[hexWithAlpha(Brand.navy, 0.12), hexWithAlpha(Brand.navy, 0.40), hexWithAlpha(Brand.navy, 0.84)]}
         locations={[0, 0.4, 1]}
         style={StyleSheet.absoluteFill}
       />
@@ -74,14 +74,14 @@ export function SheetHero(props: SheetHeroProps) {
 
 const s = StyleSheet.create({
   hero:        { height: 220, overflow: 'hidden', backgroundColor: Brand.navy },
-  closeBtn:    { position: 'absolute', top: 14, right: 14, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.32)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', zIndex: 3 },
+  closeBtn:    { position: 'absolute', top: 14, right: 14, width: Spacing.xxl, height: Spacing.xxl, borderRadius: Radius.xl, backgroundColor: hexWithAlpha(Brand.navy, 0.32), borderWidth: 1, borderColor: hexWithAlpha(Core.white, 0.12), alignItems: 'center', justifyContent: 'center', zIndex: 3 },
   closeTxt:    { fontSize: 14, fontWeight: '600' as const, color: Core.white, fontFamily: 'DMSans' },
   heroBottom:  { position: 'absolute', left: Spacing.base, right: Spacing.base, bottom: Spacing.base, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', zIndex: 2 },
-  heroEmoji:   { width: 52, height: 52, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  heroEmoji:   { width: 52, height: 52, borderRadius: Radius.card, backgroundColor: hexWithAlpha(Core.white, 0.15), borderWidth: 1, borderColor: hexWithAlpha(Core.white, 0.2), alignItems: 'center', justifyContent: 'center' },
   heroEmojiTxt:{ fontSize: 28 },
   heroChips:   { alignItems: 'flex-end', gap: 5 },
-  catChip:     { height: 24, paddingHorizontal: 10, borderRadius: Radius.full, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' },
-  catChipTxt:  { fontSize: 11, fontWeight: '700' as const, color: 'rgba(255,255,255,0.9)', fontFamily: 'DMSans' },
+  catChip:     { height: 24, paddingHorizontal: 10, borderRadius: Radius.full, backgroundColor: hexWithAlpha(Core.white, 0.14), borderWidth: 1, borderColor: hexWithAlpha(Core.white, 0.22), alignItems: 'center', justifyContent: 'center' },
+  catChipTxt:  { fontSize: 11, fontWeight: '700' as const, color: hexWithAlpha(Core.white, 0.9), fontFamily: 'DMSans' },
   stopChip:    { height: 22, paddingHorizontal: 9, borderRadius: Radius.full, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   stopChipTxt: { fontSize: 10, fontWeight: '700' as const, color: Core.white, fontFamily: 'DMSans' },
   heroTravel:  { position: 'absolute', left: Spacing.base, right: Spacing.base, bottom: Spacing.base, zIndex: 2 },

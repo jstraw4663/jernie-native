@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Core, Semantic, Spacing, Radius } from '@/src/design/tokens';
+import { Core, Semantic, Spacing, Radius, Brand } from '@/src/design/tokens';
+import { hexWithAlpha } from '@/src/utils/colors';
 
 interface FloatingCTAProps {
   stopLabel: string;
@@ -41,12 +42,12 @@ const s = StyleSheet.create({
   addBtn:        { borderRadius: Radius.lg, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm },
   addPlus:       { fontSize: 20, color: Core.white, lineHeight: 24, fontFamily: 'DMSans' },
   addTxt:        { fontSize: 15, fontWeight: '600' as const, color: Core.white, fontFamily: 'DMSans' },
-  addedPill:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: Semantic.confirmedTint, borderWidth: 0.5, borderColor: 'rgba(200,154,43,0.4)', borderRadius: Radius.lg, padding: Spacing.sm },
+  addedPill:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: Semantic.confirmedTint, borderWidth: 0.5, borderColor: hexWithAlpha(Brand.gold, 0.4), borderRadius: Radius.lg, padding: Spacing.sm },
   addedCheck:    { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   addedCheckTxt: { fontSize: 16, color: Core.white },
   addedBody:     { flex: 1 },
   addedTitle:    { fontSize: 13, fontWeight: '700' as const, color: Semantic.confirmedDark, fontFamily: 'DMSans' },
   addedStop:     { fontSize: 12, color: Semantic.confirmedDark, fontFamily: 'DMSans', opacity: 0.8 },
-  viewBtn:       { paddingVertical: 7, paddingHorizontal: 13, borderRadius: Radius.full, borderWidth: 0.5, borderColor: 'rgba(200,154,43,0.55)' },
+  viewBtn:       { paddingVertical: 7, paddingHorizontal: 13, borderRadius: Radius.full, borderWidth: 0.5, borderColor: hexWithAlpha(Brand.gold, 0.55) },
   viewBtnTxt:    { fontSize: 11, fontWeight: '600' as const, color: Semantic.confirmedDark, fontFamily: 'DMSans' },
 });
