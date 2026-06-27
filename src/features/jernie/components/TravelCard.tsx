@@ -34,7 +34,7 @@ function FlightCard({
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={onPress ? 0.85 : 1} disabled={!onPress}>
       <LinearGradient
-        colors={[Brand.navy, '#1E4566']}
+        colors={[Brand.navy, Brand.navySoft]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.flightCard}
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   flightCard: {
     marginHorizontal: Spacing.base,
     marginBottom: Spacing.sm,
-    borderRadius: 20,
+    borderRadius: Radius.card,
     padding: 15,
     shadowColor: Brand.navy,
     shadowOffset: { width: 0, height: 8 },
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   },
   airportCity: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.55)',
+    color: hexWithAlpha(Core.white, 0.55),
     fontFamily: 'DMSans',
     fontWeight: '500',
     marginTop: 2,

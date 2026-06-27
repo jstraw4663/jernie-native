@@ -147,7 +147,7 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
 
 const styles = StyleSheet.create({
   wrapper: {
-    borderRadius: 18,
+    borderRadius: Radius.lg,
     backgroundColor: Core.surface,
     borderWidth: 1,
     borderColor: Core.border,

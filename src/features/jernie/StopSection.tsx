@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: Spacing.sm,
     paddingHorizontal: Spacing.base,
     paddingTop: Spacing.base,
     paddingBottom: Spacing.sm,
@@ -87,6 +87,6 @@ const styles = StyleSheet.create({
   daysWrapper: {
     marginHorizontal: Spacing.base,
     marginBottom: Spacing.base,
-    gap: 10,
+    gap: Spacing.sm,
   },
 });

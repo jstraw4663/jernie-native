@@ -200,7 +200,7 @@ export default function JernieTab() {
         style={styles.pager}
         contentOffset={{ x: initialIdx * SCREEN_WIDTH, y: 0 }}
       >
-        {stops.map((stop, idx) => (
+        {stops.map((stop) => (
           <View key={stop.id} style={styles.page}>
             <Animated.ScrollView
               onScroll={scrollHandler}
