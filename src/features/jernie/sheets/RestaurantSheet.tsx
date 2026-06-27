@@ -34,7 +34,7 @@ export function RestaurantSheet({ name, stopLabel, stopColor, onClose }: Restaur
         onClose={onClose}
         scrollY={scrollY}
       />
-      <BottomSheetScrollView style={s.scroll} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
+      <BottomSheetScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
         <View style={s.titleRow}>
           <View style={s.titleLeft}>
             <Text style={s.name}>{name}</Text>
@@ -92,8 +92,9 @@ export function RestaurantSheet({ name, stopLabel, stopColor, onClose }: Restaur
 }
 
 const s = StyleSheet.create({
-  root:       { flex: 1 },
-  scroll:     { flex: 1 },
+  root:          { flex: 1 },
+  scroll:        { flex: 1 },
+  scrollContent: { paddingBottom: 80 },
   titleRow:   { padding: Spacing.base, paddingBottom: Spacing.sm, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   titleLeft:  { flex: 1 },
   name:       { fontFamily: 'Fraunces', fontSize: 26, color: Core.text, marginBottom: 3, lineHeight: 30 },
