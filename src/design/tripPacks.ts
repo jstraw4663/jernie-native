@@ -52,7 +52,7 @@ export const TRIP_COLOR_PACKS: TripColorPack[] = [
 ];
 
 /** Returns the stop color at position `order`, cycling if needed. */
-export function resolveStopColor(pack: TripColorPack, order: number): string {
+export function resolveStopColor(pack: Pick<TripColorPack, 'stopColors'>, order: number): string {
   return pack.stopColors[order % pack.stopColors.length];
 }
 

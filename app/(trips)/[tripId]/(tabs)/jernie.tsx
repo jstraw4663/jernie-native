@@ -21,7 +21,7 @@ import { StopSection } from '@/src/features/jernie/StopSection';
 import { EntityDetailSheet } from '@/src/features/jernie/sheets/EntityDetailSheet';
 import type { EntityDetailSheetRef } from '@/src/features/jernie/sheets/EntityDetailSheet';
 import { Brand, Core } from '@/src/design/tokens';
-import type { Booking, ItineraryItem, Stop } from '@/src/types';
+import type { Booking, ItineraryItem, StopWithColor } from '@/src/types';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -67,7 +67,7 @@ export default function JernieTab() {
     [],
   );
 
-  const handleBookingPress = useCallback((booking: Booking, stop: Stop) => {
+  const handleBookingPress = useCallback((booking: Booking, stop: StopWithColor) => {
     if (booking.type === 'hotel') {
       entitySheetRef.current?.present({ kind: 'hotel', booking, stopColor: stop.color, stopLabel: stop.city });
     } else if (booking.type === 'flight') {
@@ -75,7 +75,7 @@ export default function JernieTab() {
     }
   }, []);
 
-  const handleItemPress = useCallback((item: ItineraryItem, stop: Stop) => {
+  const handleItemPress = useCallback((item: ItineraryItem, stop: StopWithColor) => {
     const label = item.label ?? '';
     if (item.category === 'restaurant') {
       entitySheetRef.current?.present({ kind: 'restaurant', name: label, stopLabel: stop.city, stopColor: stop.color });

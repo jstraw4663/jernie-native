@@ -1,5 +1,17 @@
-import type { ItineraryDay, Stop } from '@/src/types';
+import type { ItineraryDay, Stop, Trip } from '@/src/types';
 import { getDevNow } from '@/src/utils/devTime';
+import { resolveStopColor } from '@/src/design/tripPacks';
+
+// ── Stop color derivation ────────────────────────────────────────────────────
+
+/**
+ * Resolves a stop's display color live from the trip's colorPack + the stop's order.
+ * Never persisted — Stop.color does not exist; this is the only place a stop-shaped
+ * object should acquire a `.color`.
+ */
+export function getStopColor(stop: Pick<Stop, 'order'>, trip: Pick<Trip, 'colorPack'>): string {
+  return resolveStopColor(trip.colorPack, stop.order);
+}
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
 

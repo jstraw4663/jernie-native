@@ -1,12 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import type { Stop, Booking, ItineraryDay, ItineraryItem } from '@/src/types';
+import type { StopWithColor, Booking, ItineraryDay, ItineraryItem } from '@/src/types';
 import { Core, Typography, Spacing } from '@/src/design/tokens';
 import { TravelCard } from './components/TravelCard';
 import { ItineraryDayRow } from './components/ItineraryDayRow';
 
 interface StopSectionProps {
-  stop: Stop;
+  stop: StopWithColor;
   bookings: Booking[];
   days: ItineraryDay[];
   expandedDayId: string | null;

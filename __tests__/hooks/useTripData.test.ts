@@ -24,11 +24,11 @@ const BASE = {
   createdAt: 1000000,
   pills: ['Adventure'],
   inviteToken: 'tok1',
-  colorPack: { id: 'coastal', stopColors: ['#111'], heroGradient: ['#111', '#222'] },
+  colorPack: { id: 'coastal', stopColors: ['#2C5880', '#1E7B8C'], heroGradient: ['#111', '#222'] },
   setupIntent: { flights: true, stays: true, car: false, restaurants: false },
   stops: {
-    'stop-b': { id: 'stop-b', tripId: 'trip-1', city: 'Bar Harbor', region: 'ME', emoji: '⛵', lat: 44.38, lon: -68.20, dates: { start: '2026-07-12', end: '2026-07-15' }, color: '#2F6B47', order: 1 },
-    'stop-a': { id: 'stop-a', tripId: 'trip-1', city: 'Portland',   region: 'ME', emoji: '🦞', lat: 43.66, lon: -70.25, dates: { start: '2026-07-10', end: '2026-07-12' }, color: '#2C5880', order: 0 },
+    'stop-b': { id: 'stop-b', tripId: 'trip-1', city: 'Bar Harbor', region: 'ME', emoji: '⛵', lat: 44.38, lon: -68.20, dates: { start: '2026-07-12', end: '2026-07-15' }, order: 1 },
+    'stop-a': { id: 'stop-a', tripId: 'trip-1', city: 'Portland',   region: 'ME', emoji: '🦞', lat: 43.66, lon: -70.25, dates: { start: '2026-07-10', end: '2026-07-12' }, order: 0 },
   },
   bookings: {
     'bk-1': { id: 'bk-1', tripId: 'trip-1', stopId: 'stop-a', type: 'hotel', hotelName: 'Press Hotel', checkIn: '2026-07-10', checkOut: '2026-07-12' },
@@ -58,6 +58,12 @@ describe('normalizeTripSnapshot', () => {
     expect(stops[1].id).toBe('stop-b');   // order: 1
   });
 
+  test('derives stop color from trip.colorPack + stop.order rather than passing through raw data', () => {
+    const { stops } = normalizeTripSnapshot(BASE);
+    expect(stops[0].color).toBe('#2C5880');  // order 0
+    expect(stops[1].color).toBe('#1E7B8C');  // order 1
+  });
+
   test('converts bookings object to flat array', () => {
     const { bookings } = normalizeTripSnapshot(BASE);
     expect(bookings).toHaveLength(2);
@@ -83,7 +89,7 @@ describe('normalizeTripSnapshot', () => {
     const withKeylessStop = {
       ...BASE,
       stops: {
-        'stop-x': { tripId: 'trip-1', city: 'X', region: 'ME', emoji: '🏝️', lat: 0, lon: 0, dates: { start: '2026-07-10', end: '2026-07-12' }, color: '#111', order: 0 },
+        'stop-x': { tripId: 'trip-1', city: 'X', region: 'ME', emoji: '🏝️', lat: 0, lon: 0, dates: { start: '2026-07-10', end: '2026-07-12' }, order: 0 },
       },
     };
     const { stops } = normalizeTripSnapshot(withKeylessStop as never);

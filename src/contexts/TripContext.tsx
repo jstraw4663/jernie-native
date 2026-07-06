@@ -6,11 +6,11 @@ import { useTripConfirms } from '@/src/hooks/useTripConfirms';
 import { TripLoadingScreen } from '@/src/features/jernie/TripLoadingScreen';
 import { TripErrorScreen } from '@/src/features/jernie/TripErrorScreen';
 import { Semantic, Spacing, Typography } from '@/src/design/tokens';
-import type { Trip, Stop, Booking, ItineraryDay } from '@/src/types';
+import type { Trip, StopWithColor, Booking, ItineraryDay } from '@/src/types';
 
 export interface TripContextValue {
   trip: Trip;
-  stops: Stop[];
+  stops: StopWithColor[];
   bookings: Booking[];
   itinerary: Record<string, ItineraryDay[]>;
   confirms: Record<string, boolean>;

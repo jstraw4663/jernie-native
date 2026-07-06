@@ -10,8 +10,9 @@ import {
   getFlightPhase,
   getRentalPhase,
   getActiveStopId,
+  getStopColor,
 } from '@/src/domain/trip';
-import type { ItineraryDay, Stop } from '@/src/types';
+import type { ItineraryDay, Stop, Trip } from '@/src/types';
 
 // parseFlightDate
 test('parseFlightDate handles ISO string', () => {
@@ -114,13 +115,13 @@ const TEST_STOPS: Stop[] = [
     id: 'stop-a', tripId: 't1', city: 'Portland', region: 'ME', emoji: '🦞',
     lat: 43.6615, lon: -70.2553,
     dates: { start: '2026-07-10', end: '2026-07-12' },
-    color: '#2C5880', order: 0,
+    order: 0,
   },
   {
     id: 'stop-b', tripId: 't1', city: 'Bar Harbor', region: 'ME', emoji: '⛵',
     lat: 44.3876, lon: -68.2039,
     dates: { start: '2026-07-12', end: '2026-07-15' },
-    color: '#2F6B47', order: 1,
+    order: 1,
   },
 ];
 
@@ -142,4 +143,25 @@ test('getActiveStopId: returns last stop post-trip', () => {
 
 test('getActiveStopId: returns null for empty stops array', () => {
   expect(getActiveStopId([], new Date())).toBeNull();
+});
+
+// getStopColor
+const TEST_TRIP: Pick<Trip, 'colorPack'> = {
+  colorPack: {
+    id: 'coastal',
+    stopColors: ['#2C5880', '#1E7B8C', '#2F6B47'],
+    heroGradient: ['#0D2B3E', '#2C5880'],
+  },
+};
+
+test('getStopColor: returns the color at the stop\'s order', () => {
+  expect(getStopColor({ order: 0 }, TEST_TRIP)).toBe('#2C5880');
+  expect(getStopColor({ order: 1 }, TEST_TRIP)).toBe('#1E7B8C');
+  expect(getStopColor({ order: 2 }, TEST_TRIP)).toBe('#2F6B47');
+});
+
+test('getStopColor: cycles when order >= stopColors.length', () => {
+  expect(getStopColor({ order: 3 }, TEST_TRIP)).toBe('#2C5880');  // 3 % 3 === 0
+  expect(getStopColor({ order: 4 }, TEST_TRIP)).toBe('#1E7B8C');  // 4 % 3 === 1
+  expect(getStopColor({ order: 5 }, TEST_TRIP)).toBe('#2F6B47');  // 5 % 3 === 2
 });

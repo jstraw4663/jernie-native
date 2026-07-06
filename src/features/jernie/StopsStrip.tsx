@@ -3,13 +3,13 @@ import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-nati
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring,
 } from 'react-native-reanimated';
-import type { Stop } from '@/src/types';
+import type { StopWithColor } from '@/src/types';
 import { Core, Semantic, Typography, Radius, Shadow } from '@/src/design/tokens';
 import { formatDateRange } from '@/src/utils/dates';
 import { hexWithAlpha } from '@/src/utils/colors';
 
 interface StopsStripProps {
-  stops: Stop[];
+  stops: StopWithColor[];
   activeStopId: string | null;
   onStopPress: (stopId: string) => void;
 }

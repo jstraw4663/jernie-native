@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createMMKV } from 'react-native-mmkv';
 import { database, authReady } from '@/src/lib/firebase';
-import type { Trip, Stop, Booking, ItineraryDay, TripColorPackRef, SetupIntent } from '@/src/types';
+import type { Trip, Stop, StopWithColor, Booking, ItineraryDay, TripColorPackRef, SetupIntent } from '@/src/types';
+import { getStopColor } from '@/src/domain/trip';
 
 const cacheStorage = createMMKV({ id: 'jernie-trip-cache' });
 
 export interface TripDataState {
   trip: Trip | null;
-  stops: Stop[];
+  stops: StopWithColor[];
   bookings: Booking[];
   itinerary: Record<string, ItineraryDay[]>;
   status: 'loading' | 'ready' | 'error';
@@ -17,7 +18,7 @@ export interface TripDataState {
 
 interface CachedSnapshot {
   trip: Trip;
-  stops: Stop[];
+  stops: StopWithColor[];
   bookings: Booking[];
   itinerary: Record<string, ItineraryDay[]>;
   cachedAt: number;
@@ -27,7 +28,7 @@ interface CachedSnapshot {
 // RTDB stores collections as keyed objects; this injects keys as `id` and sorts appropriately.
 export function normalizeTripSnapshot(val: Record<string, unknown>): {
   trip: Trip;
-  stops: Stop[];
+  stops: StopWithColor[];
   bookings: Booking[];
   itinerary: Record<string, ItineraryDay[]>;
 } {
@@ -43,9 +44,10 @@ export function normalizeTripSnapshot(val: Record<string, unknown>): {
   };
 
   const rawStops = ((val.stops ?? {}) as Record<string, Omit<Stop, 'id'> & { id?: string }>);
-  const stops: Stop[] = Object.entries(rawStops)
+  const stops: StopWithColor[] = Object.entries(rawStops)
     .map(([key, s]) => ({ ...s, id: s.id ?? key } as Stop))
-    .sort((a, b) => a.order - b.order);
+    .sort((a, b) => a.order - b.order)
+    .map(stop => ({ ...stop, color: getStopColor(stop, trip) }));
 
   const rawBookings = ((val.bookings ?? {}) as Record<string, Omit<Booking, 'id'> & { id?: string }>);
   const bookings: Booking[] = Object.entries(rawBookings)

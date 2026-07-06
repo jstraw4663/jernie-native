@@ -9,15 +9,15 @@ import Animated, {
 import type { SharedValue } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { Trip, Stop } from '@/src/types';
+import type { Trip, StopWithColor } from '@/src/types';
 import { Typography, Radius, Spacing, Semantic } from '@/src/design/tokens';
 import { formatDateRange } from '@/src/utils/dates';
 import { getDevNow } from '@/src/utils/devTime';
 
 interface HeroLayerProps {
   trip: Trip;
-  activeStop: Stop;              // date-based — drives phase pill label
-  visibleStop?: Stop;            // scroll-position — drives compact strip city/emoji (optional)
+  activeStop: StopWithColor;              // date-based — drives phase pill label
+  visibleStop?: StopWithColor;            // scroll-position — drives compact strip city/emoji (optional)
   scrollY?: SharedValue<number>; // when omitted, hero renders at full height without animation
 }
 
