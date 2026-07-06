@@ -18,7 +18,9 @@ export interface UserProfile {
   plan: UserPlan;
   createdAt: number;
   anonCreatedAt: number | null;  // set on anon creation, cleared on link
-  trips: Record<string, true>;
+  // Denormalized read index only — the authoritative role always lives at
+  // trips/{tripId}/members/{uid}.role.
+  trips: Record<string, { role: TripMemberRole; joinedAt: number }>;
 }
 
 // ── Trip ────────────────────────────────────────────────────────────────────
@@ -58,9 +60,13 @@ export interface Stop {
   lat: number;
   lon: number;
   dates: { start: string; end: string };  // ISO date strings YYYY-MM-DD
-  color: string;  // resolved from colorPack at creation
   order: number;
 }
+
+// `color` is never persisted — it's always derived live from `trip.colorPack` + `stop.order`
+// (see `src/domain/trip.ts`'s `getStopColor`). This is the only place a resolved color
+// should ever live on a stop-shaped object.
+export type StopWithColor = Stop & { color: string };
 
 // ── Place ───────────────────────────────────────────────────────────────────
 
@@ -76,29 +82,45 @@ export interface Place {
   source: 'curator' | 'community';
   addedBy: string;      // uid
   fsq_id?: string;      // Foursquare canonical ID (set after enrichment)
+  // Hand-curated fields (not API-fetched — these are ours, so they live directly on the
+  // RTDB-backed type, not the Firestore enrichment path).
+  rating?: number;
+  price?: string;
+  difficulty?: string;
+  duration?: string;
+  distance?: string;
+  photoUrl?: string;
+  subcategory?: string;
+  emoji?: string;
 }
 
 // ── Bookings ────────────────────────────────────────────────────────────────
 
-export interface FlightBooking {
+export interface BookingBase {
   id: string;
   tripId: string;
   stopId: string;
-  type: 'flight';
+  type: BookingType;
+  groupIds?: string[] | null;
+}
+
+export interface FlightLeg {
   flightNumber: string;
   airline: string;
-  origin: string;       // IATA code
-  destination: string;  // IATA code
+  origin: string;       // IATA
+  destination: string;  // IATA
   departureDate: string;
   departureTime: string;
   arrivalTime: string;
+}
+
+export interface FlightBooking extends BookingBase {
+  type: 'flight';
+  legs: FlightLeg[];  // real data has connecting flights (e.g. CLT→BWI→PWM as 2 legs) — never a single flat leg
   confirmationCode?: string;
 }
 
-export interface HotelBooking {
-  id: string;
-  tripId: string;
-  stopId: string;
+export interface HotelBooking extends BookingBase {
   type: 'hotel';
   hotelName: string;
   checkIn: string;   // YYYY-MM-DD
@@ -108,10 +130,7 @@ export interface HotelBooking {
   address?: string;
 }
 
-export interface RentalBooking {
-  id: string;
-  tripId: string;
-  stopId: string;
+export interface RentalBooking extends BookingBase {
   type: 'rental';
   company: string;
   carType?: string;
@@ -122,12 +141,11 @@ export interface RentalBooking {
   pickupLocation: string;
   dropoffLocation: string;
   confirmationCode?: string;
+  // Present only when dropoff city != pickup city; `stopId` is always the pickup stop.
+  dropoffStopId?: string;
 }
 
-export interface RestaurantBooking {
-  id: string;
-  tripId: string;
-  stopId: string;
+export interface RestaurantBooking extends BookingBase {
   type: 'restaurant';
   restaurantName: string;
   date: string;         // YYYY-MM-DD
@@ -152,6 +170,7 @@ export interface ItineraryItem {
   category?: ItineraryItemCategory;
   order: number;
   locked?: boolean;
+  groupIds?: string[] | null;
 }
 
 export interface ItineraryDay {
@@ -165,9 +184,18 @@ export interface ItineraryDay {
 
 export interface TripMember {
   uid: string;
-  handle: string;
+  handle: string;   // denormalized at join time — avoids reading another user's private users/{uid} profile to render a member list
   role: TripMemberRole;
   joinedAt: number;
+}
+
+export interface Group {
+  id: string;
+  tripId: string;
+  name: string;
+  memberUids: string[];
+  createdBy: string;   // uid
+  createdAt: number;
 }
 
 // ── Community suggestions ────────────────────────────────────────────────────

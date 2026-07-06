@@ -31,6 +31,11 @@ function FlightCard({
   stopCity?: string;
   onPress?: () => void;
 }) {
+  // TODO(Task 6): render every leg as its own row — this is a minimal compile-safe
+  // shim from Task 1's FlightBooking.legs type change; overall route uses the first
+  // leg's origin and the last leg's destination for now.
+  const firstLeg = booking.legs[0];
+  const lastLeg = booking.legs[booking.legs.length - 1];
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={onPress ? 0.85 : 1} disabled={!onPress}>
       <LinearGradient
@@ -40,7 +45,7 @@ function FlightCard({
         style={styles.flightCard}
       >
         <View style={styles.flightTop}>
-          <Text style={styles.flightTag}>{booking.airline} · {booking.flightNumber}</Text>
+          <Text style={styles.flightTag}>{firstLeg.airline} · {firstLeg.flightNumber}</Text>
           <View style={styles.onTimeChip}>
             <Text style={styles.onTimeText}>On time</Text>
           </View>
@@ -48,13 +53,13 @@ function FlightCard({
 
         <View style={styles.flightRoute}>
           <View style={styles.routeEndpoint}>
-            <Text style={styles.airportCode}>{booking.origin}</Text>
-            <Text style={styles.flightTime}>{booking.departureTime}</Text>
+            <Text style={styles.airportCode}>{firstLeg.origin}</Text>
+            <Text style={styles.flightTime}>{firstLeg.departureTime}</Text>
           </View>
           <Text style={styles.routeArrow}>→</Text>
           <View style={[styles.routeEndpoint, styles.routeEndpointRight]}>
-            <Text style={styles.airportCode}>{booking.destination}</Text>
-            <Text style={styles.flightTime}>{booking.arrivalTime}</Text>
+            <Text style={styles.airportCode}>{lastLeg.destination}</Text>
+            <Text style={styles.flightTime}>{lastLeg.arrivalTime}</Text>
             {stopCity && <Text style={styles.airportCity}>{stopCity}</Text>}
           </View>
         </View>

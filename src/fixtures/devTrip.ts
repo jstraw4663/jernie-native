@@ -25,7 +25,6 @@ export const DEV_STOPS: Stop[] = [
     lat: 43.6615,
     lon: -70.2553,
     dates: { start: '2026-07-10', end: '2026-07-12' },
-    color: '#2C5880',
     order: 0,
   },
   {
@@ -37,7 +36,6 @@ export const DEV_STOPS: Stop[] = [
     lat: 44.3876,
     lon: -68.2039,
     dates: { start: '2026-07-12', end: '2026-07-15' },
-    color: '#2F6B47',
     order: 1,
   },
 ];
@@ -48,13 +46,17 @@ export const DEV_BOOKINGS: Booking[] = [
     tripId: 'dev-trip-001',
     stopId: 'stop-portland',
     type: 'flight',
-    airline: 'JetBlue',
-    flightNumber: 'B6 274',
-    origin: 'BOS',
-    destination: 'PWM',
-    departureDate: '2026-07-10',
-    departureTime: '7:15 AM',
-    arrivalTime: '8:22 AM',
+    legs: [
+      {
+        airline: 'JetBlue',
+        flightNumber: 'B6 274',
+        origin: 'BOS',
+        destination: 'PWM',
+        departureDate: '2026-07-10',
+        departureTime: '7:15 AM',
+        arrivalTime: '8:22 AM',
+      },
+    ],
     confirmationCode: 'JBLMNE',
   },
   {

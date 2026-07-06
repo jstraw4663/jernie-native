@@ -6,10 +6,48 @@
         ".write": "$uid === auth.uid"
       }
     },
+    "inviteTokens": {
+      "$token": {
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('trips/' + newData.val() + '/ownerUid').val() === auth.uid",
+        ".validate": "newData.isString()"
+      }
+    },
     "trips": {
       "$tripId": {
-        ".read": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/memberHandles/' + auth.uid).exists())",
-        ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/memberHandles/' + auth.uid).exists() || !data.exists())"
+        ".read": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists())",
+        ".write": "auth != null && !data.exists() && newData.child('ownerUid').val() === auth.uid",
+
+        "members": {
+          "$uid": {
+            ".write": "auth != null && $uid === auth.uid && !data.exists() && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/joinProofs/' + auth.uid).val() === root.child('trips/' + $tripId + '/inviteToken').val())",
+            ".validate": "newData.hasChildren(['uid', 'handle', 'role', 'joinedAt']) && newData.child('uid').val() === auth.uid && ((root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid && newData.child('role').val() === 'organizer') || (root.child('trips/' + $tripId + '/ownerUid').val() !== auth.uid && newData.child('role').val() === 'traveler'))"
+          }
+        },
+
+        "joinProofs": {
+          "$uid": {
+            ".write": "auth != null && $uid === auth.uid && !root.child('trips/' + $tripId + '/members/' + auth.uid).exists()",
+            ".validate": "newData.isString()"
+          }
+        },
+
+        "groups": {
+          "$groupId": {
+            ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists()) && ((data.exists() && (data.child('createdBy').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid + '/role').val() === 'organizer')) || (!data.exists() && newData.child('createdBy').val() === auth.uid))"
+          }
+        },
+
+        "stops":            { ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists())" },
+        "bookings":         { ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists())" },
+        "itinerary":        { ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists())" },
+        "confirms":         { ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists())" },
+        "reservationTimes": { ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists())" },
+        "places":           { ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists())" },
+        "name":             { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" },
+        "pills":            { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" },
+        "colorPack":        { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" },
+        "setupIntent":      { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" }
       }
     }
   }

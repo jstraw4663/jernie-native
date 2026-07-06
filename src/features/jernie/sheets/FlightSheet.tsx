@@ -37,6 +37,12 @@ export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
   const scrollY = useSharedValue(0);
   const handleScroll = (e: { nativeEvent: { contentOffset: { y: number } } }) => { scrollY.value = e.nativeEvent.contentOffset.y; };
 
+  // TODO(Task 6): render every leg (route/times per leg) — this is a minimal compile-safe
+  // shim from Task 1's FlightBooking.legs type change; hero/summary use the overall
+  // first-leg-origin → last-leg-destination route for now.
+  const firstLeg = booking.legs[0];
+  const lastLeg = booking.legs[booking.legs.length - 1];
+
   return (
     <View style={s.root}>
       <SheetHero mode="travel" stopColor={Brand.navy} onClose={onClose} scrollY={scrollY}>
@@ -45,20 +51,20 @@ export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
         </View>
         <View style={s.heroRoute}>
           <View>
-            <Text style={s.heroAirport}>{booking.origin}</Text>
-            <Text style={s.heroMeta}>{booking.departureTime}{m.terminal_origin ? ` · Terminal ${m.terminal_origin}` : ''}</Text>
+            <Text style={s.heroAirport}>{firstLeg.origin}</Text>
+            <Text style={s.heroMeta}>{firstLeg.departureTime}{m.terminal_origin ? ` · Terminal ${m.terminal_origin}` : ''}</Text>
           </View>
           <Text style={s.heroArrow}>→</Text>
           <View>
-            <Text style={s.heroAirport}>{booking.destination}</Text>
-            <Text style={s.heroMeta}>{booking.arrivalTime}</Text>
+            <Text style={s.heroAirport}>{lastLeg.destination}</Text>
+            <Text style={s.heroMeta}>{lastLeg.arrivalTime}</Text>
           </View>
         </View>
       </SheetHero>
       <BottomSheetScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
       <View style={s.titleBlock}>
-        <Text style={s.name}>{booking.origin} → {booking.destination} · {booking.flightNumber}</Text>
-        <Text style={s.subtitle}>{booking.airline} · {booking.departureDate}</Text>
+        <Text style={s.name}>{firstLeg.origin} → {lastLeg.destination} · {firstLeg.flightNumber}</Text>
+        <Text style={s.subtitle}>{firstLeg.airline} · {firstLeg.departureDate}</Text>
       </View>
 
       <View style={s.section}>
@@ -66,27 +72,27 @@ export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
         <LinearGradient colors={[Brand.navy, Brand.navySoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.flightBlock}>
           <View style={s.flRoute}>
             <View style={s.flEnd}>
-              <Text style={s.flAirport}>{booking.origin}</Text>
-              <Text style={s.flTime}>{booking.departureTime}</Text>
+              <Text style={s.flAirport}>{firstLeg.origin}</Text>
+              <Text style={s.flTime}>{firstLeg.departureTime}</Text>
             </View>
             <Text style={s.flArrow}>→</Text>
             <View style={[s.flEnd, s.flEndRight]}>
-              <Text style={s.flAirport}>{booking.destination}</Text>
-              <Text style={s.flTime}>{booking.arrivalTime}</Text>
+              <Text style={s.flAirport}>{lastLeg.destination}</Text>
+              <Text style={s.flTime}>{lastLeg.arrivalTime}</Text>
             </View>
           </View>
           <View style={s.flMeta}>
             {m.gate_origin    && <MetaItem label="Gate"     value={m.gate_origin} />}
             {m.aircraft_type  && <MetaItem label="Aircraft" value={m.aircraft_type} />}
-            <MetaItem label="Flight" value={booking.flightNumber} />
+            <MetaItem label="Flight" value={firstLeg.flightNumber} />
           </View>
         </LinearGradient>
       </View>
 
       <InfoSection title="Status" rows={[
         { label: 'Status',      value: m.status === 'on_time' ? 'On Time' : m.status, variant: m.status === 'on_time' ? 'link' : 'warning' },
-        { label: 'Departs',     value: `${booking.departureTime}${m.gate_origin ? ` · Gate ${m.gate_origin}` : ''}${m.terminal_origin ? ` · Terminal ${m.terminal_origin}` : ''}` },
-        { label: 'Arrives',     value: `${booking.arrivalTime}${m.terminal_destination ? ` · Terminal ${m.terminal_destination}` : ''}` },
+        { label: 'Departs',     value: `${firstLeg.departureTime}${m.gate_origin ? ` · Gate ${m.gate_origin}` : ''}${m.terminal_origin ? ` · Terminal ${m.terminal_origin}` : ''}` },
+        { label: 'Arrives',     value: `${lastLeg.arrivalTime}${m.terminal_destination ? ` · Terminal ${m.terminal_destination}` : ''}` },
         { label: 'Leave hotel', value: m.leaveByLabel, variant: 'warning' },
       ]} />
 
