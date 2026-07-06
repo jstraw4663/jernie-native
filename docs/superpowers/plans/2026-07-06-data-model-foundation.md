@@ -94,7 +94,9 @@ This is the largest and highest-risk task in the plan — it must be fully corre
 
 ### 1b. RTDB schema (`database.rules.json` + implicit path tree)
 
-New paths under `trips/{tripId}/`: `members/{uid}` (`TripMember`), `groups/{groupId}` (`Group`), `joinProofs/{uid}` (write-once string, rules-only, never read by app code). New top-level path: `inviteTokens/{token}: string` (value = tripId — top-level so a bare token resolves to a trip without already knowing the tripId). New path: `users/{uid}/trips/{tripId}: {role, joinedAt}`. Delete `memberHandles` (the current dead sketch in rules) in favor of `members/{uid}`.
+New paths under `trips/{tripId}/`: `members/{uid}` (`TripMember`), `groups/{groupId}` (`Group`), `joinProofs/{uid}` (a write-once-until-membership-exists string, rules-only, never read by app code). New top-level path: `inviteTokens/{token}: string` (value = tripId — top-level so a bare token resolves to a trip without already knowing the tripId). New path: `users/{uid}/trips/{tripId}: {role, joinedAt}`. Delete `memberHandles` (the current dead sketch in rules) in favor of `members/{uid}`.
+
+**This section supersedes an earlier draft of this plan that was proven wrong by empirical testing during this task — read the "Why this design, not the obvious one" note below before implementing, it explains two real RTDB behaviors that any simpler-looking design will run into.**
 
 Replace `database.rules.json` with:
 
@@ -117,45 +119,75 @@ Replace `database.rules.json` with:
     "trips": {
       "$tripId": {
         ".read": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists())",
-        ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists() || !data.exists())",
+        ".write": "auth != null && !data.exists() && newData.child('ownerUid').val() === auth.uid",
 
         "members": {
           "$uid": {
-            ".write": "auth != null && $uid === auth.uid && !data.exists() && root.child('trips/' + $tripId + '/joinProofs/' + auth.uid).val() === root.child('trips/' + $tripId + '/inviteToken').val()",
-            ".validate": "newData.hasChildren(['uid', 'handle', 'role', 'joinedAt']) && newData.child('uid').val() === auth.uid && newData.child('role').val() === 'traveler'"
+            ".write": "auth != null && $uid === auth.uid && !data.exists() && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/joinProofs/' + auth.uid).val() === root.child('trips/' + $tripId + '/inviteToken').val())",
+            ".validate": "newData.hasChildren(['uid', 'handle', 'role', 'joinedAt']) && newData.child('uid').val() === auth.uid && ((root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid && newData.child('role').val() === 'organizer') || (root.child('trips/' + $tripId + '/ownerUid').val() !== auth.uid && newData.child('role').val() === 'traveler'))"
           }
         },
 
         "joinProofs": {
           "$uid": {
-            ".write": "auth != null && $uid === auth.uid && !data.exists() && root.child('trips/' + $tripId + '/members/' + auth.uid).exists()",
-            ".validate": "newData.isString() && newData.val() === root.child('trips/' + $tripId + '/inviteToken').val()"
+            ".write": "auth != null && $uid === auth.uid && !root.child('trips/' + $tripId + '/members/' + auth.uid).exists()",
+            ".validate": "newData.isString()"
           }
         },
 
         "groups": {
           "$groupId": {
-            ".write": "auth != null && (data.child('createdBy').val() === auth.uid || (data.exists() && root.child('trips/' + $tripId + '/members/' + auth.uid + '/role').val() === 'organizer') || (!data.exists() && newData.child('createdBy').val() === auth.uid))"
+            ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists()) && ((data.exists() && (data.child('createdBy').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid + '/role').val() === 'organizer')) || (!data.exists() && newData.child('createdBy').val() === auth.uid))"
           }
-        }
+        },
+
+        "stops":            { ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists())" },
+        "bookings":         { ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists())" },
+        "itinerary":        { ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists())" },
+        "confirms":         { ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists())" },
+        "reservationTimes": { ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists())" },
+        "places":           { ".write": "auth != null && (root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid || root.child('trips/' + $tripId + '/members/' + auth.uid).exists())" },
+        "name":             { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" },
+        "pills":            { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" },
+        "colorPack":        { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" },
+        "setupIntent":      { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" }
       }
     }
   }
 }
 ```
 
-Mechanism explanation (for your own understanding, not something to re-derive): Firebase evaluates `.write`/`.validate` rules against the state *after* a whole multi-path `update()` completes. So a client joining a trip performs **one atomic update** writing `trips/{tripId}/members/{uid}`, `trips/{tripId}/joinProofs/{uid}`, and `users/{uid}/trips/{tripId}` together — `members/{uid}`'s rule requires `joinProofs/{uid}` (in that same update) to equal the trip's real `inviteToken`, and `joinProofs/{uid}`'s rule requires `members/{uid}` to already exist (in that same update). Neither path is writable alone, so a wrong token or a partial write rejects the entire multi-path update atomically — no orphaned partial state, no token-guessing oracle. `members/{uid}.validate` forces `role: 'traveler'` on self-join. Trip creation (owner's own first `members/{ownerUid}` write) is covered by the parent trip rule's `!data.exists()` branch. `groups/{groupId}` write is restricted to the group's creator or a trip organizer — not the blanket "any member" rule the rest of the subtree uses.
+### Why this design, not the obvious one — two real RTDB behaviors this must respect
+
+**1. Rules cannot rely on a sibling path's post-update value within the same multi-location `update()` call.** It is tempting to write `members/{uid}` and `joinProofs/{uid}` so each one's rule validates against the *other*, then write both in one atomic `update()`, assuming Firebase evaluates rules against the state *after* the whole update completes. **That assumption is false and was disproven empirically during this task** (see the earlier task report if you want the isolation test that proved it — a minimal `testA`/`testB` sibling-write experiment, checked both `.write` and `.validate`, both key orders, both flattened and nested bodies): a rule referencing a sibling path being written in the *same* `update()` sees that sibling's **pre-update** state, not its post-update state. Two separate, sequential requests work correctly (the second request's rule correctly sees the first request's already-committed result) — it is only simultaneous sibling writes in one call that fail this way.
+
+This is why the join flow below is **two sequential requests, not one atomic multi-path update**: step 1 commits `joinProofs/{uid}` on its own (a rule that needs no cross-reference to succeed); step 2, a *separate* subsequent request, writes `members/{uid}` (+ optionally bundled with `users/{uid}/trips/{tripId}`, which don't reference each other), and its rule correctly reads the now-already-committed `joinProofs/{uid}` value from step 1. The same two-step pattern applies to trip creation (trip object first, standalone; then a second update bundling `members/{ownerUid}` + `users/{ownerUid}/trips/{tripId}` + `inviteTokens/{token}`, none of which reference each other — they only reference the already-committed trip object from step 1).
+
+**2. RTDB write permission cascades permissively down the tree and cannot be narrowed by a deeper rule.** A `.write` rule granted at `trips/$tripId` automatically grants write access to *every* descendant path, including `members/{anyUid}` and `groups/{anyGroupId}` — a more specific, tighter rule written on those child paths **cannot revoke** what the parent already granted; child rules can only add additional allowed cases, never restrict. This means the trip-level `.write` rule must **not** be a blanket "owner or any member" grant (which was the earlier, wrong draft) — that would silently make the `members`/`groups` child rules dead code, since any member would already have unconditional write access to them via the parent. Instead, `trips/$tripId/.write` here is narrowed to *only* the trip-creation case (`!data.exists()`), and every other trip-content collection that should be broadly member-writable (`stops`, `bookings`, `itinerary`, `confirms`, `reservationTimes`, `places`, plus trip metadata fields restricted to the owner) gets its **own** explicit `.write` rule instead of inheriting one from the parent. `.read`, by contrast, is fine as a single rule at `trips/$tripId` — every trip-content path should be uniformly readable by any member, so cascading read access is exactly what's wanted there.
+
+### Corrected write protocol (both call sites this affects — Tasks 3, 5, 9 all reference this)
+
+**Trip creation (owner bootstrap):**
+1. `set()` the full trip object at `trips/{tripId}` (single-path write — its own rule needs no cross-reference, so this is safe even though the trip object's `ownerUid` field is part of what's being validated).
+2. A **separate**, subsequent `update()` bundling `trips/{tripId}/members/{ownerUid}` (`{uid, handle, role: 'organizer', joinedAt}`), `users/{ownerUid}/trips/{tripId}` (`{role: 'organizer', joinedAt}`), and `inviteTokens/{token}` (`tripId`) — safe to bundle together since none of these three rules reference each other, only the already-committed step-1 trip object.
+
+**Joining via invite token:**
+1. `set()` `trips/{tripId}/joinProofs/{uid}` = the token string (single-path write; rule only checks `!members.exists()`, no cross-reference).
+2. A **separate**, subsequent `update()` bundling `trips/{tripId}/members/{uid}` (`{uid, handle, role: 'traveler', joinedAt}`) and `users/{uid}/trips/{tripId}` (`{role: 'traveler', joinedAt}`) — safe to bundle since neither references the other; `members/{uid}`'s rule reads the already-committed `joinProofs/{uid}` from step 1.
+
+`joinProofs/{uid}` is deliberately retriable (`!members.exists()`, not `!data.exists()`) so a wrong-token typo doesn't permanently lock a uid out of ever retrying — this doesn't weaken security beyond the already-accepted no-rate-limiting tradeoff (invite tokens have no brute-force throttling without Cloud Functions, noted as an accepted pre-launch risk).
 
 ### 1c. Verify the rules empirically — do this now, not later
 
 1. Check whether `firebase.json` already has an `emulators` block (it currently only has `database`/`firestore` rules paths) — add a minimal one for the database emulator.
 2. Run `firebase emulators:start --only database --project jernie-native-dev` (Firebase CLI is on PATH per prior exploration).
-3. Using the emulator's REST API (`curl` against `http://localhost:<port>/...json?auth=<fake-token>` or the RTDB emulator's debug endpoints — whichever is faster to script) or a tiny throwaway Node script, exercise this test matrix and confirm each outcome:
-   - Owner writes a new trip (`!data.exists()` branch) → succeeds; a second, different uid cannot read it yet.
-   - Second uid performs the atomic 3-path update with the **correct** `inviteToken` → succeeds; `members/{uid}`, `joinProofs/{uid}`, `users/{uid}/trips/{tripId}` all present; the trip is now readable by that uid.
-   - A third uid attempts the same update with an **incorrect** token on a fresh trip → the entire update is rejected; confirm **neither** `members/{uid}` nor `joinProofs/{uid}` exists afterward (the crux atomicity check).
+3. Using the emulator's REST API (`curl` against `http://localhost:<port>/...json?auth=<fake-token>`) or a tiny throwaway Node script, exercise this test matrix and confirm each outcome:
+   - Owner writes a new trip via the 2-step protocol above → both steps succeed; a second, different uid cannot read it yet.
+   - Owner's `members/{ownerUid}` entry has `role: 'organizer'` — confirm this is actually achievable (the earlier draft made this permanently impossible; re-verify it now works).
+   - Second uid performs the 2-step join protocol with the **correct** `inviteToken` → both steps succeed; `members/{uid}`, `joinProofs/{uid}`, `users/{uid}/trips/{tripId}` all present; the trip is now readable by that uid.
+   - A third uid attempts step 1 (joinProofs) with an **incorrect** token, then attempts step 2 → step 2 is rejected; confirm `members/{uid}` does not exist, and confirm the uid can retry step 1 with the correct token afterward and then succeed at step 2 (the retry-safety property).
    - A uid not a member of a trip cannot read another user's `users/{otherUid}`.
-   - A non-creator, non-organizer trip member cannot write to an existing `groups/{groupId}` created by someone else; the creator can; an organizer (who didn't create it) can.
+   - **The cascading-permission fix**: confirm a trip member who is *not* the trip owner and did *not* create a given `groups/{groupId}` cannot write to it; confirm the group's creator can; confirm an organizer (who didn't create it) can. This specifically re-tests the vulnerability where the old blanket trip-level `.write` rule would have made this restriction unenforceable — don't skip it.
 4. If any case fails, fix the rules here before proceeding — Tasks 3–4 build hooks on top of this.
 
 ### 1d. Stop-color derivation
@@ -242,11 +274,11 @@ Generic over both `Booking` and `ItineraryItem`. Organizers bypass filtering ent
 
 ### `src/hooks/useJoinTrip.ts`
 
-`useJoinTrip(): { joinTrip: (token: string) => Promise<{ tripId: string }>; status: 'idle'|'joining'|'success'|'error'; error: Error | null }`. Implementation: await `authReady` → `.once('value')` on `inviteTokens/{token}` to resolve `tripId` (throw if not found) → build the payload object for a single atomic `database().ref().update({...})` touching exactly three paths: `trips/{tripId}/members/{uid}` (`{uid, handle, role: 'traveler', joinedAt: Date.now()}` — `handle` can be a placeholder like the user's current `displayName` from auth, or `'Traveler'` if unavailable — note in your report which you chose), `trips/{tripId}/joinProofs/{uid}` (the token string itself), `users/{uid}/trips/{tripId}` (`{role: 'traveler', joinedAt}`) → call `.update()` → return `{tripId}`.
+`useJoinTrip(): { joinTrip: (token: string) => Promise<{ tripId: string }>; status: 'idle'|'joining'|'success'|'error'; error: Error | null }`. This must follow the **two-step sequential protocol** from Task 1's 1b (RTDB rules cannot validate a self-join by cross-referencing a sibling path written in the same `update()` — that was proven false during Task 1 and the rules were redesigned around a strictly sequential write order; do not attempt to bundle these into one atomic call). Implementation: await `authReady` → `.once('value')` on `inviteTokens/{token}` to resolve `tripId` (throw if not found) → **step 1**: `database().ref('trips/{tripId}/joinProofs/{uid}').set(token)`, awaited to completion → **step 2**: only after step 1 resolves, `database().ref().update({...})` bundling exactly two paths: `trips/{tripId}/members/{uid}` (`{uid, handle, role: 'traveler', joinedAt: Date.now()}` — `handle` can be a placeholder like the user's current `displayName` from auth, or `'Traveler'` if unavailable — note in your report which you chose) and `users/{uid}/trips/{tripId}` (`{role: 'traveler', joinedAt}`) → return `{tripId}`. If step 2 rejects (e.g. wrong token), the hook should surface the error via `status: 'error'`/`error` — the caller can retry `joinTrip` again (step 1's write is retriable by design, see 1b).
 
 ### Tests
 
-One test file per hook, following the existing `useTripConfirms.test.ts` pattern (read it first): capture the `.on`/`.once`/`.update` callbacks the mock records, assert the exact paths passed and the resulting normalized shape / resolved promise. `useJoinTrip`'s test should cover: successful join builds the correct 3-path update payload; token-not-found path rejects before attempting any write.
+One test file per hook, following the existing `useTripConfirms.test.ts` pattern (read it first): capture the `.on`/`.once`/`.set`/`.update` callbacks the mock records, assert the exact paths passed and the resulting normalized shape / resolved promise. `useJoinTrip`'s test should cover: successful join calls `.set()` on `joinProofs` *before* `.update()` on `members`/`users-index` (assert call order, not just that both happened); token-not-found path rejects before attempting any write; a step-2 rejection (mock `.update()` to reject) surfaces as `status: 'error'` without the hook silently retrying on its own.
 
 **Definition of done:** no new tsc errors, `npx jest` green including all new hook test suites.
 
@@ -293,8 +325,7 @@ Loading/error gating stays keyed on `tripData.status` only (unchanged from today
 ### `src/lib/devSeed.ts` (`maybeSeedDevData`)
 
 - Remove `color` from the two seeded `stops` objects.
-- Change the current single `database().ref('trips/dev-trip-001').set(tripData)` call to one atomic multi-path `database().ref().update({...})` covering: `trips/dev-trip-001` (the trip data, minus per-stop `color`), `users/{uid}/trips/dev-trip-001` (`{role: 'organizer', joinedAt}`), and `inviteTokens/abc123` (value: `'dev-trip-001'`).
-- Add `trips/dev-trip-001/members/{uid}: {uid, handle: 'Jeremy', role: 'organizer', joinedAt}` to the same update payload.
+- Follow the **two-step trip-creation protocol** from Task 1's 1b (do not bundle the trip object with `members`/`inviteTokens` in one call — the rules require the trip object to be committed first, as a standalone write, before anything that reads its `ownerUid` can be written): **step 1**, keep the existing `database().ref('trips/dev-trip-001').set(tripData)` call as-is (trip data minus per-stop `color`); **step 2**, after step 1 resolves, one `database().ref().update({...})` covering `trips/dev-trip-001/members/{uid}` (`{uid, handle: 'Jeremy', role: 'organizer', joinedAt}`), `users/{uid}/trips/dev-trip-001` (`{role: 'organizer', joinedAt}`), and `inviteTokens/abc123` (value: `'dev-trip-001'`).
 - Add one sample group: `trips/dev-trip-001/groups/group-guys-hike: {id: 'group-guys-hike', tripId: 'dev-trip-001', name: "Guys' hike day", memberUids: [uid], createdBy: uid, createdAt}`, and tag one existing itinerary item (the Acadia hike item — locate it by searching for "Acadia" or "hike" in the current seed data) with `groupIds: ['group-guys-hike']`.
 - Give the existing rental car booking a `dropoffStopId` different from its `stopId` (e.g. pickup at Portland, dropoff at Bar Harbor) to exercise the cross-stop case end-to-end; remove any flat flight fields on the flight booking in favor of a `legs: [...]` array (can be a single-element array if the seeded flight has no layover — just needs to conform to the new type).
 - Bump `SEED_KEY` (find its current value in the file) so every dev install re-seeds under the new schema on next launch — this is the migration mechanism for dev/fixture data, since `jernie-native-dev` currently holds only this deterministic fixture (no real testers yet), making this a clean cutover with no compat shim needed.
@@ -362,7 +393,7 @@ Read `~/jernie/public/trip.json` first to confirm its exact current shape before
 - `groups` → `Group[]`: carry `id, name`; set `memberUids: [yourUid]` only for the group you (Jeremy) actually belong to based on the source `members` array (e.g. "Jeremy & Jennie" → `[yourUid]`, since Jennie hasn't joined yet); the other group's `memberUids` starts empty. `createdBy` = your uid, `createdAt` = now.
 - **Explicitly skip** `alerts` and `packing_lists` — no equivalent schema exists yet (deferred per plan Context); do not invent a schema for them in this script.
 
-Write everything via one atomic `update()` under `trips/maine-2026`, plus `trips/maine-2026/members/{yourUid}` (`role: 'organizer'`) and `users/{yourUid}/trips/maine-2026` (`role: 'organizer'`).
+Write via the same **two-step trip-creation protocol** as Task 5 (Task 1's 1b): step 1, `set()` the full trip object at `trips/maine-2026`, standalone; step 2, after step 1 resolves, one `update()` bundling `trips/maine-2026/members/{yourUid}` (`role: 'organizer'`), `users/{yourUid}/trips/maine-2026` (`role: 'organizer'`), and `inviteTokens/{token}`. Also write `stops`, `bookings`, `places`, `itinerary` — these can go in step 1's trip object directly (they're part of the same single `set()`, no cross-reference concern since nothing references them from another path in that same call) or as part of step 2's `update()` if easier to construct incrementally — either is fine since the `stops`/`bookings`/`itinerary`/`places` rules only check owner/member status, not each other.
 
 Verify using the same manual approach as Task 8, pointed at this real trip instead of the dev fixture — load it in the app, confirm stops/bookings/itinerary/places render, confirm the cross-stop rental and the group-scoped item behave correctly.
 
