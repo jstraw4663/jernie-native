@@ -112,6 +112,19 @@ test('rental: shows no badge when stopId is not supplied', () => {
   expect(texts(tree)).not.toContain('Drop-off here');
 });
 
+test('rental: falls back to pickup location when stopId is not supplied, even for a same-stop rental with no dropoffStopId', () => {
+  // Regression test: `stopId === booking.dropoffStopId` must not spuriously match when
+  // both sides are `undefined` (no stopId prop + a rental with no dropoffStopId field).
+  const distinctLocationsRental: RentalBooking = {
+    ...sameStopRental,
+    pickupLocation: 'Downtown depot',
+    dropoffLocation: 'Airport depot',
+  };
+  const tree = renderCard(<TravelCard booking={distinctLocationsRental} stopColor="#000" />);
+  expect(texts(tree)).toContain('Downtown depot');
+  expect(texts(tree)).not.toContain('Airport depot');
+});
+
 // ── Flight legs ────────────────────────────────────────────────────────────────
 
 test('flight: single-leg booking renders the hero route but no extra per-leg rows', () => {

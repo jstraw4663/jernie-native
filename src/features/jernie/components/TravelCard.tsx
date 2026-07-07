@@ -154,7 +154,9 @@ function RentalCard({ booking, stopColor, stopId }: { booking: Extract<Booking, 
           {shortDate(booking.pickupDate)} – {shortDate(booking.dropoffDate)}
         </Text>
         <Text style={styles.surfaceCardMeta}>
-          {stopId === booking.dropoffStopId ? booking.dropoffLocation : booking.pickupLocation}
+          {/* Guard against `stopId === undefined === booking.dropoffStopId` matching when
+              neither is set (no stopId prop + a same-stop rental with no dropoffStopId). */}
+          {stopId !== undefined && stopId === booking.dropoffStopId ? booking.dropoffLocation : booking.pickupLocation}
         </Text>
       </View>
     </View>
