@@ -6,7 +6,7 @@ import type { Booking, ItineraryDay } from '@/src/types';
 // using the anonymous auth UID as ownerUid so RTDB rules pass on subsequent reads.
 
 const seedStorage = createMMKV({ id: 'jernie-seed' });
-const SEED_KEY = 'seeded_v1_dev_trip_001';
+const SEED_KEY = 'seeded_v2_dev_trip_001';
 
 export async function maybeSeedDevData(): Promise<void> {
   if (!__DEV__) return;
@@ -24,7 +24,6 @@ export async function maybeSeedDevData(): Promise<void> {
       lat: 43.6615,
       lon: -70.2553,
       dates: { start: '2026-07-10', end: '2026-07-12' },
-      color: '#2C5880',
       order: 0,
     },
     'stop-bar-harbor': {
@@ -36,7 +35,6 @@ export async function maybeSeedDevData(): Promise<void> {
       lat: 44.3876,
       lon: -68.2039,
       dates: { start: '2026-07-12', end: '2026-07-15' },
-      color: '#2F6B47',
       order: 1,
     },
   };
@@ -84,6 +82,7 @@ export async function maybeSeedDevData(): Promise<void> {
       dropoffTime: '2:00 PM',
       pickupLocation: 'Portland Jetport',
       dropoffLocation: 'Trenton, ME',
+      dropoffStopId: 'stop-bar-harbor',
     },
     'booking-hotel-bar-harbor': {
       id: 'booking-hotel-bar-harbor',
@@ -169,7 +168,7 @@ export async function maybeSeedDevData(): Promise<void> {
         stopId: 'stop-bar-harbor',
         dateIso: '2026-07-13',
         items: [
-          { id: 'i-bh-2-1', type: 'custom',  label: 'Acadia National Park hike',                                                time: '8:00 AM',   category: 'hike',       order: 0 },
+          { id: 'i-bh-2-1', type: 'custom',  label: 'Acadia National Park hike',                                                time: '8:00 AM',   category: 'hike',       order: 0, groupIds: ['group-guys-hike'] },
           { id: 'i-bh-2-2', type: 'booking', bookingId: 'booking-restaurant-jordan-pond', label: 'Jordan Pond House — lunch',  time: '12:30 PM',  category: 'restaurant', order: 1 },
           { id: 'i-bh-2-3', type: 'custom',  label: 'Cadillac Mountain sunset',                                                 time: '7:30 PM',   category: 'sight',      order: 2 },
         ],
@@ -206,9 +205,43 @@ export async function maybeSeedDevData(): Promise<void> {
     bookings,
     itinerary: itineraryDays,
     confirms: {},
+    groups: {
+      'group-guys-hike': {
+        id: 'group-guys-hike',
+        tripId: 'dev-trip-001',
+        name: "Guys' hike day",
+        memberUids: [user.uid],
+        createdBy: user.uid,
+        createdAt: 1748476800000,  // 2026-05-29 00:00:00 UTC
+      },
+    },
   };
 
+  // Step 1: create the trip as a standalone write. RTDB rules require the trip's
+  // ownerUid to already be committed before anything that reads it (members,
+  // users index, inviteTokens) can be written — see the two-step protocol
+  // established in Task 1 (database.rules.json) and empirically verified against
+  // the RTDB emulator: a sibling path bundled into the *same* multi-location
+  // update() call only sees the pre-update state, not this trip's new ownerUid.
   await database().ref('trips/dev-trip-001').set(tripData);
+
+  // Step 2: only after step 1 resolves, bundle the owner's membership record,
+  // the denormalized users/{uid}/trips read index, and the invite token lookup
+  // into a single update(). This is safe to bundle because none of these three
+  // paths is the trip object itself — they all just need the trip's ownerUid to
+  // already be committed, which step 1 guaranteed.
+  const joinedAt = 1748476800000;  // same instant as trip creation, for this fixture
+  await database().ref().update({
+    ['trips/dev-trip-001/members/' + user.uid]: {
+      uid: user.uid,
+      handle: 'Jeremy',
+      role: 'organizer',
+      joinedAt,
+    },
+    ['users/' + user.uid + '/trips/dev-trip-001']: { role: 'organizer', joinedAt },
+    'inviteTokens/abc123': 'dev-trip-001',
+  });
+
   seedStorage.set(SEED_KEY, true);
   console.log('[devSeed] Seeded dev-trip-001 as uid:', user.uid);
 }

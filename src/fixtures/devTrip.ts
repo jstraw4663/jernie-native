@@ -1,9 +1,11 @@
-import type { Trip, Stop, Booking, ItineraryDay } from '@/src/types';
+import type { Trip, Stop, Booking, ItineraryDay, TripMember, Group } from '@/src/types';
+
+const DEV_OWNER_UID = 'dev-uid';
 
 export const DEV_TRIP: Trip = {
   id: 'dev-trip-001',
   name: 'Maine Summer 2026',
-  ownerUid: 'dev-uid',
+  ownerUid: DEV_OWNER_UID,
   createdAt: Date.now(),
   pills: ['Adventure', 'Food-forward'],
   inviteToken: 'abc123',
@@ -81,6 +83,7 @@ export const DEV_BOOKINGS: Booking[] = [
     dropoffDate: '2026-07-15',
     pickupLocation: 'Portland Jetport',
     dropoffLocation: 'Trenton, ME',
+    dropoffStopId: 'stop-bar-harbor',
   },
   {
     id: 'booking-hotel-bar-harbor',
@@ -131,7 +134,7 @@ export const DEV_ITINERARY: Record<string, ItineraryDay[]> = {
       stopId: 'stop-bar-harbor',
       dateIso: '2026-07-13',
       items: [
-        { id: 'i-bh-2-1', type: 'custom', label: 'Acadia National Park hike',   time: '8:00 AM',   category: 'hike',       order: 0 },
+        { id: 'i-bh-2-1', type: 'custom', label: 'Acadia National Park hike',   time: '8:00 AM',   category: 'hike',       order: 0, groupIds: ['group-guys-hike'] },
         { id: 'i-bh-2-2', type: 'custom', label: 'Jordan Pond House lunch',     time: '12:30 PM',  category: 'restaurant', order: 1 },
         { id: 'i-bh-2-3', type: 'custom', label: 'Cadillac Mountain sunset',    time: '7:30 PM',   category: 'sight',      order: 2 },
       ],
@@ -147,3 +150,23 @@ export const DEV_ITINERARY: Record<string, ItineraryDay[]> = {
     },
   ],
 };
+
+export const DEV_MEMBERS: TripMember[] = [
+  {
+    uid: DEV_OWNER_UID,
+    handle: 'Jeremy',
+    role: 'organizer',
+    joinedAt: Date.now(),
+  },
+];
+
+export const DEV_GROUPS: Group[] = [
+  {
+    id: 'group-guys-hike',
+    tripId: 'dev-trip-001',
+    name: "Guys' hike day",
+    memberUids: [DEV_OWNER_UID],
+    createdBy: DEV_OWNER_UID,
+    createdAt: Date.now(),
+  },
+];
