@@ -3,16 +3,23 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTripData } from '@/src/hooks/useTripData';
 import { useTripConfirms } from '@/src/hooks/useTripConfirms';
+import { useTripMembers } from '@/src/hooks/useTripMembers';
+import { useTripGroups } from '@/src/hooks/useTripGroups';
+import { auth } from '@/src/lib/firebase';
+import { filterVisibleToUser } from '@/src/domain/groups';
 import { TripLoadingScreen } from '@/src/features/jernie/TripLoadingScreen';
 import { TripErrorScreen } from '@/src/features/jernie/TripErrorScreen';
 import { Semantic, Spacing, Typography } from '@/src/design/tokens';
-import type { Trip, StopWithColor, Booking, ItineraryDay } from '@/src/types';
+import type { Trip, StopWithColor, Booking, ItineraryDay, TripMember, Group } from '@/src/types';
 
 export interface TripContextValue {
   trip: Trip;
   stops: StopWithColor[];
-  bookings: Booking[];
-  itinerary: Record<string, ItineraryDay[]>;
+  bookings: Booking[];        // already visibility-filtered for currentUid
+  itinerary: Record<string, ItineraryDay[]>;  // items already visibility-filtered
+  members: TripMember[];
+  groups: Group[];
+  currentUid: string | null;
   confirms: Record<string, boolean>;
   setConfirm: (itemId: string, confirmed: boolean) => void;
   fromCache: boolean;
@@ -48,6 +55,8 @@ function OfflineBanner({ onRetry }: { onRetry: () => void }) {
 export function TripProvider({ tripId, children }: TripProviderProps) {
   const tripData = useTripData(tripId);
   const confirmsState = useTripConfirms(tripId);
+  const membersState = useTripMembers(tripId);
+  const groupsState = useTripGroups(tripId);
 
   if (tripData.status === 'loading' && tripData.trip === null) {
     return <TripLoadingScreen />;
@@ -57,11 +66,29 @@ export function TripProvider({ tripId, children }: TripProviderProps) {
     return <TripErrorScreen onRetry={tripData.retry} />;
   }
 
+  const currentUid = auth().currentUser?.uid ?? null;
+  const isOrganizer = membersState.members.some(
+    m => m.uid === currentUid && m.role === 'organizer',
+  );
+
+  const bookings = filterVisibleToUser(tripData.bookings, currentUid, groupsState.groups, isOrganizer);
+
+  const itinerary: Record<string, ItineraryDay[]> = {};
+  for (const [stopId, days] of Object.entries(tripData.itinerary)) {
+    itinerary[stopId] = days.map(day => ({
+      ...day,
+      items: filterVisibleToUser(day.items, currentUid, groupsState.groups, isOrganizer),
+    }));
+  }
+
   const value: TripContextValue = {
     trip: tripData.trip!,
     stops: tripData.stops,
-    bookings: tripData.bookings,
-    itinerary: tripData.itinerary,
+    bookings,
+    itinerary,
+    members: membersState.members,
+    groups: groupsState.groups,
+    currentUid,
     confirms: confirmsState.confirms,
     setConfirm: confirmsState.setConfirm,
     fromCache: tripData.fromCache,
