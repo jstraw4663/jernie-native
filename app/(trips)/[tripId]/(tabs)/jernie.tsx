@@ -13,6 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { getActiveStopId, getAutoExpandDayIndex } from '@/src/domain/trip';
+import { bookingBelongsToStop } from '@/src/domain/bookings';
 import { getDevNow } from '@/src/utils/devTime';
 import { HeroLayer } from '@/src/features/jernie/HeroLayer';
 import { SampleCTACarousel } from '@/src/features/jernie/SampleCTACarousel';
@@ -56,7 +57,7 @@ export default function JernieTab() {
 
   const bookingsByStop = useMemo(
     () => Object.fromEntries(
-      stops.map(s => [s.id, bookings.filter((b: Booking) => b.stopId === s.id)])
+      stops.map(s => [s.id, bookings.filter((b: Booking) => bookingBelongsToStop(b, s.id))])
     ),
     [stops, bookings],
   );

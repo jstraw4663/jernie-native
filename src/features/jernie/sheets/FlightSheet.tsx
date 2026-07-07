@@ -8,6 +8,7 @@ import { InfoSection, DistanceModule } from './SheetParts';
 import { MOCK_FLIGHT } from './mockEntityData';
 import { Core, Brand, Semantic, Spacing, Radius, Typography } from '@/src/design/tokens';
 import { hexWithAlpha } from '@/src/utils/colors';
+import { getFlightEndpoints } from '@/src/domain/bookings';
 import type { FlightBooking } from '@/src/types';
 
 interface FlightSheetProps {
@@ -37,11 +38,9 @@ export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
   const scrollY = useSharedValue(0);
   const handleScroll = (e: { nativeEvent: { contentOffset: { y: number } } }) => { scrollY.value = e.nativeEvent.contentOffset.y; };
 
-  // TODO(Task 6): render every leg (route/times per leg) — this is a minimal compile-safe
-  // shim from Task 1's FlightBooking.legs type change; hero/summary use the overall
-  // first-leg-origin → last-leg-destination route for now.
-  const firstLeg = booking.legs[0];
-  const lastLeg = booking.legs[booking.legs.length - 1];
+  // Hero/summary use the overall first-leg-origin → last-leg-destination route;
+  // the Flight Status section below renders each leg individually.
+  const { firstLeg, lastLeg } = getFlightEndpoints(booking);
 
   return (
     <View style={s.root}>
@@ -70,17 +69,21 @@ export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
       <View style={s.section}>
         <Text style={s.sectionTitle}>Flight Status</Text>
         <LinearGradient colors={[Brand.navy, Brand.navySoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.flightBlock}>
-          <View style={s.flRoute}>
-            <View style={s.flEnd}>
-              <Text style={s.flAirport}>{firstLeg.origin}</Text>
-              <Text style={s.flTime}>{firstLeg.departureTime}</Text>
+          {booking.legs.map((leg, i) => (
+            <View key={i} style={i < booking.legs.length - 1 ? s.flLegDivider : undefined}>
+              <View style={s.flRoute}>
+                <View style={s.flEnd}>
+                  <Text style={s.flAirport}>{leg.origin}</Text>
+                  <Text style={s.flTime}>{leg.departureTime}</Text>
+                </View>
+                <Text style={s.flArrow}>→</Text>
+                <View style={[s.flEnd, s.flEndRight]}>
+                  <Text style={s.flAirport}>{leg.destination}</Text>
+                  <Text style={s.flTime}>{leg.arrivalTime}</Text>
+                </View>
+              </View>
             </View>
-            <Text style={s.flArrow}>→</Text>
-            <View style={[s.flEnd, s.flEndRight]}>
-              <Text style={s.flAirport}>{lastLeg.destination}</Text>
-              <Text style={s.flTime}>{lastLeg.arrivalTime}</Text>
-            </View>
-          </View>
+          ))}
           <View style={s.flMeta}>
             {m.gate_origin    && <MetaItem label="Gate"     value={m.gate_origin} />}
             {m.aircraft_type  && <MetaItem label="Aircraft" value={m.aircraft_type} />}
@@ -135,6 +138,7 @@ const s = StyleSheet.create({
   sectionTitle: { fontSize: 11, fontFamily: 'DMSans', fontWeight: '700', letterSpacing: 1.3, textTransform: 'uppercase', color: Core.textFaint, marginBottom: Spacing.sm },
   flightBlock:  { borderRadius: Radius.card, padding: Spacing.md, marginBottom: Spacing.sm },
   flRoute:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },
+  flLegDivider: { paddingBottom: Spacing.sm, marginBottom: Spacing.sm, borderBottomWidth: 1, borderBottomColor: hexWithAlpha(Core.white, 0.10) },
   flEnd:        { flex: 1 },
   flEndRight:   { alignItems: 'flex-end' },
   flAirport:    { fontSize: 28, fontWeight: '800' as const, color: Core.white, fontFamily: 'DMSans', letterSpacing: -0.5 },

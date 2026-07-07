@@ -1,11 +1,43 @@
 // Domain logic for booking data transformations.
 
-import type { Booking } from '@/src/types';
+import type { Booking, FlightBooking, FlightLeg } from '@/src/types';
 
 export interface BookingDisplay {
   emoji: string;
   label: string;
   meta: string;
+}
+
+// Real bookings should always have >= 1 leg (see the comment on `FlightBooking.legs`),
+// but that isn't enforced at the type level, so any code indexing into `legs[0]` /
+// `legs[legs.length - 1]` needs a fallback rather than risking `undefined.origin` at runtime.
+const FALLBACK_LEG: FlightLeg = {
+  flightNumber: '—',
+  airline: '—',
+  origin: '—',
+  destination: '—',
+  departureDate: '',
+  departureTime: '—',
+  arrivalTime: '—',
+};
+
+/**
+ * Get the first and last leg of a flight booking, safely falling back to a
+ * placeholder leg if `legs` is empty.
+ */
+export function getFlightEndpoints(b: FlightBooking): { firstLeg: FlightLeg; lastLeg: FlightLeg } {
+  const firstLeg = b.legs[0] ?? FALLBACK_LEG;
+  const lastLeg = b.legs[b.legs.length - 1] ?? FALLBACK_LEG;
+  return { firstLeg, lastLeg };
+}
+
+/**
+ * Whether a booking should appear under a given stop — either it originates there
+ * (`stopId`), or, for a rental with a cross-stop dropoff, it ends there (`dropoffStopId`).
+ */
+export function bookingBelongsToStop(b: Booking, stopId: string): boolean {
+  if (b.stopId === stopId) return true;
+  return b.type === 'rental' && b.dropoffStopId === stopId;
 }
 
 /**
@@ -45,8 +77,7 @@ export function isTodayBooking(b: Booking, todayIso: string): boolean {
 export function getBookingDisplay(b: Booking, todayIso: string): BookingDisplay {
   switch (b.type) {
     case 'flight': {
-      const firstLeg = b.legs[0];
-      const lastLeg = b.legs[b.legs.length - 1];
+      const { firstLeg, lastLeg } = getFlightEndpoints(b);
       return {
         emoji: '✈️',
         label: `${firstLeg.airline} · ${firstLeg.flightNumber}`,

@@ -34,6 +34,7 @@ export function StopSection({
         <TravelCard
           key={booking.id}
           booking={booking}
+          stopId={stop.id}
           stopColor={stop.color}
           stopCity={stop.city}
           onPress={onBookingPress ? () => onBookingPress(booking) : undefined}

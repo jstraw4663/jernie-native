@@ -1,4 +1,4 @@
-import { isTodayBooking, getBookingDisplay } from '@/src/domain/bookings';
+import { isTodayBooking, getBookingDisplay, getFlightEndpoints, bookingBelongsToStop } from '@/src/domain/bookings';
 import type { Booking, FlightBooking, HotelBooking, RentalBooking, RestaurantBooking } from '@/src/types';
 
 // ── isTodayBooking ───────────────────────────────────────────────────────────
@@ -247,4 +247,64 @@ test('getBookingDisplay: restaurant meta includes date and time', () => {
   const display = getBookingDisplay(testRestaurantBooking, '2026-07-10');
   expect(display.meta).toContain('2026-07-10');
   expect(display.meta).toContain('7:30 PM');
+});
+
+// ── getFlightEndpoints ───────────────────────────────────────────────────────
+
+test('getFlightEndpoints: single-leg flight returns that leg as both first and last', () => {
+  const { firstLeg, lastLeg } = getFlightEndpoints(testFlightBooking);
+  expect(firstLeg.origin).toBe('BOS');
+  expect(lastLeg.destination).toBe('PWM');
+});
+
+test('getFlightEndpoints: multi-leg flight returns first and last legs', () => {
+  const { firstLeg, lastLeg } = getFlightEndpoints(testFlightBookingMultiLeg);
+  expect(firstLeg.origin).toBe('BOS');
+  expect(firstLeg.destination).toBe('CLT');
+  expect(lastLeg.origin).toBe('CLT');
+  expect(lastLeg.destination).toBe('PWM');
+});
+
+test('getFlightEndpoints: empty legs array falls back to placeholder legs instead of crashing', () => {
+  const emptyLegsBooking: FlightBooking = { ...testFlightBooking, legs: [] };
+  const { firstLeg, lastLeg } = getFlightEndpoints(emptyLegsBooking);
+  expect(firstLeg).toBeDefined();
+  expect(lastLeg).toBeDefined();
+  expect(firstLeg.origin).toBe('—');
+  expect(lastLeg.destination).toBe('—');
+});
+
+// ── bookingBelongsToStop ─────────────────────────────────────────────────────
+
+const testRentalBookingCrossStop: RentalBooking = {
+  ...testRentalBooking,
+  id: 'rental-cross-stop',
+  stopId: 'stop-1',
+  dropoffStopId: 'stop-2',
+};
+
+test('bookingBelongsToStop: matches on stopId for a same-stop booking', () => {
+  expect(bookingBelongsToStop(testHotelBooking, 'stop-1')).toBe(true);
+});
+
+test('bookingBelongsToStop: does not match an unrelated stop', () => {
+  expect(bookingBelongsToStop(testHotelBooking, 'stop-2')).toBe(false);
+});
+
+test('bookingBelongsToStop: cross-stop rental matches its pickup stopId', () => {
+  expect(bookingBelongsToStop(testRentalBookingCrossStop, 'stop-1')).toBe(true);
+});
+
+test('bookingBelongsToStop: cross-stop rental also matches its dropoffStopId', () => {
+  expect(bookingBelongsToStop(testRentalBookingCrossStop, 'stop-2')).toBe(true);
+});
+
+test('bookingBelongsToStop: cross-stop rental does not match an unrelated stop', () => {
+  expect(bookingBelongsToStop(testRentalBookingCrossStop, 'stop-3')).toBe(false);
+});
+
+test('bookingBelongsToStop: non-rental booking type ignores dropoffStopId-shaped matches', () => {
+  // A flight never has dropoffStopId, so only its own stopId should match.
+  expect(bookingBelongsToStop(testFlightBooking, testFlightBooking.stopId)).toBe(true);
+  expect(bookingBelongsToStop(testFlightBooking, 'stop-2')).toBe(false);
 });

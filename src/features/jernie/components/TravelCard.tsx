@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { Booking } from '@/src/types';
+import { getFlightEndpoints } from '@/src/domain/bookings';
 import { Brand, Core, TypeColors, Typography, Radius, Shadow, Spacing } from '@/src/design/tokens';
 import { hexWithAlpha } from '@/src/utils/colors';
 
@@ -9,13 +10,16 @@ interface TravelCardProps {
   booking: Booking;
   stopColor: string;
   stopCity?: string;
+  // The stop this card is being rendered under — used by the rental variant to tell
+  // pickup from drop-off when a rental's pickup/dropoff stops differ.
+  stopId?: string;
   onPress?: () => void;
 }
 
-export function TravelCard({ booking, stopColor, stopCity, onPress }: TravelCardProps) {
+export function TravelCard({ booking, stopColor, stopCity, stopId, onPress }: TravelCardProps) {
   if (booking.type === 'flight')     return <FlightCard booking={booking} stopCity={stopCity} onPress={onPress} />;
   if (booking.type === 'hotel')      return <HotelCard  booking={booking} stopColor={stopColor} onPress={onPress} />;
-  if (booking.type === 'rental')     return <RentalCard booking={booking} stopColor={stopColor} />;
+  if (booking.type === 'rental')     return <RentalCard booking={booking} stopColor={stopColor} stopId={stopId} />;
   if (booking.type === 'restaurant') return <RestaurantCard booking={booking} onPress={onPress} />;
   return null;
 }
@@ -31,11 +35,9 @@ function FlightCard({
   stopCity?: string;
   onPress?: () => void;
 }) {
-  // TODO(Task 6): render every leg as its own row — this is a minimal compile-safe
-  // shim from Task 1's FlightBooking.legs type change; overall route uses the first
-  // leg's origin and the last leg's destination for now.
-  const firstLeg = booking.legs[0];
-  const lastLeg = booking.legs[booking.legs.length - 1];
+  // Overall route uses the first leg's origin and the last leg's destination;
+  // each leg is also rendered as its own row below when there's more than one.
+  const { firstLeg, lastLeg } = getFlightEndpoints(booking);
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={onPress ? 0.85 : 1} disabled={!onPress}>
       <LinearGradient
@@ -63,6 +65,16 @@ function FlightCard({
             {stopCity && <Text style={styles.airportCity}>{stopCity}</Text>}
           </View>
         </View>
+
+        {booking.legs.length > 1 && (
+          <View style={styles.legList}>
+            {booking.legs.map((leg, i) => (
+              <Text key={i} style={styles.legRow}>
+                {leg.origin} → {leg.destination} · {leg.departureTime} → {leg.arrivalTime}
+              </Text>
+            ))}
+          </View>
+        )}
 
         {booking.confirmationCode && (
           <View style={styles.flightFooter}>
@@ -108,7 +120,15 @@ function HotelCard({ booking, stopColor, onPress }: { booking: Extract<Booking, 
 
 // ── Rental card — stop-color tinted surface ───────────────────────────────────
 
-function RentalCard({ booking, stopColor }: { booking: Extract<Booking, { type: 'rental' }>, stopColor: string }) {
+function RentalCard({ booking, stopColor, stopId }: { booking: Extract<Booking, { type: 'rental' }>, stopColor: string, stopId?: string }) {
+  // Only cross-stop rentals (pickup in one stop, dropoff in another) are ambiguous
+  // enough to need a badge — a same-stop rental has no "which end is this?" question.
+  const isCrossStop = !!booking.dropoffStopId && booking.dropoffStopId !== booking.stopId;
+  const badgeLabel =
+    isCrossStop && stopId === booking.stopId ? 'Pickup here' :
+    isCrossStop && stopId === booking.dropoffStopId ? 'Drop-off here' :
+    null;
+
   return (
     <View
       style={[
@@ -120,13 +140,22 @@ function RentalCard({ booking, stopColor }: { booking: Extract<Booking, { type: 
         <Text style={styles.typeEmoji}>🚗</Text>
       </View>
       <View style={styles.surfaceCardBody}>
-        <Text style={styles.surfaceCardName}>
-          {booking.company}{booking.carType ? ` · ${booking.carType}` : ''}
-        </Text>
+        <View style={styles.rentalNameRow}>
+          <Text style={styles.surfaceCardName}>
+            {booking.company}{booking.carType ? ` · ${booking.carType}` : ''}
+          </Text>
+          {badgeLabel && (
+            <View style={[styles.rentalBadge, { backgroundColor: hexWithAlpha(stopColor, 0.12) }]}>
+              <Text style={[styles.rentalBadgeText, { color: stopColor }]}>{badgeLabel}</Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.surfaceCardMeta}>
           {shortDate(booking.pickupDate)} – {shortDate(booking.dropoffDate)}
         </Text>
-        <Text style={styles.surfaceCardMeta}>{booking.pickupLocation}</Text>
+        <Text style={styles.surfaceCardMeta}>
+          {stopId === booking.dropoffStopId ? booking.dropoffLocation : booking.pickupLocation}
+        </Text>
       </View>
     </View>
   );
@@ -247,6 +276,14 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.35)',
     paddingHorizontal: 8,
   },
+  legList: {
+    gap: 4,
+    marginBottom: 6,
+  },
+  legRow: {
+    ...Typography.roles.meta,
+    color: 'rgba(255,255,255,0.55)',
+  },
   flightFooter: {
     flexDirection: 'row',
     gap: 16,
@@ -296,4 +333,7 @@ const styles = StyleSheet.create({
   surfaceCardName:   { ...Typography.roles.label, fontWeight: '700' as const, color: Core.text, marginBottom: 3 },
   surfaceCardMeta:   { ...Typography.roles.meta, color: Core.textMuted, marginBottom: 1 },
   surfaceCardAccent: { ...Typography.roles.label, marginTop: 3 },
+  rentalNameRow:     { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  rentalBadge:       { borderRadius: Radius.full, paddingHorizontal: 8, paddingVertical: 2 },
+  rentalBadgeText:   { fontSize: 11, fontWeight: '700' as const, fontFamily: 'DMSans' },
 });
