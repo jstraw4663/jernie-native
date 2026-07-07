@@ -314,6 +314,24 @@ test('itinerary "lodging" category maps to "other" (no direct equivalent in the 
   expect(itinerary.portland['day-1'].items[0].category).toBe('other');
 });
 
+test('hand-applied override: item-barharbor-3-1 (Beehive Trail) is tagged groupIds: ["group-j"], others are untouched', () => {
+  const items: PwaItineraryItem[] = [
+    {
+      id: 'item-barharbor-3-1', day_id: 'day-1', time: 'Early Morning',
+      text: 'Beehive Trail — Jeremy & Jennie only... Stacy/Justin/Ford: Jordan Pond Loop instead.',
+      category: 'hike', booking_id: null, place_id: 'place-barharbor-a-01',
+    },
+    { id: 'item-other', day_id: 'day-1', text: 'Jordan Pond House popovers', category: 'restaurant', booking_id: null, place_id: 'place-jp-popovers' },
+  ];
+  const itinerary = transformItinerary(DAYS, items, {});
+  const day = itinerary.portland['day-1'];
+  expect(day.items[0].id).toBe('item-barharbor-3-1');
+  expect(day.items[0].groupIds).toEqual(['group-j']);
+  // Every other item is unaffected — no groupIds field materializes for anything else.
+  expect(day.items[1].id).toBe('item-other');
+  expect(day.items[1].groupIds).toBeUndefined();
+});
+
 // ── transformGroups ───────────────────────────────────────────────────────────
 
 test('transformGroups sets memberUids to [uid] only for the group Jeremy is actually in', () => {
@@ -394,6 +412,20 @@ describe('buildImportPayload against the real ~/jernie/public/trip.json snapshot
     );
     expect(itemCount).toBe(52);
     expect(Object.keys(tripWrite.itinerary.portland)).toContain('day-portland-1');
+  });
+
+  test('hand-applied override tags only item-barharbor-3-1 with groupIds: ["group-j"]', () => {
+    const allItems: any[] = Object.values(tripWrite.itinerary).flatMap(
+      (days: any) => Object.values(days).flatMap((d: any) => d.items),
+    );
+    const beehiveItem = allItems.find((i) => i.id === 'item-barharbor-3-1');
+    expect(beehiveItem).toBeDefined();
+    expect(beehiveItem.placeId).toBe('place-barharbor-a-01');
+    expect(beehiveItem.groupIds).toEqual(['group-j']);
+
+    // No other itinerary item picked up a groupIds field from this override.
+    const othersWithGroupIds = allItems.filter((i) => i.id !== 'item-barharbor-3-1' && i.groupIds !== undefined);
+    expect(othersWithGroupIds).toEqual([]);
   });
 
   test('carries both groups with correct memberUids split', () => {

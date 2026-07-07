@@ -469,6 +469,24 @@ export function transformItinerary(
       if (item.time) transformed.time = item.time;
       if (category) transformed.category = category;
       if (item.locked) transformed.locked = true;
+
+      // Hand-applied override, not a field-by-field transform of anything in the source:
+      // the Beehive Trail vs. Jordan Pond Loop group split (Jeremy & Jennie do the Beehive;
+      // Stacy/Justin/Ford do Jordan Pond instead) has no structured `group_ids` on this
+      // itinerary item in the source — it only exists as free text in this item's own
+      // `label` ("Beehive Trail — Jeremy & Jennie only... Stacy/Justin/Ford: Jordan Pond
+      // Loop instead"). The *place* it references, place-barharbor-a-01, does carry
+      // `group_ids: ["group-j"]` in the source, but `Place` has no `groupIds` field to
+      // receive it (and `filterVisibleToUser` never filters `Place` records anyway — only
+      // `bookings` and itinerary items, per `src/domain/groups.ts`/`src/contexts/
+      // TripContext.tsx`). So the only place this can structurally land is here. Hand-
+      // verified against the item's label and place-barharbor-a-01's own group_ids field —
+      // both agree this item is Jeremy/Jennie-only. Applied so the import actually exercises
+      // the group-visibility feature on real data (see Discrepancy #6 in the task report).
+      if (item.id === 'item-barharbor-3-1') {
+        transformed.groupIds = ['group-j'];
+      }
+
       return transformed;
     });
 
