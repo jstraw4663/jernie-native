@@ -223,7 +223,18 @@ export async function maybeSeedDevData(): Promise<void> {
   // established in Task 1 (database.rules.json) and empirically verified against
   // the RTDB emulator: a sibling path bundled into the *same* multi-location
   // update() call only sees the pre-update state, not this trip's new ownerUid.
-  await database().ref('trips/dev-trip-001').set(tripData);
+  //
+  // Guard against a partial prior run: if step 1 succeeded on an earlier launch
+  // but step 2 then failed (killed app, flaky dev network, etc.), SEED_KEY never
+  // got set, so we're re-entering this function — but the trips/dev-trip-001
+  // rule is `!data.exists() && ...`, so re-running .set() on a node that already
+  // exists is permission-denied forever. Check first, and skip straight to step 2
+  // (whose writes are all idempotent keyed writes, not dependent on step 1 having
+  // just run in this same invocation) if the trip is already there.
+  const tripSnapshot = await database().ref('trips/dev-trip-001').once('value');
+  if (!tripSnapshot.exists()) {
+    await database().ref('trips/dev-trip-001').set(tripData);
+  }
 
   // Step 2: only after step 1 resolves, bundle the owner's membership record,
   // the denormalized users/{uid}/trips read index, and the invite token lookup
