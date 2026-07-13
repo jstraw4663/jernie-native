@@ -23,11 +23,14 @@ const FALLBACK_LEG: FlightLeg = {
 
 /**
  * Get the first and last leg of a flight booking, safely falling back to a
- * placeholder leg if `legs` is empty.
+ * placeholder leg if `legs` is empty OR missing entirely (e.g. stale/legacy data
+ * from before `legs` existed on this booking type — `b.legs` itself can be
+ * `undefined` at runtime even though the type says it's required).
  */
 export function getFlightEndpoints(b: FlightBooking): { firstLeg: FlightLeg; lastLeg: FlightLeg } {
-  const firstLeg = b.legs[0] ?? FALLBACK_LEG;
-  const lastLeg = b.legs[b.legs.length - 1] ?? FALLBACK_LEG;
+  const legs = b.legs ?? [];
+  const firstLeg = legs[0] ?? FALLBACK_LEG;
+  const lastLeg = legs[legs.length - 1] ?? FALLBACK_LEG;
   return { firstLeg, lastLeg };
 }
 

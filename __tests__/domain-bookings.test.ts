@@ -274,6 +274,18 @@ test('getFlightEndpoints: empty legs array falls back to placeholder legs instea
   expect(lastLeg.destination).toBe('—');
 });
 
+test('getFlightEndpoints: missing legs property (stale/legacy data) falls back without throwing', () => {
+  // Simulates real stale data from before `legs` existed on FlightBooking — the type
+  // says `legs` is required, but a legacy record read from RTDB/cache can genuinely
+  // lack it at runtime. `b.legs[0]` on `undefined` would throw before `??` could help.
+  const { legs, ...legacyBookingWithoutLegs } = testFlightBooking;
+  const { firstLeg, lastLeg } = getFlightEndpoints(legacyBookingWithoutLegs as unknown as FlightBooking);
+  expect(firstLeg).toBeDefined();
+  expect(lastLeg).toBeDefined();
+  expect(firstLeg.origin).toBe('—');
+  expect(lastLeg.destination).toBe('—');
+});
+
 // ── bookingBelongsToStop ─────────────────────────────────────────────────────
 
 const testRentalBookingCrossStop: RentalBooking = {
