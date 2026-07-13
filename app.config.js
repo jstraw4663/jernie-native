@@ -1,3 +1,22 @@
+const { execSync } = require("child_process");
+
+function git(cmd, fallback) {
+  try {
+    return execSync(cmd, { cwd: __dirname }).toString().trim();
+  } catch {
+    return fallback;
+  }
+}
+
+// Captured once when Metro/the Expo CLI boots (not live-updated on every hot
+// reload) — lets the app display which branch/commit is actually running, so
+// it's easy to confirm you're not looking at a stale build from another
+// checkout/worktree.
+const gitBranch = git("git branch --show-current", "unknown");
+const gitSha = git("git rev-parse --short HEAD", "unknown");
+const gitDirty = git("git status --porcelain", "").length > 0;
+const builtAt = new Date().toISOString();
+
 module.exports = {
   expo: {
     name: "Jernie",
@@ -56,6 +75,7 @@ module.exports = {
       eas: {
         projectId: "a85eae0d-8910-4bf2-9822-3fafe8cc9ebb",
       },
+      build: { gitBranch, gitSha, gitDirty, builtAt },
     },
     owner: "jstraw4663",
   },
