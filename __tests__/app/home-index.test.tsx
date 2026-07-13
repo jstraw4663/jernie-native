@@ -6,9 +6,9 @@ jest.mock('@/src/features/jernie/TripLoadingScreen', () => ({
   },
 }));
 
-const mockPush = jest.fn();
+const mockReplace = jest.fn();
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ replace: mockReplace }),
 }));
 
 import renderer, { act } from 'react-test-renderer';
@@ -27,7 +27,7 @@ function renderScreen() {
 
 describe('app/(home)/index', () => {
   beforeEach(() => {
-    mockPush.mockClear();
+    mockReplace.mockClear();
   });
 
   test('renders the loading screen while useUserTrips is loading', () => {
@@ -44,7 +44,7 @@ describe('app/(home)/index', () => {
     expect(JSON.stringify(tree.toJSON())).toContain("haven't joined any trips");
   });
 
-  test('renders one row per trip and navigates to the trip on press', () => {
+  test('renders one row per trip and navigates to the trip on press using replace (not push, so the previous trip screen actually unmounts)', () => {
     mockUseUserTrips.mockReturnValue({
       trips: [
         { tripId: 'trip-a', role: 'organizer', joinedAt: 1 },
@@ -59,6 +59,6 @@ describe('app/(home)/index', () => {
     act(() => {
       rowA.props.onPress();
     });
-    expect(mockPush).toHaveBeenCalledWith('/(trips)/trip-a/(tabs)/jernie');
+    expect(mockReplace).toHaveBeenCalledWith('/(trips)/trip-a/(tabs)/jernie');
   });
 });

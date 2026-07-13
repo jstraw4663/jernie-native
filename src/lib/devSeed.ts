@@ -1,5 +1,6 @@
 import { createMMKV } from 'react-native-mmkv';
 import { database, authReady } from './firebase';
+import { writeTripOnce } from './atomicTripWrite';
 import type { Booking, ItineraryDay } from '@/src/types';
 
 // Runs once per device in __DEV__ builds. Writes the Maine Summer 2026 trip to RTDB
@@ -226,24 +227,10 @@ export async function maybeSeedDevData(): Promise<void> {
   //
   // Guard against a partial prior run: if step 1 succeeded on an earlier launch
   // but step 2 then failed (killed app, flaky dev network, etc.), SEED_KEY never
-  // got set, so we're re-entering this function — but the trips/dev-trip-001
-  // rule is `!data.exists() && ...`, so re-running .set() on a node that already
-  // exists is permission-denied forever.
-  //
-  // This can't be checked with a pre-write `.once('value')` read: the .read rule
-  // itself requires already being the trip's owner or a member, which is
-  // impossible to satisfy for a trip that doesn't exist yet — that read would
-  // itself be denied on a genuinely fresh device, which is the normal case, not
-  // the edge case. Instead, attempt the write directly and treat a
-  // `database/permission-denied` rejection as "already exists, skip to step 2"
-  // — the `!data.exists()` write rule is what actually enforces this, so no
-  // separate existence check is needed.
-  try {
-    await database().ref('trips/dev-trip-001').set(tripData);
-  } catch (err) {
-    const code = (err as { code?: string })?.code;
-    if (code !== 'database/permission-denied') throw err;
-  }
+  // got set, so we're re-entering this function — treat "already exists" as
+  // fine and continue to step 2. See writeTripOnce() for why this can't be a
+  // pre-write existence read.
+  await writeTripOnce('dev-trip-001', tripData, 'continue');
 
   // Step 2: only after step 1 resolves, bundle the owner's membership record,
   // the denormalized users/{uid}/trips read index, and the invite token lookup

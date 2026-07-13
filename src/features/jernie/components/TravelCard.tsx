@@ -125,9 +125,11 @@ function RentalCard({ booking, stopColor, stopId }: { booking: Extract<Booking, 
   // Only cross-stop rentals (pickup in one stop, dropoff in another) are ambiguous
   // enough to need a badge — a same-stop rental has no "which end is this?" question.
   const isCrossStop = !!booking.dropoffStopId && booking.dropoffStopId !== booking.stopId;
+  const isDropoffStopHere = !!stopId && stopId === booking.dropoffStopId;
   const badgeLabel =
-    isCrossStop && stopId === booking.stopId ? 'Pickup here' :
-    isCrossStop && stopId === booking.dropoffStopId ? 'Drop-off here' :
+    !isCrossStop ? null :
+    isDropoffStopHere ? 'Drop-off here' :
+    stopId === booking.stopId ? 'Pickup here' :
     null;
 
   return (
@@ -155,9 +157,7 @@ function RentalCard({ booking, stopColor, stopId }: { booking: Extract<Booking, 
           {shortDate(booking.pickupDate)} – {shortDate(booking.dropoffDate)}
         </Text>
         <Text style={styles.surfaceCardMeta}>
-          {/* Guard against `stopId === undefined === booking.dropoffStopId` matching when
-              neither is set (no stopId prop + a same-stop rental with no dropoffStopId). */}
-          {stopId !== undefined && stopId === booking.dropoffStopId ? booking.dropoffLocation : booking.pickupLocation}
+          {isDropoffStopHere ? booking.dropoffLocation : booking.pickupLocation}
         </Text>
       </View>
     </View>

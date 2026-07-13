@@ -11,7 +11,10 @@ export default function MyTripsScreen() {
 
   const goToTrip = useCallback(
     (tripId: string) => {
-      router.push(`/(trips)/${tripId}/(tabs)/jernie` as never);
+      // `replace`, not `push`: leaving this screen for a trip should actually unmount
+      // whatever trip screen (and its live RTDB listeners) was here before, rather than
+      // stacking trips underneath each other indefinitely as the user switches around.
+      router.replace(`/(trips)/${tripId}/(tabs)/jernie` as never);
     },
     [router],
   );

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, type ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTripData } from '@/src/hooks/useTripData';
@@ -58,27 +58,37 @@ export function TripProvider({ tripId, children }: TripProviderProps) {
   const membersState = useTripMembers(tripId);
   const groupsState = useTripGroups(tripId);
 
+  const currentUid = auth().currentUser?.uid ?? null;
+  const isOrganizer = membersState.members.some(
+    m => m.uid === currentUid && m.role === 'organizer',
+  );
+
+  // Re-filtering the whole trip is wasted work on renders triggered by unrelated state
+  // (e.g. a single confirm-checkbox toggle) — memoize so `bookings`/`itinerary` only get
+  // new identities when the data they're actually derived from changes, which also lets
+  // downstream consumers (e.g. jernie.tsx's own useMemo) skip recomputing too.
+  const bookings = useMemo(
+    () => filterVisibleToUser(tripData.bookings, currentUid, groupsState.groups, isOrganizer),
+    [tripData.bookings, currentUid, groupsState.groups, isOrganizer],
+  );
+
+  const itinerary = useMemo(() => {
+    const result: Record<string, ItineraryDay[]> = {};
+    for (const [stopId, days] of Object.entries(tripData.itinerary)) {
+      result[stopId] = days.map(day => ({
+        ...day,
+        items: filterVisibleToUser(day.items, currentUid, groupsState.groups, isOrganizer),
+      }));
+    }
+    return result;
+  }, [tripData.itinerary, currentUid, groupsState.groups, isOrganizer]);
+
   if (tripData.status === 'loading' && tripData.trip === null) {
     return <TripLoadingScreen />;
   }
 
   if (tripData.status === 'error' && tripData.trip === null) {
     return <TripErrorScreen onRetry={tripData.retry} />;
-  }
-
-  const currentUid = auth().currentUser?.uid ?? null;
-  const isOrganizer = membersState.members.some(
-    m => m.uid === currentUid && m.role === 'organizer',
-  );
-
-  const bookings = filterVisibleToUser(tripData.bookings, currentUid, groupsState.groups, isOrganizer);
-
-  const itinerary: Record<string, ItineraryDay[]> = {};
-  for (const [stopId, days] of Object.entries(tripData.itinerary)) {
-    itinerary[stopId] = days.map(day => ({
-      ...day,
-      items: filterVisibleToUser(day.items, currentUid, groupsState.groups, isOrganizer),
-    }));
   }
 
   const value: TripContextValue = {

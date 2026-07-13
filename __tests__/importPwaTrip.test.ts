@@ -474,21 +474,26 @@ describe('buildImportPayload against the real ~/jernie/public/trip.json snapshot
 
 describe('runPwaImport (mocked @react-native-firebase/database — no real Firebase touched)', () => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { mockRef, mockOnce, mockSet, mockUpdate } = jest.requireMock('@react-native-firebase/database');
+  const { mockRef, mockSet, mockUpdate } = jest.requireMock('@react-native-firebase/database');
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test('refuses to run if trips/maine-2026 already exists', async () => {
-    (mockOnce as jest.Mock).mockResolvedValue({ exists: () => true });
+  test('refuses to run if trips/maine-2026 already exists (write rejects with permission-denied)', async () => {
+    (mockSet as jest.Mock).mockRejectedValue(Object.assign(new Error('permission_denied'), { code: 'database/permission-denied' }));
     await expect(runPwaImport()).rejects.toThrow(/already exists/);
-    expect(mockSet).not.toHaveBeenCalled();
+    expect(mockSet).toHaveBeenCalledTimes(1);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  test('propagates a genuinely different set() failure without swallowing it', async () => {
+    (mockSet as jest.Mock).mockRejectedValue(Object.assign(new Error('network hiccup'), { code: 'database/network-error' }));
+    await expect(runPwaImport()).rejects.toThrow('network hiccup');
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 
   test('writes step 1 (set) before step 2 (update), and only after step 1 resolves', async () => {
-    (mockOnce as jest.Mock).mockResolvedValue({ exists: () => false });
     let resolveSet!: () => void;
     (mockSet as jest.Mock).mockReturnValue(new Promise<void>((res) => { resolveSet = res; }));
     (mockUpdate as jest.Mock).mockResolvedValue(undefined);

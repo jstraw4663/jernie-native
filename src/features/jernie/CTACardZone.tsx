@@ -138,20 +138,21 @@ function InTripCard({
 
       {/* Quick-add actions */}
       <View style={styles.quickActionsRow}>
-        <TouchableOpacity
-          style={[styles.quickBtn, { borderColor: hexWithAlpha(activeStop.color, 0.3) }]}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.quickBtnText, { color: activeStop.color }]}>🍽️{'  '}Add restaurant</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.quickBtn, { borderColor: hexWithAlpha(activeStop.color, 0.3) }]}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.quickBtnText, { color: activeStop.color }]}>✚{'  '}Log activity</Text>
-        </TouchableOpacity>
+        <QuickActionButton emoji="🍽️" label="Add restaurant" color={activeStop.color} />
+        <QuickActionButton emoji="✚" label="Log activity" color={activeStop.color} />
       </View>
     </View>
+  );
+}
+
+function QuickActionButton({ emoji, label, color }: { emoji: string; label: string; color: string }) {
+  return (
+    <TouchableOpacity
+      style={[styles.quickBtn, { borderColor: hexWithAlpha(color, 0.3) }]}
+      activeOpacity={0.7}
+    >
+      <Text style={[styles.quickBtnText, { color }]}>{emoji}{'  '}{label}</Text>
+    </TouchableOpacity>
   );
 }
 

@@ -144,4 +144,34 @@ describe('TripProvider group-visibility filtering', () => {
     expect(ctx.members).toEqual(members);
     expect(ctx.groups).toEqual(groups);
   });
+
+  test('bookings/itinerary keep the same array identity across a re-render triggered by unrelated state (e.g. a confirm toggle)', () => {
+    setupMocks('bob');
+    let captured!: TripContextValue;
+    let testRenderer!: renderer.ReactTestRenderer;
+    renderer.act(() => {
+      testRenderer = renderer.create(
+        <TripProvider tripId="trip-1">
+          <Capture onCapture={(ctx) => { captured = ctx; }} />
+        </TripProvider>,
+      );
+    });
+    const firstBookings = captured.bookings;
+    const firstItinerary = captured.itinerary;
+
+    // Simulate an unrelated state change (a confirm-checkbox toggle) by giving
+    // useTripConfirms a new object identity, then re-rendering with everything
+    // else (tripData/members/groups) unchanged.
+    mockUseTripConfirms.mockReturnValue({ confirms: { 'item-1': true }, setConfirm: jest.fn() });
+    renderer.act(() => {
+      testRenderer.update(
+        <TripProvider tripId="trip-1">
+          <Capture onCapture={(ctx) => { captured = ctx; }} />
+        </TripProvider>,
+      );
+    });
+
+    expect(captured.bookings).toBe(firstBookings);
+    expect(captured.itinerary).toBe(firstItinerary);
+  });
 });

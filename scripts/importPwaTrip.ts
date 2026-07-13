@@ -37,6 +37,7 @@
 //      dropoff) and the Beehive-vs-Jordan-Pond group-scoped item behave correctly.
 
 import { auth, authReady, database } from '@/src/lib/firebase';
+import { writeTripOnce } from '@/src/lib/atomicTripWrite';
 import pwaTripRaw from './pwaTripSnapshot.json';
 import { buildImportPayload, NEW_TRIP_ID, type PwaData } from './importPwaTrip.transform';
 
@@ -56,14 +57,6 @@ export async function runPwaImport(): Promise<{ tripId: string; inviteToken: str
   const uid = auth().currentUser?.uid;
   if (!uid) throw new Error('not authenticated — anonymous sign-in must complete before running the import');
 
-  const existing = await database().ref(`trips/${NEW_TRIP_ID}`).once('value');
-  if (existing.exists()) {
-    throw new Error(
-      `trips/${NEW_TRIP_ID} already exists — refusing to overwrite. This script is meant to run ` +
-      `exactly once. Delete the node manually first if you really intend to re-run it.`,
-    );
-  }
-
   const inviteToken = generateInviteToken();
   const payload = buildImportPayload(pwaTripRaw as unknown as PwaData, {
     uid,
@@ -72,7 +65,9 @@ export async function runPwaImport(): Promise<{ tripId: string; inviteToken: str
   });
 
   // Step 1 — standalone, awaited to completion before step 2 is even attempted.
-  await database().ref(`trips/${payload.tripId}`).set(payload.tripWrite);
+  // This script must run exactly once, so a pre-existing trip is a real error, not a
+  // resumable state — see writeTripOnce() for why this can't be a pre-write existence read.
+  await writeTripOnce(payload.tripId, payload.tripWrite, 'throw');
 
   // Step 2 — only after step 1 has committed.
   await database().ref().update(payload.step2Update);
