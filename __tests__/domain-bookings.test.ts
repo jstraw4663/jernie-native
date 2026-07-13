@@ -1,4 +1,4 @@
-import { isTodayBooking, getBookingDisplay, getFlightEndpoints, bookingBelongsToStop } from '@/src/domain/bookings';
+import { isTodayBooking, getBookingDisplay, getFlightEndpoints, getFlightLegs, bookingBelongsToStop } from '@/src/domain/bookings';
 import type { Booking, FlightBooking, HotelBooking, RentalBooking, RestaurantBooking } from '@/src/types';
 
 // ── isTodayBooking ───────────────────────────────────────────────────────────
@@ -99,6 +99,11 @@ test('isTodayBooking: flight returns false when departure date is before today',
 
 test('isTodayBooking: flight with multi-leg returns true when any leg departs today', () => {
   expect(isTodayBooking(testFlightBookingMultiLeg, '2026-07-10')).toBe(true);
+});
+
+test('isTodayBooking: flight with missing legs property (stale/legacy data) returns false instead of throwing', () => {
+  const { legs, ...legacyBookingWithoutLegs } = testFlightBooking;
+  expect(isTodayBooking(legacyBookingWithoutLegs as unknown as FlightBooking, '2026-07-10')).toBe(false);
 });
 
 // ── isTodayBooking: HotelBooking ─────────────────────────────────────────────
@@ -284,6 +289,17 @@ test('getFlightEndpoints: missing legs property (stale/legacy data) falls back w
   expect(lastLeg).toBeDefined();
   expect(firstLeg.origin).toBe('—');
   expect(lastLeg.destination).toBe('—');
+});
+
+// ── getFlightLegs ────────────────────────────────────────────────────────────
+
+test('getFlightLegs: returns the legs array as-is when present', () => {
+  expect(getFlightLegs(testFlightBookingMultiLeg)).toEqual(testFlightBookingMultiLeg.legs);
+});
+
+test('getFlightLegs: returns an empty array when legs is missing entirely', () => {
+  const { legs, ...legacyBookingWithoutLegs } = testFlightBooking;
+  expect(getFlightLegs(legacyBookingWithoutLegs as unknown as FlightBooking)).toEqual([]);
 });
 
 // ── bookingBelongsToStop ─────────────────────────────────────────────────────

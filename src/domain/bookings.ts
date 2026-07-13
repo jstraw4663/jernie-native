@@ -28,10 +28,19 @@ const FALLBACK_LEG: FlightLeg = {
  * `undefined` at runtime even though the type says it's required).
  */
 export function getFlightEndpoints(b: FlightBooking): { firstLeg: FlightLeg; lastLeg: FlightLeg } {
-  const legs = b.legs ?? [];
+  const legs = getFlightLegs(b);
   const firstLeg = legs[0] ?? FALLBACK_LEG;
   const lastLeg = legs[legs.length - 1] ?? FALLBACK_LEG;
   return { firstLeg, lastLeg };
+}
+
+/**
+ * The full leg list, safe against `legs` being missing entirely (see
+ * `getFlightEndpoints`) — use this instead of reading `booking.legs` directly
+ * anywhere legs are iterated/counted (e.g. rendering a per-leg breakdown).
+ */
+export function getFlightLegs(b: FlightBooking): FlightLeg[] {
+  return b.legs ?? [];
 }
 
 /**
@@ -55,7 +64,7 @@ export function isTodayBooking(b: Booking, todayIso: string): boolean {
   switch (b.type) {
     case 'flight':
       // Check if any leg departs on this date
-      return b.legs.some(leg => leg.departureDate === todayIso);
+      return getFlightLegs(b).some(leg => leg.departureDate === todayIso);
 
     case 'hotel':
       // Check if today falls within check-in and check-out (inclusive)

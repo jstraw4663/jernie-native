@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { Booking } from '@/src/types';
-import { getFlightEndpoints } from '@/src/domain/bookings';
+import { getFlightEndpoints, getFlightLegs } from '@/src/domain/bookings';
 import { Brand, Core, TypeColors, Typography, Radius, Shadow, Spacing } from '@/src/design/tokens';
 import { hexWithAlpha } from '@/src/utils/colors';
 
@@ -38,6 +38,7 @@ function FlightCard({
   // Overall route uses the first leg's origin and the last leg's destination;
   // each leg is also rendered as its own row below when there's more than one.
   const { firstLeg, lastLeg } = getFlightEndpoints(booking);
+  const legs = getFlightLegs(booking);
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={onPress ? 0.85 : 1} disabled={!onPress}>
       <LinearGradient
@@ -66,9 +67,9 @@ function FlightCard({
           </View>
         </View>
 
-        {booking.legs.length > 1 && (
+        {legs.length > 1 && (
           <View style={styles.legList}>
-            {booking.legs.map((leg, i) => (
+            {legs.map((leg, i) => (
               <Text key={i} style={styles.legRow}>
                 {leg.origin} → {leg.destination} · {leg.departureTime} → {leg.arrivalTime}
               </Text>

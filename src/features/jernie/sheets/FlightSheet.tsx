@@ -8,7 +8,7 @@ import { InfoSection, DistanceModule } from './SheetParts';
 import { MOCK_FLIGHT } from './mockEntityData';
 import { Core, Brand, Semantic, Spacing, Radius, Typography } from '@/src/design/tokens';
 import { hexWithAlpha } from '@/src/utils/colors';
-import { getFlightEndpoints } from '@/src/domain/bookings';
+import { getFlightEndpoints, getFlightLegs } from '@/src/domain/bookings';
 import type { FlightBooking } from '@/src/types';
 
 interface FlightSheetProps {
@@ -41,6 +41,7 @@ export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
   // Hero/summary use the overall first-leg-origin → last-leg-destination route;
   // the Flight Status section below renders each leg individually.
   const { firstLeg, lastLeg } = getFlightEndpoints(booking);
+  const legs = getFlightLegs(booking);
 
   return (
     <View style={s.root}>
@@ -69,8 +70,8 @@ export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
       <View style={s.section}>
         <Text style={s.sectionTitle}>Flight Status</Text>
         <LinearGradient colors={[Brand.navy, Brand.navySoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.flightBlock}>
-          {booking.legs.map((leg, i) => (
-            <View key={i} style={i < booking.legs.length - 1 ? s.flLegDivider : undefined}>
+          {legs.map((leg, i) => (
+            <View key={i} style={i < legs.length - 1 ? s.flLegDivider : undefined}>
               <View style={s.flRoute}>
                 <View style={s.flEnd}>
                   <Text style={s.flAirport}>{leg.origin}</Text>
