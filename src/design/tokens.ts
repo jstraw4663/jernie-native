@@ -136,9 +136,9 @@ export const Animation = {
     sheet:  460,
   },
   springs: {
-    gentle:    { damping: 26, stiffness: 240 },
-    snappy:    { damping: 28, stiffness: 340 },
-    bouncy:    { damping: 20, stiffness: 260 },
-    drag:      { damping: 36, stiffness: 400 },
+    gentle:    { damping: 34, stiffness: 280 },
+    snappy:    { damping: 44, stiffness: 400 },
+    bouncy:    { damping: 32, stiffness: 280 },
+    drag:      { damping: 50, stiffness: 460 },
   },
 } as const;

@@ -13,6 +13,7 @@ import type { Trip, StopWithColor } from '@/src/types';
 import { Typography, Radius, Spacing, Semantic } from '@/src/design/tokens';
 import { formatDateRange } from '@/src/utils/dates';
 import { getDevNow } from '@/src/utils/devTime';
+import { stopHeroGradient } from '@/src/utils/colors';
 
 interface HeroLayerProps {
   trip: Trip;
@@ -50,9 +51,9 @@ export function HeroLayer({ trip, activeStop, visibleStop, scrollY }: HeroLayerP
 
   return (
     <Animated.View style={[styles.container, heroStyle]}>
-      {/* LinearGradient fills the animated container */}
+      {/* LinearGradient derived from the currently viewed stop's color */}
       <LinearGradient
-        colors={trip.colorPack.heroGradient}
+        colors={stopHeroGradient(effectiveVisibleStop.color)}
         style={StyleSheet.absoluteFill}
       />
 
@@ -69,6 +70,7 @@ export function HeroLayer({ trip, activeStop, visibleStop, scrollY }: HeroLayerP
             <Text style={styles.tripPillText}>{trip.name}</Text>
           </View>
           <View style={styles.phasePill}>
+            <View style={styles.phaseDot} />
             <Text style={styles.phaseText}>{phaseLabel}</Text>
           </View>
         </View>
@@ -83,11 +85,13 @@ export function HeroLayer({ trip, activeStop, visibleStop, scrollY }: HeroLayerP
 
       {/* Compact strip — fades in as hero shrinks, pinned to bottom */}
       <Animated.View style={[styles.compactStrip, compactStyle]}>
-        <Text style={styles.compactCity}>
-          {effectiveVisibleStop.emoji}{'  '}{effectiveVisibleStop.city}
-        </Text>
-        <View style={styles.phasePill}>
-          <Text style={styles.phaseText}>{phaseLabel}</Text>
+        <View style={styles.compactMark}>
+          <Text style={styles.compactEmoji}>{effectiveVisibleStop.emoji}</Text>
+        </View>
+        <View>
+          <Text style={styles.compactPlace}>Current stop</Text>
+          <Text style={styles.compactCity}>{effectiveVisibleStop.city}</Text>
+          <Text style={styles.compactMeta}>{phaseLabel}</Text>
         </View>
       </Animated.View>
     </Animated.View>
@@ -111,7 +115,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tripPill: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
     borderRadius: Radius.full,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -121,10 +127,19 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
   },
   phasePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: Semantic.warningTint,
     borderRadius: Radius.full,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
+  },
+  phaseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Semantic.warning,
   },
   phaseText: {
     ...Typography.roles.label,
@@ -144,15 +159,44 @@ const styles = StyleSheet.create({
   },
   compactStrip: {
     position: 'absolute',
-    bottom: Spacing.xl,
+    bottom: Spacing.base,
     left: Spacing.base,
-    right: Spacing.base,
+    right: 60,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 10,
+  },
+  compactMark: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.20)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  compactEmoji: { fontSize: 18 },
+  compactPlace: {
+    fontSize: 10,
+    fontFamily: 'DMSans',
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.55)',
   },
   compactCity: {
-    ...Typography.roles.h3,
+    fontSize: 15,
+    fontFamily: 'DMSans',
+    fontWeight: '800',
+    letterSpacing: -0.3,
     color: '#FFFFFF',
+  },
+  compactMeta: {
+    fontSize: 11,
+    fontFamily: 'DMSans',
+    color: 'rgba(255,255,255,0.60)',
+    marginTop: 1,
   },
 });

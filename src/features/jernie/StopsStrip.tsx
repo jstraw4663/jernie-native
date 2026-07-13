@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring,
 } from 'react-native-reanimated';
@@ -17,7 +18,7 @@ interface StopsStripProps {
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const STRIP_HEIGHT = 76;
 const H_PADDING    = 20;
-const PILL_WIDTH   = 160;   // minWidth of active pill — keep in sync with styles.activePill
+const PILL_WIDTH   = 170;   // minWidth of active pill — keep in sync with styles.activePill
 const DOT_WIDTH    = 56;    // fixed width of each non-active stop slot
 const CONN_WIDTH   = 40;    // fixed width of each connector segment
 const MUTED_LINE   = 'rgba(120,113,106,0.18)';
@@ -27,7 +28,7 @@ function computeOffset(idx: number): number {
   return (SCREEN_WIDTH - PILL_WIDTH) / 2 - H_PADDING - idx * (DOT_WIDTH + CONN_WIDTH);
 }
 
-const SPRING = { damping: 24, stiffness: 240 } as const;
+const SPRING = { damping: 40, stiffness: 320 } as const;
 
 export function StopsStrip({ stops, activeStopId, onStopPress }: StopsStripProps) {
   const activeIdx  = stops.findIndex(s => s.id === activeStopId);
@@ -111,6 +112,20 @@ export function StopsStrip({ stops, activeStopId, onStopPress }: StopsStripProps
           );
         })}
       </Animated.View>
+
+      {/* Fade masks — clip overflow stops without hard edges */}
+      <LinearGradient
+        colors={['rgba(252,250,247,0.95)', 'rgba(252,250,247,0)']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+        style={styles.fadeLeft}
+        pointerEvents="none"
+      />
+      <LinearGradient
+        colors={['rgba(252,250,247,0)', 'rgba(252,250,247,0.95)']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+        style={styles.fadeRight}
+        pointerEvents="none"
+      />
     </View>
   );
 }
@@ -177,4 +192,20 @@ const styles = StyleSheet.create({
   dotName:       { ...Typography.roles.meta, fontSize: 11, fontWeight: '600' as const, textAlign: 'center' },
   dotNamePast:   { color: Semantic.success },
   dotNameFuture: { color: Core.textFaint },
+  fadeLeft: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 28,
+    zIndex: 10,
+  },
+  fadeRight: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 28,
+    zIndex: 10,
+  },
 });
