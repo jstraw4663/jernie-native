@@ -33,10 +33,14 @@ function chunk<T>(items: T[], size: number): T[][] {
  *      result back to Firestore server-side; this hook only merges whatever comes back
  *      into the map it returns and never writes to Firestore itself.
  *
- * Each canonical key is only ever sent to the callable once per mount: a `useRef` set of
- * already-attempted keys stops a later re-render (e.g. `places` gaining one new place)
- * from re-firing enrichment for keys already in flight or already resolved — only the
- * genuinely new keys go out.
+ * A key is only sent to the callable while its own call is genuinely in flight: a
+ * `useRef` set of in-flight canonical keys stops a later re-render (e.g. `places`
+ * gaining one new place) from re-firing enrichment for a key whose enrichPlaces call
+ * hasn't settled yet. The key is removed from that set the moment its chunk's call
+ * settles — success or failure, and regardless of whether that effect run has since
+ * been cancelled — so a key whose in-flight call gets discarded due to cancellation
+ * (see below) becomes eligible for a fresh attempt on the very next effect run that
+ * still finds it missing, rather than being silently skipped forever.
  *
  * As with the read path, a place with no known lat/lon is never looked up at all (see
  * Place.lat/lon — most curated places today lack these). Any failure along the way — the
@@ -49,7 +53,9 @@ function chunk<T>(items: T[], size: number): T[][] {
  */
 export function useFirestoreEnrichment(places: Place[]): Record<string, PlaceEnrichment> {
   const [map, setMap] = useState<Record<string, PlaceEnrichment>>({});
-  const attemptedKeys = useRef<Set<string>>(new Set());
+  // Keys whose enrichPlaces call is currently pending — NOT a permanent "already tried"
+  // record. See the hook's doc comment above for why entries are removed on settlement.
+  const inFlightKeys = useRef<Set<string>>(new Set());
 
   const placesByKey = new Map<string, { name: string; lat: number; lon: number; fsq_id?: string }>();
   places.forEach(p => {
@@ -76,11 +82,13 @@ export function useFirestoreEnrichment(places: Place[]): Record<string, PlaceEnr
 
         // A miss is a key entirely absent from `existing` — a doc with fsq_not_found:
         // true still exists() and so is already present here (Global Constraint #5).
-        // Keys already attempted this mount (in flight or previously resolved/failed)
-        // are excluded so an overlapping re-render never re-fires the callable for them.
-        const misses = keys.filter(key => !(key in existing) && !attemptedKeys.current.has(key));
+        // Keys with a call currently in flight are excluded so an overlapping re-render
+        // never re-fires the callable for one that's still genuinely pending — but a
+        // key whose prior call has already settled (including one whose result was
+        // discarded due to cancellation) is fair game again here.
+        const misses = keys.filter(key => !(key in existing) && !inFlightKeys.current.has(key));
         if (misses.length === 0) return;
-        misses.forEach(key => attemptedKeys.current.add(key));
+        misses.forEach(key => inFlightKeys.current.add(key));
 
         const missingPlaces: MissingPlace[] = misses.map(key => {
           const place = placesByKey.get(key);
@@ -92,9 +100,16 @@ export function useFirestoreEnrichment(places: Place[]): Record<string, PlaceEnr
 
         // Chunked so a miss list bigger than the callable's own cap still gets sent —
         // each chunk is independent, so one failing chunk doesn't discard another
-        // chunk's successful results (Promise.allSettled, not Promise.all).
+        // chunk's successful results (Promise.allSettled, not Promise.all). Each
+        // chunk's places are removed from the in-flight set as soon as that chunk's
+        // own call settles — unconditionally, not gated behind `cancelled` — so the
+        // "in flight" set always reflects calls genuinely still pending right now.
         Promise.allSettled(
-          chunk(missingPlaces, ENRICH_BATCH_SIZE).map(batch => enrichPlaces(batch)),
+          chunk(missingPlaces, ENRICH_BATCH_SIZE).map(batch =>
+            enrichPlaces(batch).finally(() => {
+              batch.forEach(place => inFlightKeys.current.delete(place.canonicalKey));
+            }),
+          ),
         ).then(settlements => {
           if (cancelled) return;
           const merged: Record<string, PlaceEnrichment> = {};

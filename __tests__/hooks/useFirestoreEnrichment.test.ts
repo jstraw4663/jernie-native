@@ -134,9 +134,15 @@ describe('useFirestoreEnrichment', () => {
     expect(result.current).toEqual({});
   });
 
-  test('re-render that adds a new place only fires enrichPlaces for the newly missing key, not ones already attempted', async () => {
+  test('re-render that adds a new place only fires enrichPlaces for the newly missing key, not one whose call is still in flight', async () => {
     mockGetDocsByIds.mockResolvedValue({});
-    mockEnrichPlaces.mockResolvedValue({});
+    // The first call for Eventide is left genuinely pending (not yet settled) — this is
+    // what should suppress a duplicate concurrent dispatch, not a permanent record that
+    // it was ever attempted (see the dedicated in-flight-vs-permanent regression test).
+    let resolveFirstCall!: (value: Record<string, unknown>) => void;
+    const firstCallPromise = new Promise<Record<string, unknown>>(resolve => { resolveFirstCall = resolve; });
+    mockEnrichPlaces.mockImplementationOnce(() => firstCallPromise).mockResolvedValue({});
+
     const { rerender } = renderHook(
       ({ places }: { places: Place[] }) => useFirestoreEnrichment(places),
       { initialProps: { places: [PLACE_WITH_COORDS] } },
@@ -158,6 +164,9 @@ describe('useFirestoreEnrichment', () => {
     const secondCallPayload = mockEnrichPlaces.mock.calls[1][0];
     expect(secondCallPayload).toHaveLength(1);
     expect(secondCallPayload[0].canonicalKey).toBe(duckfatKey);
+
+    resolveFirstCall({}); // let the still-pending first call settle so it doesn't leak into later tests
+    await flush();
   });
 
   test('re-render with the exact same places never re-fires the batched read or the callable', async () => {
@@ -193,5 +202,114 @@ describe('useFirestoreEnrichment', () => {
     expect(firstBatch.length).toBeLessThanOrEqual(30);
     expect(secondBatch.length).toBeLessThanOrEqual(30);
     expect(firstBatch.length + secondBatch.length).toBe(35);
+  });
+
+  test('one chunk rejecting does not prevent another chunk\'s successful results from being merged', async () => {
+    // 35 missing places forces 2 chunks (cap is 30): chunk 1 = places 0-29, chunk 2 =
+    // places 30-34. Regression test for chunk isolation via Promise.allSettled — a
+    // rejected chunk must not throw out of the hook, and must not discard the other
+    // chunk's results.
+    const manyPlaces: Place[] = Array.from({ length: 35 }, (_, i) => ({
+      id: `place-chunk-${i}`, tripId: 't1', stopId: 's1', name: `Chunk Place ${i}`,
+      category: 'restaurant' as const, must: false, source: 'curator' as const, addedBy: 'u1',
+      lat: 40 + i * 0.001, lon: -70 - i * 0.001,
+    }));
+    const keysByPlace = manyPlaces.map(p => canonicalPlaceKey(p.name, p.lat!, p.lon!));
+
+    mockGetDocsByIds.mockResolvedValue({});
+    mockEnrichPlaces
+      .mockRejectedValueOnce(new Error('foursquare unavailable'))
+      .mockImplementationOnce(async (batch: { canonicalKey: string; name: string }[]) => {
+        const result: Record<string, unknown> = {};
+        batch.forEach(p => {
+          result[p.canonicalKey] = {
+            name: p.name, address: '', rating: 4.2, photos: [], cached_at: 3, place_id_locked: true,
+          };
+        });
+        return result;
+      });
+
+    const { result } = renderHook(() => useFirestoreEnrichment(manyPlaces));
+
+    await waitFor(() => expect(mockEnrichPlaces).toHaveBeenCalledTimes(2));
+    await flush();
+
+    // The rejected first chunk's places are simply absent — not thrown, not present.
+    expect(result.current[keysByPlace[0]]).toBeUndefined();
+    expect(result.current[keysByPlace[29]]).toBeUndefined();
+    // The resolved second chunk's places DO make it into the final merged map.
+    expect(result.current[keysByPlace[30]]?.rating).toBe(4.2);
+    expect(result.current[keysByPlace[34]]?.rating).toBe(4.2);
+  });
+
+  test('a key whose in-flight call gets discarded by cancellation is retried (not permanently lost) on the next effect run that still finds it missing', async () => {
+    // Reproduces the race: A is a miss and its enrichPlaces call is dispatched but slow
+    // to resolve. Before it resolves, `places` changes (B arrives), which cancels the
+    // first effect closure. The read for the second effect run still finds A missing.
+    // A's original (now-cancelled) call eventually resolves successfully, but that
+    // result must be discarded per the existing cancellation guard — the correct
+    // behavior is for the *second* effect run to notice A is free again (its call
+    // settled) and dispatch a fresh enrichPlaces call for it, which is what ultimately
+    // populates the map. Permanently marking A as "attempted" (the bug) would instead
+    // exclude it from every future miss computation, losing it for the rest of the
+    // mount's life.
+    let resolveFirstCall!: (value: Record<string, unknown>) => void;
+    const firstCallPromise = new Promise<Record<string, unknown>>(resolve => {
+      resolveFirstCall = resolve;
+    });
+    let resolveSecondRead!: (value: Record<string, unknown>) => void;
+    const secondReadPromise = new Promise<Record<string, unknown>>(resolve => {
+      resolveSecondRead = resolve;
+    });
+
+    mockGetDocsByIds.mockResolvedValueOnce({}); // effect 1's read: A missing
+    mockEnrichPlaces
+      .mockImplementationOnce(() => firstCallPromise) // effect 1's call for A: controlled
+      .mockImplementation(async (batch: { canonicalKey: string; name: string }[]) => {
+        // Any later call resolves for real, keyed by whatever it was actually asked for.
+        const out: Record<string, unknown> = {};
+        batch.forEach(p => {
+          out[p.canonicalKey] = {
+            name: p.name, address: 'resolved', rating: 4.7, photos: [], cached_at: 2, place_id_locked: true,
+          };
+        });
+        return out;
+      });
+
+    const { rerender, result } = renderHook(
+      ({ places }: { places: Place[] }) => useFirestoreEnrichment(places),
+      { initialProps: { places: [PLACE_WITH_COORDS] } },
+    );
+
+    await waitFor(() => expect(mockEnrichPlaces).toHaveBeenCalledTimes(1));
+    expect(mockEnrichPlaces.mock.calls[0][0]).toEqual([
+      expect.objectContaining({ canonicalKey: EVENTIDE_KEY }),
+    ]);
+
+    // effect 2's read is controlled so it only resolves once we say so, after the
+    // first call has already settled and freed up A's in-flight slot.
+    mockGetDocsByIds.mockImplementationOnce(() => secondReadPromise);
+
+    const newPlace: Place = {
+      id: 'place-4', tripId: 't1', stopId: 's1', name: 'Duckfat',
+      category: 'restaurant', must: false, source: 'curator', addedBy: 'u1',
+      lat: 43.66, lon: -70.25,
+    };
+    rerender({ places: [PLACE_WITH_COORDS, newPlace] });
+
+    // Resolve the original (now-cancelled) call for A with data that should be
+    // discarded — if it ever leaked into the map, rating would read 999, not 4.7.
+    resolveFirstCall({ [EVENTIDE_KEY]: { name: 'Eventide', address: 'stale', rating: 999, photos: [], cached_at: 1, place_id_locked: true } });
+    await flush();
+
+    // Effect 2's read still finds both places missing (the Firestore write from the
+    // discarded call, if any, hasn't been reflected here) — this is the moment that
+    // exposes the bug: A must be eligible for a fresh miss-check now that its prior
+    // call has settled.
+    resolveSecondRead({});
+
+    await waitFor(() => expect(result.current[EVENTIDE_KEY]?.rating).toBe(4.7));
+    // Never picked up the stale, discarded value from the cancelled first call.
+    expect(result.current[EVENTIDE_KEY]?.address).toBe('resolved');
   });
 });
