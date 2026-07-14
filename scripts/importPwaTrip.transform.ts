@@ -206,7 +206,9 @@ function transformFlightLeg(leg: PwaFlightLeg): FlightLeg {
 // The brief assumed source `category`/`source` values would carry over directly, but the
 // real trip.json uses several values with no matching enum member in the Task 1 types:
 //   - Place.category: source also has 'attraction', 'bar', 'shop' (beyond restaurant/
-//     activity/sight/hike) — all mapped to 'other', the type's catch-all.
+//     activity/sight/hike) — 'attraction'/'shop' map to 'other', the type's catch-all;
+//     'bar' got its own PlaceCategory member (added for the Explore tab work) since it's
+//     a real, distinct, filterable category, even though only one real place uses it.
 //   - ItineraryItemCategory: source also has 'leisure', 'lodging', 'travel' — 'travel'
 //     maps cleanly onto the type's existing 'transport' member; 'leisure' and 'lodging'
 //     have no equivalent and map to 'other'.
@@ -217,8 +219,8 @@ const PLACE_CATEGORY_MAP: Record<string, PlaceCategory> = {
   activity: 'activity',
   sight: 'sight',
   hike: 'hike',
+  bar: 'bar',
   attraction: 'other',
-  bar: 'other',
   shop: 'other',
 };
 

@@ -1,16 +1,23 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Enrichment: any authenticated user can read; only Cloud Functions write
-    match /place_enrichment/{tripId}/places/{placeId} {
-      allow read: if request.auth != null;
-      allow write: if false;  // Cloud Functions only
-    }
-    match /trail_enrichment/{tripId}/trails/{placeId} {
+    // Enrichment: flat, global collections keyed by an app-owned canonical key
+    // (normalized name + rounded lat/lon — see src/domain/placeEnrichment.ts), NOT by
+    // trip or by any provider's proprietary ID. This is what lets the same physical
+    // place enriched via different trips (or different providers, e.g. Google now vs.
+    // Foursquare/Yelp later) share one cached record instead of duplicating API spend.
+    // Any authenticated user can read; only Cloud Functions write (none deployed yet —
+    // the one-time import in scripts/importFirestoreEnrichment.ts uses Admin SDK
+    // credentials, which bypass these rules entirely).
+    match /place_enrichment/{canonicalKey} {
       allow read: if request.auth != null;
       allow write: if false;
     }
-    match /hotel_enrichment/{tripId}/hotels/{bookingId} {
+    match /trail_enrichment/{canonicalKey} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    match /hotel_enrichment/{canonicalKey} {
       allow read: if request.auth != null;
       allow write: if false;
     }

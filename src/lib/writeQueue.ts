@@ -1,4 +1,5 @@
 import { createMMKV } from 'react-native-mmkv';
+import { generateId } from '@/src/utils/id';
 import type { WriteQueueEntry } from '@/src/types';
 
 const QUEUE_KEY = 'jernie_write_queue';
@@ -28,10 +29,6 @@ function loadQueue(): WriteQueueEntry[] {
 
 function saveQueue(entries: WriteQueueEntry[]): void {
   persistRaw(JSON.stringify(entries));
-}
-
-function generateId(): string {
-  return `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
 export function getQueue(): WriteQueueEntry[] {

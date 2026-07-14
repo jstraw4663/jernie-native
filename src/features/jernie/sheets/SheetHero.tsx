@@ -13,7 +13,7 @@ import { stopHeroGradient, hexWithAlpha } from '@/src/utils/colors';
 
 type PlaceMode = {
   mode: 'place';
-  photoUri: string;
+  photoUri?: string;  // absent → gradient background (most real places have no photo)
   emoji: string;
   categoryLabel: string;
   stopLabel: string;
@@ -47,9 +47,9 @@ export function SheetHero(props: SheetHeroProps) {
 
   return (
     <Animated.View style={[s.hero, heroStyle]}>
-      {(props.mode === 'place' || props.photoUri) ? (
+      {props.photoUri ? (
         <Image
-          source={{ uri: props.mode === 'place' ? props.photoUri : (props as TravelMode).photoUri! }}
+          source={{ uri: props.photoUri }}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />

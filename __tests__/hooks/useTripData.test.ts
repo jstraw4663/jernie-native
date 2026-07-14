@@ -40,6 +40,9 @@ const BASE = {
       'day-1': { id: 'day-1', stopId: 'stop-a', dateIso: '2026-07-10', items: [] },
     },
   },
+  places: {
+    'place-1': { id: 'place-1', tripId: 'trip-1', stopId: 'stop-a', name: 'Eventide', category: 'restaurant', must: true, source: 'curator', addedBy: 'uid-1' },
+  },
 };
 
 describe('normalizeTripSnapshot', () => {
@@ -77,12 +80,20 @@ describe('normalizeTripSnapshot', () => {
     expect(itinerary['stop-a'][1].dateIso).toBe('2026-07-11');  // day-2 sorts second
   });
 
+  test('converts places object to flat array', () => {
+    const { places } = normalizeTripSnapshot(BASE);
+    expect(places).toHaveLength(1);
+    expect(places[0].id).toBe('place-1');
+    expect(places[0].name).toBe('Eventide');
+  });
+
   test('handles null sub-collections without throwing', () => {
-    const minimal = { ...BASE, stops: null, bookings: null, itinerary: null };
-    const { stops, bookings, itinerary } = normalizeTripSnapshot(minimal as never);
+    const minimal = { ...BASE, stops: null, bookings: null, itinerary: null, places: null };
+    const { stops, bookings, itinerary, places } = normalizeTripSnapshot(minimal as never);
     expect(stops).toEqual([]);
     expect(bookings).toEqual([]);
     expect(itinerary).toEqual({});
+    expect(places).toEqual([]);
   });
 
   test('handles stops with no id field by injecting the key', () => {
@@ -152,7 +163,7 @@ describe('useTripData', () => {
     // Seed the MMKV cache directly before mounting
     const { trip } = normalizeTripSnapshot(BASE);
     _mmkvStore['trip_snapshot_trip-cached'] = JSON.stringify({
-      trip, stops: [], bookings: [], itinerary: {}, cachedAt: Date.now(),
+      trip, stops: [], bookings: [], itinerary: {}, places: [], cachedAt: Date.now(),
     });
     (mockOnce as jest.Mock).mockRejectedValue(new Error('network error'));
     const { result } = renderHook(() => useTripData('trip-cached'));

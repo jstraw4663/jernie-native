@@ -1,7 +1,7 @@
 // Core domain types for Jernie Native.
 // Data split: RTDB = live user state. Firestore = enrichment cache (read-only from client).
 
-export type PlaceCategory = 'restaurant' | 'activity' | 'sight' | 'hike' | 'flight' | 'other';
+export type PlaceCategory = 'restaurant' | 'activity' | 'sight' | 'hike' | 'bar' | 'flight' | 'other';
 export type BugPriority = 'high' | 'medium' | 'low';
 export type UserPlan = 'anonymous' | 'free' | 'pro';
 export type TripMemberRole = 'organizer' | 'traveler';
@@ -82,6 +82,12 @@ export interface Place {
   source: 'curator' | 'community';
   addedBy: string;      // uid
   fsq_id?: string;      // Foursquare canonical ID (set after enrichment)
+  // Coordinates — needed to compute this place's canonical enrichment-cache key
+  // (see src/domain/placeEnrichment.ts). Optional because most curated places today
+  // predate coordinate capture; only backfilled where a one-time enrichment import
+  // or future auto-seed flow has resolved them.
+  lat?: number;
+  lon?: number;
   // Hand-curated fields (not API-fetched — these are ours, so they live directly on the
   // RTDB-backed type, not the Firestore enrichment path).
   rating?: number;
@@ -241,7 +247,16 @@ export interface Review {
 }
 
 export interface PlaceEnrichment {
-  fsq_id: string;
+  // Stored at `place_enrichment/{canonicalKey}` — a flat, global collection keyed by
+  // an app-owned canonical key (normalized name + rounded lat/lon, see
+  // src/domain/placeEnrichment.ts), NOT by any provider's proprietary ID or by trip.
+  // This is what lets the same physical place enriched via different trips (or
+  // eventually different providers) share one cached record instead of duplicating
+  // API spend. Provider IDs below are just fields, recording which service(s) actually
+  // supplied this record — e.g. imported legacy Google Places data has googlePlaceId
+  // set and fsq_id unset, until real Foursquare-based enrichment populates fsq_id later.
+  fsq_id?: string;
+  googlePlaceId?: string;
   name: string;
   lat: number;
   lon: number;
@@ -251,7 +266,7 @@ export interface PlaceEnrichment {
   address: string;
   rating?: number;
   ratingCount?: number;
-  price?: number;
+  price?: string;  // dollar-sign string ("$$$"), matching Place.price's convention
   photos: string[];
   reviews?: Review[];
   reviews_cached_at?: number;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createMMKV } from 'react-native-mmkv';
 import { database, authReady } from '@/src/lib/firebase';
-import type { Trip, Stop, StopWithColor, Booking, ItineraryDay, TripColorPackRef, SetupIntent } from '@/src/types';
+import type { Trip, Stop, StopWithColor, Booking, ItineraryDay, Place, TripColorPackRef, SetupIntent } from '@/src/types';
 import { getStopColor } from '@/src/domain/trip';
 
 const cacheStorage = createMMKV({ id: 'jernie-trip-cache' });
@@ -11,6 +11,7 @@ export interface TripDataState {
   stops: StopWithColor[];
   bookings: Booking[];
   itinerary: Record<string, ItineraryDay[]>;
+  places: Place[];
   status: 'loading' | 'ready' | 'error';
   fromCache: boolean;
   retry: () => void;
@@ -21,6 +22,7 @@ interface CachedSnapshot {
   stops: StopWithColor[];
   bookings: Booking[];
   itinerary: Record<string, ItineraryDay[]>;
+  places: Place[];
   cachedAt: number;
 }
 
@@ -31,6 +33,7 @@ export function normalizeTripSnapshot(val: Record<string, unknown>): {
   stops: StopWithColor[];
   bookings: Booking[];
   itinerary: Record<string, ItineraryDay[]>;
+  places: Place[];
 } {
   const trip: Trip = {
     id: val.id as string,
@@ -61,7 +64,11 @@ export function normalizeTripSnapshot(val: Record<string, unknown>): {
       .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
   }
 
-  return { trip, stops, bookings, itinerary };
+  const rawPlaces = ((val.places ?? {}) as Record<string, Omit<Place, 'id'> & { id?: string }>);
+  const places: Place[] = Object.entries(rawPlaces)
+    .map(([key, p]) => ({ ...p, id: p.id ?? key } as Place));
+
+  return { trip, stops, bookings, itinerary, places };
 }
 
 export function useTripData(tripId: string): TripDataState {
@@ -72,10 +79,10 @@ export function useTripData(tripId: string): TripDataState {
       const raw = cacheStorage.getString(cacheKey);
       if (raw) {
         const cached = JSON.parse(raw) as CachedSnapshot;
-        return { trip: cached.trip, stops: cached.stops, bookings: cached.bookings, itinerary: cached.itinerary, status: 'loading', fromCache: true };
+        return { trip: cached.trip, stops: cached.stops, bookings: cached.bookings, itinerary: cached.itinerary, places: cached.places ?? [], status: 'loading', fromCache: true };
       }
     } catch {}
-    return { trip: null, stops: [], bookings: [], itinerary: {}, status: 'loading', fromCache: false };
+    return { trip: null, stops: [], bookings: [], itinerary: {}, places: [], status: 'loading', fromCache: false };
   });
 
   const doFetch = useCallback(async () => {

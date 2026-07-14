@@ -14,6 +14,7 @@ import Animated, {
 import { useTripContext } from '@/src/contexts/TripContext';
 import { getActiveStopId, getAutoExpandDayIndex } from '@/src/domain/trip';
 import { bookingBelongsToStop } from '@/src/domain/bookings';
+import { getPlaceEnrichment } from '@/src/domain/placeEnrichment';
 import { getDevNow } from '@/src/utils/devTime';
 import { HeroLayer } from '@/src/features/jernie/HeroLayer';
 import { SampleCTACarousel } from '@/src/features/jernie/SampleCTACarousel';
@@ -27,7 +28,7 @@ import type { Booking, ItineraryItem, StopWithColor } from '@/src/types';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function JernieTab() {
-  const { trip, stops, bookings, itinerary, status, refetch } = useTripContext();
+  const { trip, stops, bookings, itinerary, places, enrichment, status, refetch } = useTripContext();
 
   const now = getDevNow();
   const activeStopId = getActiveStopId(stops, now);
@@ -77,13 +78,32 @@ export default function JernieTab() {
   }, []);
 
   const handleItemPress = useCallback((item: ItineraryItem, stop: StopWithColor) => {
+    const place = item.placeId ? places.find(p => p.id === item.placeId) : undefined;
+
+    if (place) {
+      const kind = place.category === 'hike' ? 'hike' : 'place';
+      entitySheetRef.current?.present({
+        kind,
+        name: place.name,
+        stopLabel: stop.city,
+        stopColor: stop.color,
+        place,
+        enrichment: getPlaceEnrichment(enrichment, place),
+        // isAdded is trivially true here — an item opened from the itinerary is by
+        // definition already in it — so the Add button never renders from this entry point.
+        isAdded: true,
+      });
+      return;
+    }
+
+    // No linked place (a handful of free-text items) — preserve the original mock-based behavior.
     const label = item.label ?? '';
     if (item.category === 'restaurant') {
-      entitySheetRef.current?.present({ kind: 'restaurant', name: label, stopLabel: stop.city, stopColor: stop.color });
+      entitySheetRef.current?.present({ kind: 'place', name: label, stopLabel: stop.city, stopColor: stop.color });
     } else if (item.category === 'hike') {
       entitySheetRef.current?.present({ kind: 'hike', name: label, stopLabel: stop.city, stopColor: stop.color });
     }
-  }, []);
+  }, [places, enrichment]);
 
   // Capture which page the drag originated from (before the 50% crossover updates lastPageRef)
   const handleScrollBeginDrag = useCallback(() => {

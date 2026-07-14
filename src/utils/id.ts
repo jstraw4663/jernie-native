@@ -1,0 +1,4 @@
+/** Not cryptographically secure — sufficient entropy for client-generated RTDB keys. */
+export function generateId(): string {
+  return `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}

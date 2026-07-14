@@ -100,6 +100,30 @@ describe('useJoinTrip', () => {
     expect(updateArg['trips/trip-xyz/members/test-uid'].handle).toBe('Test User');
   });
 
+  test('explicit handle argument takes priority over auth displayName', async () => {
+    (mockOnce as jest.Mock).mockResolvedValue({ val: () => 'trip-xyz' });
+    (mockSet as jest.Mock).mockResolvedValue(undefined);
+    (mockUpdate as jest.Mock).mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useJoinTrip());
+    await act(async () => { await result.current.joinTrip('tok-123', 'Jennie'); });
+
+    const updateArg = (mockUpdate as jest.Mock).mock.calls[0][0];
+    expect(updateArg['trips/trip-xyz/members/test-uid'].handle).toBe('Jennie');
+  });
+
+  test('a blank/whitespace-only explicit handle falls through to auth displayName', async () => {
+    (mockOnce as jest.Mock).mockResolvedValue({ val: () => 'trip-xyz' });
+    (mockSet as jest.Mock).mockResolvedValue(undefined);
+    (mockUpdate as jest.Mock).mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useJoinTrip());
+    await act(async () => { await result.current.joinTrip('tok-123', '   '); });
+
+    const updateArg = (mockUpdate as jest.Mock).mock.calls[0][0];
+    expect(updateArg['trips/trip-xyz/members/test-uid'].handle).toBe('Test User');
+  });
+
   test("handle falls back to 'Traveler' when displayName is unavailable", async () => {
     (mockAuth as jest.Mock).mockReturnValue({ currentUser: { uid: 'test-uid', displayName: null } });
     (mockOnce as jest.Mock).mockResolvedValue({ val: () => 'trip-xyz' });

@@ -4,7 +4,7 @@ import { BottomSheetModal, BottomSheetBackdrop, useBottomSheetSpringConfigs } fr
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import { useSheetContext } from '@/src/contexts/SheetContext';
 import type { EntitySheetPayload } from './types';
-import { RestaurantSheet } from './RestaurantSheet';
+import { PlaceSheet } from './PlaceSheet';
 import { HikeSheet } from './HikeSheet';
 import { HotelSheet } from './HotelSheet';
 import { FlightSheet } from './FlightSheet';
@@ -77,11 +77,15 @@ export const EntityDetailSheet = React.forwardRef<EntityDetailSheetRef, object>(
       handleIndicatorStyle={s.handle}
       backgroundStyle={s.background}
     >
-      {payload?.kind === 'restaurant' && (
-        <RestaurantSheet
+      {payload?.kind === 'place' && (
+        <PlaceSheet
           name={payload.name}
           stopLabel={payload.stopLabel}
           stopColor={payload.stopColor}
+          place={payload.place}
+          enrichment={payload.enrichment}
+          isAdded={payload.isAdded}
+          onAdd={payload.onAdd}
           onClose={handleClose}
         />
       )}
@@ -90,6 +94,10 @@ export const EntityDetailSheet = React.forwardRef<EntityDetailSheetRef, object>(
           name={payload.name}
           stopLabel={payload.stopLabel}
           stopColor={payload.stopColor}
+          place={payload.place}
+          enrichment={payload.enrichment}
+          isAdded={payload.isAdded}
+          onAdd={payload.onAdd}
           onClose={handleClose}
         />
       )}

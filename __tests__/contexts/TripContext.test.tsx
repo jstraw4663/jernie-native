@@ -2,6 +2,7 @@ jest.mock('@/src/hooks/useTripData', () => ({ useTripData: jest.fn() }));
 jest.mock('@/src/hooks/useTripConfirms', () => ({ useTripConfirms: jest.fn() }));
 jest.mock('@/src/hooks/useTripMembers', () => ({ useTripMembers: jest.fn() }));
 jest.mock('@/src/hooks/useTripGroups', () => ({ useTripGroups: jest.fn() }));
+jest.mock('@/src/hooks/useFirestoreEnrichment', () => ({ useFirestoreEnrichment: jest.fn() }));
 jest.mock('@/src/lib/firebase', () => ({ auth: jest.fn() }));
 
 import React from 'react';
@@ -11,6 +12,7 @@ import { useTripData } from '@/src/hooks/useTripData';
 import { useTripConfirms } from '@/src/hooks/useTripConfirms';
 import { useTripMembers } from '@/src/hooks/useTripMembers';
 import { useTripGroups } from '@/src/hooks/useTripGroups';
+import { useFirestoreEnrichment } from '@/src/hooks/useFirestoreEnrichment';
 import { auth } from '@/src/lib/firebase';
 import type { Trip, Booking, ItineraryDay, TripMember, Group } from '@/src/types';
 
@@ -18,6 +20,7 @@ const mockUseTripData = useTripData as jest.Mock;
 const mockUseTripConfirms = useTripConfirms as jest.Mock;
 const mockUseTripMembers = useTripMembers as jest.Mock;
 const mockUseTripGroups = useTripGroups as jest.Mock;
+const mockUseFirestoreEnrichment = useFirestoreEnrichment as jest.Mock;
 const mockAuth = auth as jest.Mock;
 
 const trip: Trip = {
@@ -82,6 +85,7 @@ function setupMocks(currentUid: string | null) {
     stops: [],
     bookings,
     itinerary,
+    places: [],
     status: 'ready',
     fromCache: false,
     retry: jest.fn(),
@@ -89,6 +93,7 @@ function setupMocks(currentUid: string | null) {
   mockUseTripConfirms.mockReturnValue({ confirms: {}, setConfirm: jest.fn() });
   mockUseTripMembers.mockReturnValue({ members, status: 'ready' });
   mockUseTripGroups.mockReturnValue({ groups, status: 'ready' });
+  mockUseFirestoreEnrichment.mockReturnValue({});
 }
 
 function Capture({ onCapture }: { onCapture: (ctx: TripContextValue) => void }) {
@@ -143,6 +148,17 @@ describe('TripProvider group-visibility filtering', () => {
     expect(ctx.currentUid).toBe('bob');
     expect(ctx.members).toEqual(members);
     expect(ctx.groups).toEqual(groups);
+  });
+
+  test('exposes places as-is, unfiltered by group membership', () => {
+    mockUseTripData.mockReturnValueOnce({
+      trip, stops: [], bookings, itinerary,
+      places: [{ id: 'place-1', tripId: 'trip-1', stopId: 'stop-1', name: 'Eventide', category: 'restaurant', must: true, source: 'curator', addedBy: 'alice' }],
+      status: 'ready', fromCache: false, retry: jest.fn(),
+    });
+    const ctx = renderWithUid('alice'); // alice is not in group-1 — irrelevant for places
+    expect(ctx.places).toHaveLength(1);
+    expect(ctx.places[0].name).toBe('Eventide');
   });
 
   test('bookings/itinerary keep the same array identity across a re-render triggered by unrelated state (e.g. a confirm toggle)', () => {

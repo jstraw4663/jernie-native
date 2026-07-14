@@ -5,7 +5,7 @@ import type { TripMemberRole } from '@/src/types';
 export type JoinTripStatus = 'idle' | 'joining' | 'success' | 'error';
 
 export interface JoinTripState {
-  joinTrip: (token: string) => Promise<{ tripId: string }>;
+  joinTrip: (token: string, handle?: string) => Promise<{ tripId: string }>;
   status: JoinTripStatus;
   error: Error | null;
 }
@@ -24,7 +24,7 @@ export function useJoinTrip(): JoinTripState {
   const [status, setStatus] = useState<JoinTripStatus>('idle');
   const [error, setError] = useState<Error | null>(null);
 
-  const joinTrip = useCallback(async (token: string): Promise<{ tripId: string }> => {
+  const joinTrip = useCallback(async (token: string, handle?: string): Promise<{ tripId: string }> => {
     setStatus('joining');
     setError(null);
     try {
@@ -42,9 +42,9 @@ export function useJoinTrip(): JoinTripState {
       // Step 2 — only after step 1 has committed. Exactly two paths, bundled together.
       const joinedAt = Date.now();
       const role: TripMemberRole = 'traveler';
-      const handle = auth().currentUser?.displayName ?? 'Traveler';
+      const resolvedHandle = handle?.trim() || auth().currentUser?.displayName || 'Traveler';
       await database().ref().update({
-        [`trips/${tripId}/members/${uid}`]: { uid, handle, role, joinedAt },
+        [`trips/${tripId}/members/${uid}`]: { uid, handle: resolvedHandle, role, joinedAt },
         [`users/${uid}/trips/${tripId}`]: { role, joinedAt },
       });
 

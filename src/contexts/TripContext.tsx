@@ -5,18 +5,21 @@ import { useTripData } from '@/src/hooks/useTripData';
 import { useTripConfirms } from '@/src/hooks/useTripConfirms';
 import { useTripMembers } from '@/src/hooks/useTripMembers';
 import { useTripGroups } from '@/src/hooks/useTripGroups';
+import { useFirestoreEnrichment } from '@/src/hooks/useFirestoreEnrichment';
 import { auth } from '@/src/lib/firebase';
 import { filterVisibleToUser } from '@/src/domain/groups';
 import { TripLoadingScreen } from '@/src/features/jernie/TripLoadingScreen';
 import { TripErrorScreen } from '@/src/features/jernie/TripErrorScreen';
 import { Semantic, Spacing, Typography } from '@/src/design/tokens';
-import type { Trip, StopWithColor, Booking, ItineraryDay, TripMember, Group } from '@/src/types';
+import type { Trip, StopWithColor, Booking, ItineraryDay, Place, PlaceEnrichment, TripMember, Group } from '@/src/types';
 
 export interface TripContextValue {
   trip: Trip;
   stops: StopWithColor[];
   bookings: Booking[];        // already visibility-filtered for currentUid
   itinerary: Record<string, ItineraryDay[]>;  // items already visibility-filtered
+  places: Place[];            // not group-scoped — Place has no groupIds field
+  enrichment: Record<string, PlaceEnrichment>;  // keyed by canonical key — use getPlaceEnrichment()
   members: TripMember[];
   groups: Group[];
   currentUid: string | null;
@@ -57,6 +60,7 @@ export function TripProvider({ tripId, children }: TripProviderProps) {
   const confirmsState = useTripConfirms(tripId);
   const membersState = useTripMembers(tripId);
   const groupsState = useTripGroups(tripId);
+  const enrichment = useFirestoreEnrichment(tripData.places);
 
   const currentUid = auth().currentUser?.uid ?? null;
   const isOrganizer = membersState.members.some(
@@ -96,6 +100,8 @@ export function TripProvider({ tripId, children }: TripProviderProps) {
     stops: tripData.stops,
     bookings,
     itinerary,
+    places: tripData.places,
+    enrichment,
     members: membersState.members,
     groups: groupsState.groups,
     currentUid,

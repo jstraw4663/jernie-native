@@ -261,14 +261,14 @@ test('transformPlaces maps source→curator/community, carries hand-curated fiel
   expect(places['place-3'].source).toBe('community');
 });
 
-test('transformPlaces maps attraction/bar/shop source categories to "other"', () => {
+test('transformPlaces maps attraction/shop source categories to "other", and bar to its own category', () => {
   const make = (category: string): PwaPlace => ({
     id: `place-${category}`, stop_id: 'portland', category, name: 'X', must: false,
     rating: null, source: 'guide', photo_url: null,
   });
   const places = transformPlaces([make('attraction'), make('bar'), make('shop')], OPTS);
   expect(places['place-attraction'].category).toBe('other');
-  expect(places['place-bar'].category).toBe('other');
+  expect(places['place-bar'].category).toBe('bar');
   expect(places['place-shop'].category).toBe('other');
 });
 
@@ -394,10 +394,17 @@ describe('buildImportPayload against the real ~/jernie/public/trip.json snapshot
   test('carries all 54 places with valid categories and sources', () => {
     expect(Object.keys(tripWrite.places)).toHaveLength(54);
     for (const place of Object.values(tripWrite.places) as any[]) {
-      expect(['restaurant', 'activity', 'sight', 'hike', 'flight', 'other']).toContain(place.category);
+      expect(['restaurant', 'activity', 'sight', 'hike', 'bar', 'flight', 'other']).toContain(place.category);
       expect(['curator', 'community']).toContain(place.source);
       expect(place.addedBy).toBe('jeremy-uid');
     }
+  });
+
+  test('the one real bar ("The Annex") keeps its own bar category, not folded into "other"', () => {
+    const places = Object.values(tripWrite.places) as any[];
+    const bars = places.filter(p => p.category === 'bar');
+    expect(bars).toHaveLength(1);
+    expect(bars[0].name).toBe('The Annex');
   });
 
   test('carries all 9 itinerary days and all 52 items, grouped under the right stop', () => {
