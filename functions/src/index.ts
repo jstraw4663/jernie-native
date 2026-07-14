@@ -1,6 +1,4 @@
-// Placeholder entrypoint — Task 4 will export `enrichPlaces`, the callable Cloud
-// Function that ties together the Foursquare adapter (Task 2), merge logic (Task 3),
-// and the secrets/repository pieces scaffolded in Task 1 (./secrets, ./repository).
-// Kept as a stub export for now so the project builds and deploys as an (empty)
-// Functions bundle.
-export {};
+// Deployed Cloud Functions bundle entrypoint — Firebase deploys every named export
+// found here. `enrichPlaces` (Task 4) ties together the Foursquare adapter (Task 2),
+// merge logic (Task 3), and the secrets/repository pieces scaffolded in Task 1.
+export { enrichPlaces } from './enrichPlaces';
