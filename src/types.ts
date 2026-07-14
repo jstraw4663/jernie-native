@@ -272,6 +272,10 @@ export interface PlaceEnrichment {
   reviews_cached_at?: number;
   cached_at: number;
   place_id_locked: true;
+  // Set when a live Foursquare lookup ran and found no match for the place, so callers
+  // (useFirestoreEnrichment) can distinguish "looked and found nothing" from "never
+  // looked" without re-querying the API every time (no TTL/refresh in v1 — see roadmap).
+  fsq_not_found?: boolean;
 }
 
 export interface TrailEnrichment {

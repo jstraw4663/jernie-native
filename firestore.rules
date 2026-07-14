@@ -6,9 +6,12 @@ service cloud.firestore {
     // trip or by any provider's proprietary ID. This is what lets the same physical
     // place enriched via different trips (or different providers, e.g. Google now vs.
     // Foursquare/Yelp later) share one cached record instead of duplicating API spend.
-    // Any authenticated user can read; only Cloud Functions write (none deployed yet —
-    // the one-time import in scripts/importFirestoreEnrichment.ts uses Admin SDK
-    // credentials, which bypass these rules entirely).
+    // Any authenticated user can read; only Cloud Functions write. The deployed
+    // `enrichPlaces` callable (functions/src/enrichPlaces.ts) writes place_enrichment
+    // docs via the Admin SDK after a live Foursquare lookup, and the one-time import in
+    // scripts/importFirestoreEnrichment.ts also used Admin SDK credentials for its
+    // backfill — both bypass these rules entirely, which is why `allow write: if false`
+    // below is safe: no client write path exists or should ever exist.
     match /place_enrichment/{canonicalKey} {
       allow read: if request.auth != null;
       allow write: if false;
