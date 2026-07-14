@@ -143,6 +143,14 @@ describe('mergeEnrichment', () => {
       expect(result.address).toBe(EXISTING.address);
       expect(result.photos).toEqual(EXISTING.photos);
     });
+
+    test('falls back to existing.fsq_id when a genuine match omits fsq_id, instead of clearing a locked ID', () => {
+      const matchWithoutFsqId: ProviderMatch = { address: 'new address', photos: ['new.jpg'] };
+      const result = mergeEnrichment(EXISTING, matchWithoutFsqId, PLACE);
+
+      expect(result.fsq_id).toBe(EXISTING.fsq_id);
+      expect(result.place_id_locked).toBe(true);
+    });
   });
 
   describe('match === null (clean no-match)', () => {
@@ -165,19 +173,34 @@ describe('mergeEnrichment', () => {
       expect(result.cached_at).toBeLessThanOrEqual(after);
     });
 
-    test('existing present — carries forward only address/photos, drops everything else', () => {
+    test('existing present — preserves every existing field, only updating miss bookkeeping', () => {
       const result = mergeEnrichment(EXISTING, null, PLACE);
 
       expect(result).toEqual({
+        ...EXISTING,
         name: PLACE.name,
         lat: PLACE.lat,
         lon: PLACE.lon,
-        address: EXISTING.address,
-        photos: EXISTING.photos,
         fsq_not_found: true,
         cached_at: result.cached_at,
         place_id_locked: true,
       });
+      expect(result.cached_at).not.toBe(EXISTING.cached_at);
+    });
+
+    test('existing present — a Foursquare miss does not wipe fields Foursquare has no opinion on (googlePlaceId, phone, rating, etc.)', () => {
+      const result = mergeEnrichment(EXISTING, null, PLACE);
+
+      expect(result.googlePlaceId).toBe(EXISTING.googlePlaceId);
+      expect(result.phone).toBe(EXISTING.phone);
+      expect(result.website).toBe(EXISTING.website);
+      expect(result.hours).toEqual(EXISTING.hours);
+      expect(result.rating).toBe(EXISTING.rating);
+      expect(result.ratingCount).toBe(EXISTING.ratingCount);
+      expect(result.price).toBe(EXISTING.price);
+      expect(result.reviews).toEqual(EXISTING.reviews);
+      expect(result.reviews_cached_at).toBe(EXISTING.reviews_cached_at);
+      expect(result.fsq_id).toBe(EXISTING.fsq_id);
     });
   });
 
