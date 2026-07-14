@@ -7,8 +7,16 @@
 const mockGet = jest.fn();
 const mockDoc = jest.fn(() => ({ get: mockGet }));
 const mockCollectionGet = jest.fn();
-const mockCollection = jest.fn(() => ({ doc: mockDoc, get: mockCollectionGet }));
+const mockWhereGet = jest.fn();
+const mockWhere = jest.fn(() => ({ get: mockWhereGet }));
+const mockCollection = jest.fn(() => ({ doc: mockDoc, get: mockCollectionGet, where: mockWhere }));
 const mockFirestore = jest.fn(() => ({ collection: mockCollection }));
 
-export { mockCollection, mockDoc, mockGet, mockCollectionGet };
+// Named export mirroring the real module's modular `documentId()` helper — the
+// namespaced `firestore.FieldPath.documentId()` is NOT implemented in the installed
+// @react-native-firebase/firestore version (see src/lib/firestoreBatchGet.ts for details),
+// so production code imports this named export instead.
+const documentId = jest.fn(() => '__name__');
+
+export { mockCollection, mockDoc, mockGet, mockCollectionGet, mockWhere, mockWhereGet, documentId };
 export default mockFirestore;
