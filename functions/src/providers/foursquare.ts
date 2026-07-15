@@ -2,8 +2,8 @@
 // (`https://places-api.foursquare.com`), NOT the deprecated v3 host
 // (`api.foursquare.com/v3`), which was retired 2026-05-15 (Global Constraint #2).
 //
-// Live-API research (see functions/.superpowers/... task-2-report.md for full citations
-// and confidence levels): confirmed directly from Foursquare's own published OpenAPI spec,
+// Live-API research (see .superpowers/sdd/task-2-report.md at the repo root for full
+// citations and confidence levels): confirmed directly from Foursquare's own published OpenAPI spec,
 // embedded in https://docs.foursquare.com/fsq-developers-places/reference/place-search and
 // .../place-details (fetched 2026-07-14):
 //   - Base URL: https://places-api.foursquare.com

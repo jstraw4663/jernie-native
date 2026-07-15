@@ -47,8 +47,16 @@ interface EnrichPlacesResponse {
 type LogOutcome = 'matched' | 'not_found' | 'error';
 
 function logOutcome(canonicalKey: string, outcome: LogOutcome, durationMs: number): void {
+  const line = JSON.stringify({ canonicalKey, outcome, durationMs });
+  // 'error' outcomes go to console.error (so they surface at the correct severity in
+  // Cloud Logging) — everything else is routine, expected activity and goes to
+  // console.log.
   // eslint-disable-next-line no-console
-  console.log(JSON.stringify({ canonicalKey, outcome, durationMs }));
+  if (outcome === 'error') {
+    console.error(line);
+  } else {
+    console.log(line);
+  }
 }
 
 function validatePlaces(data: unknown): EnrichPlaceRequest[] {
@@ -65,8 +73,18 @@ function validatePlaces(data: unknown): EnrichPlaceRequest[] {
 }
 
 export const enrichPlaces = onCall(
-  { secrets: [FOURSQUARE_API_KEY], timeoutSeconds: 60 },
+  // CONCURRENCY (4) chunks over up to MAX_BATCH_SIZE (30) places, each provider call
+  // capped at REQUEST_TIMEOUT_MS (8s): worst case ceil(30/4) * 8s = 64s, which left
+  // zero margin against the previous 60s timeout. 120s gives real headroom.
+  { secrets: [FOURSQUARE_API_KEY], timeoutSeconds: 120 },
   async (request): Promise<EnrichPlacesResponse> => {
+    // This triggers real, paid Foursquare API calls and writes client-supplied data
+    // verbatim into a globally-shared, globally-readable Firestore collection — must
+    // match the firestore.rules read requirement of `request.auth != null`.
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'Authentication required.');
+    }
+
     const places = validatePlaces(request.data);
     const results: Record<string, PlaceEnrichment> = {};
 
@@ -100,12 +118,22 @@ export const enrichPlaces = onCall(
           }
 
           const match = settlement.value;
-          const existing = await getEnrichment(place.canonicalKey);
-          const merged = mergeEnrichment(existing, match, place);
-          await writeEnrichment(place.canonicalKey, merged);
 
-          logOutcome(place.canonicalKey, match ? 'matched' : 'not_found', durationMs());
-          results[place.canonicalKey] = merged;
+          // Isolated per-place: a Firestore failure (get or write) for one place must
+          // never take down the rest of the batch — this whole step lives inside its
+          // own try/catch (rather than switching to Promise.allSettled, which was the
+          // provider-call step's approach) so the OTHER places already mapped into this
+          // same Promise.all still resolve and land in `results` normally.
+          try {
+            const existing = await getEnrichment(place.canonicalKey);
+            const merged = mergeEnrichment(existing, match, place);
+            await writeEnrichment(place.canonicalKey, merged);
+
+            logOutcome(place.canonicalKey, match ? 'matched' : 'not_found', durationMs());
+            results[place.canonicalKey] = merged;
+          } catch {
+            logOutcome(place.canonicalKey, 'error', durationMs());
+          }
         })
       );
     }

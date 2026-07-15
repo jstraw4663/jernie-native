@@ -18,8 +18,18 @@ const mockFetch = fetchFoursquareMatch as jest.MockedFunction<typeof fetchFoursq
 const mockGetEnrichment = getEnrichment as jest.MockedFunction<typeof getEnrichment>;
 const mockWriteEnrichment = writeEnrichment as jest.MockedFunction<typeof writeEnrichment>;
 
-function req(data: unknown): CallableRequest<unknown> {
-  return { data } as unknown as CallableRequest<unknown>;
+function req(
+  data: unknown,
+  overrides: Partial<CallableRequest<unknown>> = {}
+): CallableRequest<unknown> {
+  // Defaults to a truthy `auth`, matching every real invocation this callable will ever
+  // receive in production (App Check/Auth already verified it before the handler runs).
+  // The dedicated unauthenticated-rejection test below overrides this explicitly.
+  return {
+    data,
+    auth: { uid: 'test-uid' },
+    ...overrides,
+  } as unknown as CallableRequest<unknown>;
 }
 
 function place(canonicalKey: string, overrides: Partial<{ name: string; lat: number; lon: number; fsq_id: string }> = {}) {
@@ -153,6 +163,44 @@ describe('enrichPlaces', () => {
     });
   });
 
+  describe('authentication (I1)', () => {
+    test('rejects an unauthenticated request with unauthenticated, before doing any work', async () => {
+      const p = place('some-key');
+
+      await expect(enrichPlaces.run(req([p], { auth: undefined }))).rejects.toMatchObject({
+        code: 'unauthenticated',
+      });
+      await expect(enrichPlaces.run(req([p], { auth: undefined }))).rejects.toBeInstanceOf(HttpsError);
+
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(mockGetEnrichment).not.toHaveBeenCalled();
+      expect(mockWriteEnrichment).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('per-place Firestore failure isolation (I2)', () => {
+    test('a writeEnrichment failure for one place does not affect the others in the same batch', async () => {
+      const ok1 = place('ok-1');
+      const failing = place('fail-key');
+      const ok2 = place('ok-2');
+
+      mockFetch.mockResolvedValue(MATCH);
+      mockWriteEnrichment.mockImplementation(async (canonicalKey: string) => {
+        if (canonicalKey === 'fail-key') {
+          throw new Error('Firestore unavailable');
+        }
+      });
+
+      const response = (await enrichPlaces.run(req([ok1, failing, ok2]))) as {
+        results: Record<string, PlaceEnrichment>;
+      };
+
+      expect(response.results['ok-1']).toMatchObject({ fsq_id: 'fsq-1' });
+      expect(response.results['ok-2']).toMatchObject({ fsq_id: 'fsq-1' });
+      expect(response.results['fail-key']).toBeUndefined();
+    });
+  });
+
   describe('concurrency batching beyond a single chunk', () => {
     test('processes a batch larger than the concurrency cap in full', async () => {
       const places = Array.from({ length: 10 }, (_, i) => place(`key-${i}`));
@@ -167,16 +215,19 @@ describe('enrichPlaces', () => {
 
   describe('structured per-place logging', () => {
     let logSpy: jest.SpyInstance;
+    let errorSpy: jest.SpyInstance;
 
     beforeEach(() => {
       logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     });
 
     afterEach(() => {
       logSpy.mockRestore();
+      errorSpy.mockRestore();
     });
 
-    test('emits one JSON log line per place with canonicalKey, outcome, and durationMs', async () => {
+    test('emits one JSON log line per place with canonicalKey, outcome, and durationMs, at the right severity (M2)', async () => {
       const matched = place('match-key');
       const missed = place('miss-key');
       const errored = place('error-key');
@@ -190,15 +241,19 @@ describe('enrichPlaces', () => {
       await enrichPlaces.run(req([matched, missed, errored]));
 
       const logged = logSpy.mock.calls.map(([line]) => JSON.parse(line as string));
+      const errorLogged = errorSpy.mock.calls.map(([line]) => JSON.parse(line as string));
 
+      // Routine outcomes ('matched'/'not_found') go to console.log...
       expect(logged).toEqual(
         expect.arrayContaining([
           { canonicalKey: 'match-key', outcome: 'matched', durationMs: expect.any(Number) },
           { canonicalKey: 'miss-key', outcome: 'not_found', durationMs: expect.any(Number) },
-          { canonicalKey: 'error-key', outcome: 'error', durationMs: expect.any(Number) },
         ])
       );
-      expect(logged).toHaveLength(3);
+      expect(logged).toHaveLength(2);
+
+      // ...while the 'error' outcome goes to console.error, not console.log.
+      expect(errorLogged).toEqual([{ canonicalKey: 'error-key', outcome: 'error', durationMs: expect.any(Number) }]);
     });
   });
 });

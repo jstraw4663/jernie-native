@@ -204,6 +204,36 @@ describe('mergeEnrichment', () => {
     });
   });
 
+  describe('no undefined-valued fields — Firestore rejects them on write (C2)', () => {
+    // Regression guard for the bug where this function always explicitly set
+    // `fsq_not_found: undefined` on the match-found branch: the Admin SDK's default
+    // `.set()` throws on ANY `undefined`-valued key anywhere in the written object, so
+    // every matched enrichment write would have thrown in production. `Object.entries`
+    // enumerates a key with an explicit `undefined` value the same as any other key —
+    // unlike `toEqual` assertions elsewhere in this file, which treat an
+    // explicit-`undefined` property and an absent property as equivalent and so
+    // wouldn't have caught this on their own.
+    test('full match, no existing — no key in the result has an undefined value', () => {
+      const result = mergeEnrichment(undefined, FULL_MATCH, PLACE);
+
+      const undefinedKeys = Object.entries(result)
+        .filter(([, value]) => value === undefined)
+        .map(([key]) => key);
+
+      expect(undefinedKeys).toEqual([]);
+    });
+
+    test('full match, full existing — no key in the result has an undefined value', () => {
+      const result = mergeEnrichment(EXISTING, FULL_MATCH, PLACE);
+
+      const undefinedKeys = Object.entries(result)
+        .filter(([, value]) => value === undefined)
+        .map(([key]) => key);
+
+      expect(undefinedKeys).toEqual([]);
+    });
+  });
+
   describe('purity', () => {
     test('does not mutate the existing object', () => {
       const existingCopy = JSON.parse(JSON.stringify(EXISTING));

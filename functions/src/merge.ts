@@ -51,9 +51,17 @@ export function mergeEnrichment(
   // ID-based fetches, so a genuine match that (atypically) omits `fsq_id` must not
   // clear a previously-locked `existing.fsq_id`. Fields Foursquare doesn't know about
   // at all (googlePlaceId, reviews, reviews_cached_at) carry over from `existing`
-  // untouched via the spread below.
+  // untouched via the spread below. A match was found this run, so any stale
+  // "fsq_not_found" sentinel `existing` might carry no longer applies — rather than
+  // spreading it through and then explicitly overwriting it with `undefined` (which is
+  // what used to happen here, and which Firestore's Admin SDK rejects on a bare `.set()`
+  // without `ignoreUndefinedProperties`), strip the stale key out of the copy before
+  // spreading, so the merged object simply never has an `fsq_not_found` key at all.
+  const existingWithoutStaleSentinel = { ...existing };
+  delete existingWithoutStaleSentinel.fsq_not_found;
+
   return {
-    ...existing,
+    ...existingWithoutStaleSentinel,
     name: place.name,
     lat: place.lat,
     lon: place.lon,
@@ -68,8 +76,5 @@ export function mergeEnrichment(
     photos: match.photos ?? existing?.photos ?? [],
     cached_at,
     place_id_locked: true,
-    // A match was found this run, so any stale "not found" sentinel from a previous
-    // run no longer applies.
-    fsq_not_found: undefined,
   };
 }
