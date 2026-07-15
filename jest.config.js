@@ -7,7 +7,7 @@ module.exports = {
   // functions/ is an independent workspace (own package.json, own ts-jest-based
   // jest.config.js, deployed separately) — run its tests via `npm test --prefix
   // functions`, not swept up here under the RN/jest-expo preset.
-  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/functions/'],
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/functions/', '<rootDir>/.worktrees/'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
