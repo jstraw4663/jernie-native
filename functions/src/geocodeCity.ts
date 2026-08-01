@@ -46,8 +46,14 @@ interface GoogleAddressComponent {
 }
 
 interface GoogleGeocodeResult {
-  address_components: GoogleAddressComponent[];
-  geometry: { location: { lat: number; lng: number } };
+  // Both marked optional (rather than required, despite Google's docs always
+  // including them on a well-formed OK result) because the handler below treats this
+  // as untrusted external data and validates them at runtime before use — see the
+  // geometry/location guard, mirroring providers/foursquare.ts's own
+  // `typeof top.latitude !== 'number'` guard on its (also nominally-required) coordinate
+  // fields.
+  address_components?: GoogleAddressComponent[];
+  geometry?: { location?: { lat: number; lng: number } };
 }
 
 interface GoogleGeocodeResponse {
@@ -162,13 +168,32 @@ export const geocodeCity = onCall(
       throw new HttpsError('internal', 'Geocoding lookup failed.');
     }
 
+    const location = top.geometry?.location;
+    if (typeof location?.lat !== 'number' || typeof location?.lng !== 'number') {
+      // Guard against a well-formed "OK" status whose first result is nonetheless
+      // missing/malformed geometry — same reasoning as providers/foursquare.ts's own
+      // coordinate guard: an unguarded `top.geometry.location.lat` read here would
+      // either throw an unguarded TypeError past this function's error handling
+      // entirely, or (if only one of lat/lng were present) silently produce a
+      // half-valid result. Checked, and logged as an error, BEFORE the 'matched' log
+      // line below — never log success and then fail.
+      logOutcome(query, 'error', Date.now() - startedAt, 'OK response missing geometry.location');
+      throw new HttpsError('internal', 'Geocoding lookup failed.');
+    }
+
+    // address_components is used only for the best-effort, already-optional city/region
+    // fields (see GeocodeCityFound) — unlike geometry/location, a missing/malformed
+    // array here isn't a failure worth aborting the whole lookup over; it just yields
+    // city/region: undefined, same as when no component matches any known type.
+    const addressComponents = Array.isArray(top.address_components) ? top.address_components : [];
+
     logOutcome(query, 'matched', Date.now() - startedAt);
     return {
       found: true,
-      lat: top.geometry.location.lat,
-      lon: top.geometry.location.lng,
-      city: deriveCity(top.address_components),
-      region: deriveRegion(top.address_components),
+      lat: location.lat,
+      lon: location.lng,
+      city: deriveCity(addressComponents),
+      region: deriveRegion(addressComponents),
     };
   }
 );

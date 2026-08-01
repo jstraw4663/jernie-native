@@ -188,6 +188,28 @@ describe('geocodeCity', () => {
         code: 'internal',
       });
     });
+
+    test('throws (rather than crashing unguarded) on an OK response whose first result is missing geometry.location', async () => {
+      const noGeometry = { address_components: PORTLAND_ME_RESULT.address_components };
+      mockFetch.mockResolvedValue(jsonResponse({ status: 'OK', results: [noGeometry] }));
+
+      await expect(geocodeCity.run(req({ query: 'Portland, ME' }))).rejects.toMatchObject({
+        code: 'internal',
+      });
+      await expect(geocodeCity.run(req({ query: 'Portland, ME' }))).rejects.toBeInstanceOf(HttpsError);
+    });
+
+    test('throws on an OK response whose geometry.location has a malformed (non-numeric) lat/lng', async () => {
+      const malformedGeometry = {
+        address_components: PORTLAND_ME_RESULT.address_components,
+        geometry: { location: { lat: 'not-a-number', lng: -70.2568 } },
+      };
+      mockFetch.mockResolvedValue(jsonResponse({ status: 'OK', results: [malformedGeometry] }));
+
+      await expect(geocodeCity.run(req({ query: 'Portland, ME' }))).rejects.toMatchObject({
+        code: 'internal',
+      });
+    });
   });
 
   describe('structured logging', () => {
@@ -212,6 +234,28 @@ describe('geocodeCity', () => {
       const logged = logSpy.mock.calls.map(([line]) => JSON.parse(line as string));
       expect(logged).toEqual([{ query: 'Portland, ME', outcome: 'matched', durationMs: expect.any(Number) }]);
       expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    test('logs "error" (never "matched") for an OK response missing geometry.location', async () => {
+      // Regression guard: the 'matched' log line must never fire before the
+      // geometry/location validity check — this result is malformed, so it must be
+      // logged (and only logged) as an error, not first counted as a match and then
+      // thrown past.
+      const noGeometry = { address_components: PORTLAND_ME_RESULT.address_components };
+      mockFetch.mockResolvedValue(jsonResponse({ status: 'OK', results: [noGeometry] }));
+
+      await expect(geocodeCity.run(req({ query: 'Portland, ME' }))).rejects.toThrow();
+
+      expect(logSpy).not.toHaveBeenCalled();
+      const errorLogged = errorSpy.mock.calls.map(([line]) => JSON.parse(line as string));
+      expect(errorLogged).toEqual([
+        {
+          query: 'Portland, ME',
+          outcome: 'error',
+          durationMs: expect.any(Number),
+          error: 'OK response missing geometry.location',
+        },
+      ]);
     });
 
     test('logs an "error" line via console.error, with the underlying message, on a network failure', async () => {
