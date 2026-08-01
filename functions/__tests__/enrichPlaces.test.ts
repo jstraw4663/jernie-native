@@ -235,7 +235,7 @@ describe('enrichPlaces', () => {
       mockFetch.mockImplementation(async (input) => {
         if (input.name === matched.name) return MATCH;
         if (input.name === missed.name) return null;
-        throw new Error('boom');
+        throw new Error('Foursquare request failed with status 401');
       });
 
       await enrichPlaces.run(req([matched, missed, errored]));
@@ -252,8 +252,37 @@ describe('enrichPlaces', () => {
       );
       expect(logged).toHaveLength(2);
 
-      // ...while the 'error' outcome goes to console.error, not console.log.
-      expect(errorLogged).toEqual([{ canonicalKey: 'error-key', outcome: 'error', durationMs: expect.any(Number) }]);
+      // ...while the 'error' outcome goes to console.error, not console.log, and now
+      // carries enough detail (which stage failed, and the underlying message) to
+      // actually diagnose a live failure from Cloud Logging alone.
+      expect(errorLogged).toEqual([
+        {
+          canonicalKey: 'error-key',
+          outcome: 'error',
+          durationMs: expect.any(Number),
+          stage: 'provider',
+          error: 'Foursquare request failed with status 401',
+        },
+      ]);
+    });
+
+    test('a Firestore write failure logs stage "write" with the underlying error message', async () => {
+      const failing = place('fail-key');
+      mockFetch.mockResolvedValue(MATCH);
+      mockWriteEnrichment.mockRejectedValue(new Error('Firestore unavailable'));
+
+      await enrichPlaces.run(req([failing]));
+
+      const errorLogged = errorSpy.mock.calls.map(([line]) => JSON.parse(line as string));
+      expect(errorLogged).toEqual([
+        {
+          canonicalKey: 'fail-key',
+          outcome: 'error',
+          durationMs: expect.any(Number),
+          stage: 'write',
+          error: 'Firestore unavailable',
+        },
+      ]);
     });
   });
 });

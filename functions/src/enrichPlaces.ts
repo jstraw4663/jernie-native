@@ -46,8 +46,18 @@ interface EnrichPlacesResponse {
 
 type LogOutcome = 'matched' | 'not_found' | 'error';
 
-function logOutcome(canonicalKey: string, outcome: LogOutcome, durationMs: number): void {
-  const line = JSON.stringify({ canonicalKey, outcome, durationMs });
+// Which step an 'error' outcome failed at — the provider call (network/timeout/non-2xx
+// from Foursquare) and the Firestore get/merge/write step fail for entirely different
+// reasons and need different remediation, so the log line must say which one it was.
+type ErrorStage = 'provider' | 'write';
+
+function logOutcome(
+  canonicalKey: string,
+  outcome: LogOutcome,
+  durationMs: number,
+  errorDetail?: { stage: ErrorStage; error: string }
+): void {
+  const line = JSON.stringify({ canonicalKey, outcome, durationMs, ...errorDetail });
   // 'error' outcomes go to console.error (so they surface at the correct severity in
   // Cloud Logging) — everything else is routine, expected activity and goes to
   // console.log.
@@ -57,6 +67,10 @@ function logOutcome(canonicalKey: string, outcome: LogOutcome, durationMs: numbe
   } else {
     console.log(line);
   }
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 function validatePlaces(data: unknown): EnrichPlaceRequest[] {
@@ -113,7 +127,10 @@ export const enrichPlaces = onCall(
             // consulted at all (network/timeout/non-2xx) — never call mergeEnrichment
             // or writeEnrichment for it, and never include it in the response, so the
             // client's next-session read finds it still missing and retries.
-            logOutcome(place.canonicalKey, 'error', durationMs());
+            logOutcome(place.canonicalKey, 'error', durationMs(), {
+              stage: 'provider',
+              error: errorMessage(settlement.reason),
+            });
             return;
           }
 
@@ -131,8 +148,11 @@ export const enrichPlaces = onCall(
 
             logOutcome(place.canonicalKey, match ? 'matched' : 'not_found', durationMs());
             results[place.canonicalKey] = merged;
-          } catch {
-            logOutcome(place.canonicalKey, 'error', durationMs());
+          } catch (err) {
+            logOutcome(place.canonicalKey, 'error', durationMs(), {
+              stage: 'write',
+              error: errorMessage(err),
+            });
           }
         })
       );
