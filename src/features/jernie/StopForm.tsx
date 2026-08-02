@@ -34,7 +34,13 @@ type GeocodeStatus = 'idle' | 'loading' | 'success' | 'error';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function isValidDate(s: string): boolean {
-  return DATE_RE.test(s);
+  if (!DATE_RE.test(s)) return false;
+  const [year, month, day] = s.split('-').map(Number);
+  // `Date` silently rolls invalid y/m/d over into the next valid date instead of throwing
+  // (e.g. `new Date(2026, 1, 30)` becomes March 2nd) — round-trip through the parsed fields to
+  // catch calendar-invalid-but-regex-shaped input like "2026-02-30" or "2026-13-01".
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }
 
 /**
@@ -126,11 +132,13 @@ export function StopForm({ onSubmit, onCancel, submitLabel = 'Continue' }: StopF
           onChangeText={text => {
             setCity(text);
             // Typing after an error clears it — the previous failure no longer describes
-            // the current input.
+            // the current input. A prior submit failure is also stale once the user starts
+            // correcting the city (e.g. to re-trigger a geocode retry).
             if (geocodeStatus === 'error') {
               setGeocodeStatus('idle');
               setGeocodeError(null);
             }
+            setSubmitError(null);
           }}
           placeholder="e.g. Portland, ME"
           placeholderTextColor={Core.textFaint}
@@ -167,7 +175,12 @@ export function StopForm({ onSubmit, onCancel, submitLabel = 'Continue' }: StopF
           testID="stop-form-start-date"
           style={[s.input, s.dateInput]}
           value={startDate}
-          onChangeText={setStartDate}
+          onChangeText={text => {
+            setStartDate(text);
+            // Editing a date after a failed submit is the user correcting their input — the
+            // stale error shouldn't linger over the fix.
+            setSubmitError(null);
+          }}
           placeholder="YYYY-MM-DD"
           placeholderTextColor={Core.textFaint}
           autoCorrect={false}
@@ -178,7 +191,10 @@ export function StopForm({ onSubmit, onCancel, submitLabel = 'Continue' }: StopF
           testID="stop-form-end-date"
           style={[s.input, s.dateInput]}
           value={endDate}
-          onChangeText={setEndDate}
+          onChangeText={text => {
+            setEndDate(text);
+            setSubmitError(null);
+          }}
           placeholder="YYYY-MM-DD"
           placeholderTextColor={Core.textFaint}
           autoCorrect={false}

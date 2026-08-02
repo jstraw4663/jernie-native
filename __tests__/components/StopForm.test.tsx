@@ -156,6 +156,45 @@ describe('StopForm', () => {
     expect(submitDisabled(tree)).toBe(true);
   });
 
+  test('a calendar-invalid day (Feb 30) blocks submit even though it matches the YYYY-MM-DD shape', async () => {
+    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
+
+    typeCity(tree, 'Portland, ME');
+    await pressFind(tree);
+    // JS's Date silently rolls this over to March 2nd instead of throwing — the regex alone
+    // would wrongly accept it.
+    typeStart(tree, '2026-02-30');
+    typeEnd(tree, '2026-03-05');
+
+    expect(submitDisabled(tree)).toBe(true);
+  });
+
+  test('an out-of-range month (13) blocks submit even though it matches the YYYY-MM-DD shape', async () => {
+    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
+
+    typeCity(tree, 'Portland, ME');
+    await pressFind(tree);
+    typeStart(tree, '2026-13-01');
+    typeEnd(tree, '2026-13-05');
+
+    expect(submitDisabled(tree)).toBe(true);
+  });
+
+  test('genuinely valid calendar dates, including a leap-day edge case, still pass validation', async () => {
+    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
+
+    typeCity(tree, 'Portland, ME');
+    await pressFind(tree);
+    // 2028 is a leap year, so Feb 29 is a real, valid date.
+    typeStart(tree, '2028-02-29');
+    typeEnd(tree, '2028-03-01');
+
+    expect(submitDisabled(tree)).toBe(false);
+  });
+
   test('pressing submit when enabled calls onSubmit with exactly the resolved stop shape', async () => {
     mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
     const onSubmit = jest.fn();
@@ -207,6 +246,57 @@ describe('StopForm', () => {
     expect(JSON.stringify(tree.toJSON())).toContain('database/permission-denied');
     // Still resolved + dated — submit is enabled again so the user can just retry.
     expect(submitDisabled(tree)).toBe(false);
+  });
+
+  test('editing a date field after a submit failure clears the stale submit error', async () => {
+    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    const onSubmit = jest.fn().mockRejectedValue(new Error('database/permission-denied'));
+    const tree = renderForm(<StopForm onSubmit={onSubmit} />);
+
+    typeCity(tree, 'Portland, ME');
+    await pressFind(tree);
+    typeStart(tree, '2026-08-10');
+    typeEnd(tree, '2026-08-14');
+    await pressSubmit(tree);
+
+    expect(JSON.stringify(tree.toJSON())).toContain('database/permission-denied');
+
+    // The user starts correcting the end date after the failed submit — the old failure
+    // message shouldn't linger and imply the correction hasn't taken effect.
+    typeEnd(tree, '2026-08-15');
+
+    expect(JSON.stringify(tree.toJSON())).not.toContain('database/permission-denied');
+  });
+
+  test('editing the city field after a submit failure clears the stale submit error', async () => {
+    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    const onSubmit = jest.fn().mockRejectedValue(new Error('database/permission-denied'));
+    const tree = renderForm(<StopForm onSubmit={onSubmit} />);
+
+    typeCity(tree, 'Portland, ME');
+    await pressFind(tree);
+    typeStart(tree, '2026-08-10');
+    typeEnd(tree, '2026-08-14');
+    await pressSubmit(tree);
+
+    expect(JSON.stringify(tree.toJSON())).toContain('database/permission-denied');
+
+    typeCity(tree, 'Portland, MEX');
+
+    expect(JSON.stringify(tree.toJSON())).not.toContain('database/permission-denied');
+  });
+
+  test('editing the city field after a geocode failure clears the geocode error (existing behavior stays intact)', async () => {
+    mockGeocodeCity.mockResolvedValue({ found: false });
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
+
+    typeCity(tree, 'Nowhereville');
+    await pressFind(tree);
+    expect(JSON.stringify(tree.toJSON())).toContain("Couldn't find that city");
+
+    typeCity(tree, 'Nowhereville, Real Edition');
+
+    expect(JSON.stringify(tree.toJSON())).not.toContain("Couldn't find that city");
   });
 
   test('no Cancel button is rendered when onCancel is not provided', () => {
