@@ -13,6 +13,8 @@ interface StopsStripProps {
   stops: StopWithColor[];
   activeStopId: string | null;
   onStopPress: (stopId: string) => void;
+  /** Optional — when provided, a trailing "+" pill is rendered after the last stop. */
+  onAddPress?: () => void;
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -30,9 +32,12 @@ function computeOffset(idx: number): number {
 
 const SPRING = { damping: 40, stiffness: 320 } as const;
 
-export function StopsStrip({ stops, activeStopId, onStopPress }: StopsStripProps) {
+export function StopsStrip({ stops, activeStopId, onStopPress, onAddPress }: StopsStripProps) {
   const activeIdx  = stops.findIndex(s => s.id === activeStopId);
   const safeIdx    = activeIdx >= 0 ? activeIdx : 0;
+  // `stops[safeIdx]` is legitimately undefined when `stops` is empty (safeIdx falls back to 0,
+  // which is out of bounds on an empty array) — every read of `activeStop` below must go through
+  // optional chaining rather than assuming it's always a Stop.
   const activeStop = stops[safeIdx];
 
   const translateX   = useSharedValue(computeOffset(safeIdx));
@@ -111,6 +116,24 @@ export function StopsStrip({ stops, activeStopId, onStopPress }: StopsStripProps
             </React.Fragment>
           );
         })}
+
+        {onAddPress && (
+          <React.Fragment>
+            {stops.length > 0 && <View style={[styles.connector, { backgroundColor: MUTED_LINE }]} />}
+            <TouchableOpacity
+              testID="stops-strip-add-pill"
+              onPress={onAddPress}
+              activeOpacity={0.7}
+            >
+              <View style={styles.dotStop}>
+                <View style={[styles.dot, styles.addDot]}>
+                  <Text style={styles.addIcon}>+</Text>
+                </View>
+                <Text style={[styles.dotName, styles.dotNameFuture]} numberOfLines={1}>Add</Text>
+              </View>
+            </TouchableOpacity>
+          </React.Fragment>
+        )}
       </Animated.View>
 
       {/* Fade masks — clip overflow stops without hard edges */}
@@ -189,6 +212,8 @@ const styles = StyleSheet.create({
   dotPast:       { backgroundColor: 'rgba(62,123,82,0.12)',   borderColor: 'rgba(62,123,82,0.32)' },
   dotFuture:     { backgroundColor: 'rgba(120,113,106,0.08)', borderColor: 'rgba(120,113,106,0.22)' },
   dotEmoji:      { fontSize: 15 },
+  addDot:        { backgroundColor: 'rgba(120,113,106,0.08)', borderColor: 'rgba(120,113,106,0.32)', borderStyle: 'dashed' },
+  addIcon:       { fontSize: 17, fontWeight: '600' as const, color: Core.textMuted },
   dotName:       { ...Typography.roles.meta, fontSize: 11, fontWeight: '600' as const, textAlign: 'center' },
   dotNamePast:   { color: Semantic.success },
   dotNameFuture: { color: Core.textFaint },

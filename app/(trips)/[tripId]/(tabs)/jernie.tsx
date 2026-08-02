@@ -22,6 +22,8 @@ import { StopsStrip } from '@/src/features/jernie/StopsStrip';
 import { StopSection } from '@/src/features/jernie/StopSection';
 import { EntityDetailSheet } from '@/src/features/jernie/sheets/EntityDetailSheet';
 import type { EntityDetailSheetRef } from '@/src/features/jernie/sheets/EntityDetailSheet';
+import { AddStopSheet } from '@/src/features/jernie/sheets/AddStopSheet';
+import type { AddStopSheetRef } from '@/src/features/jernie/sheets/AddStopSheet';
 import { Brand, Core } from '@/src/design/tokens';
 import type { Booking, ItineraryItem, StopWithColor } from '@/src/types';
 
@@ -41,6 +43,7 @@ export default function JernieTab() {
   const lastPageRef   = useRef(initialIdx);
   const originPageRef = useRef(initialIdx); // page index when drag began
   const entitySheetRef = useRef<EntityDetailSheetRef>(null);
+  const addStopSheetRef = useRef<AddStopSheetRef>(null);
 
   const scrollY          = useSharedValue(0);
   const carouselHeight   = useSharedValue(-1); // -1 = not yet measured
@@ -144,6 +147,10 @@ export default function JernieTab() {
     }
   }, [stops]);
 
+  const handleAddStopPress = useCallback(() => {
+    addStopSheetRef.current?.present();
+  }, []);
+
   // During swipe — update strip at the 50% crossover point
   const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.max(0, Math.min(
@@ -206,6 +213,7 @@ export default function JernieTab() {
         stops={stops}
         activeStopId={stops[viewedIdx]?.id ?? null}
         onStopPress={handleStopPress}
+        onAddPress={handleAddStopPress}
       />
 
       {/* Horizontal pager — one full page per stop */}
@@ -255,6 +263,7 @@ export default function JernieTab() {
       </ScrollView>
 
       <EntityDetailSheet ref={entitySheetRef} />
+      <AddStopSheet ref={addStopSheetRef} tripId={trip.id} onAdded={refetch} />
     </View>
   );
 }
