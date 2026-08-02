@@ -8,12 +8,15 @@ export interface CreateTripInput {
   name: string;
   organizerHandle: string;
   pills: string[];
+  // All three of lat/lon/dates are required, never defaulted here — a stop can't reach
+  // createTrip() without a successful geocode and real dates. That's enforced upstream, in the
+  // UI layer (StopForm's submit/"Continue" stays disabled until both are resolved), not here.
   firstStop: {
     city: string;
     region: string;
-    lat?: number;
-    lon?: number;
-    dates?: { start: string; end: string };
+    lat: number;
+    lon: number;
+    dates: { start: string; end: string };
   };
   setupIntent: SetupIntent;
 }
@@ -62,21 +65,17 @@ export async function createTrip(input: CreateTripInput): Promise<string> {
   // benign re-run to tolerate (unlike devSeed.ts's fixed dev fixture id) — hence 'throw'.
   await writeTripOnce(tripId, trip, 'throw');
 
-  // Step 2 — only after step 1 has committed. Undated first stops default to a single day
-  // (today, in both fields) rather than an empty string, so downstream date-range comparisons
-  // (e.g. src/domain/trip.ts, CTACardZone.tsx) that lexicographically compare ISO strings still
-  // behave sensibly; coordinates default to 0/0 when the caller didn't resolve them via
-  // geocoding (mirrors the "Continue anyway" no-coordinates path the wizard/Add Stop UI allows).
-  const todayIso = new Date(createdAt).toISOString().split('T')[0];
+  // Step 2 — only after step 1 has committed. lat/lon/dates come straight from the caller —
+  // CreateTripInput requires them, so there's nothing to default or paper over here.
   const firstStop: Stop = {
     id: firstStopId,
     tripId,
     city: input.firstStop.city,
     region: input.firstStop.region,
     emoji: '📍',
-    lat: input.firstStop.lat ?? 0,
-    lon: input.firstStop.lon ?? 0,
-    dates: input.firstStop.dates ?? { start: todayIso, end: todayIso },
+    lat: input.firstStop.lat,
+    lon: input.firstStop.lon,
+    dates: input.firstStop.dates,
     order: 0,
   };
 

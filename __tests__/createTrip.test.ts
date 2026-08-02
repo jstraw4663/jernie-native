@@ -15,7 +15,13 @@ const baseInput = {
   name: 'NYC Summer',
   organizerHandle: 'Jeremy',
   pills: ['Food-forward'],
-  firstStop: { city: 'Manhattan', region: 'NY' },
+  firstStop: {
+    city: 'Manhattan',
+    region: 'NY',
+    lat: 40.7831,
+    lon: -73.9712,
+    dates: { start: '2026-08-10', end: '2026-08-14' },
+  },
   setupIntent,
 };
 
@@ -108,17 +114,14 @@ describe('createTrip', () => {
       city: 'Manhattan',
       region: 'NY',
       emoji: '📍',
-      lat: 0,
-      lon: 0,
-      dates: expect.objectContaining({ start: expect.any(String), end: expect.any(String) }),
+      lat: 40.7831,
+      lon: -73.9712,
+      dates: { start: '2026-08-10', end: '2026-08-14' },
       order: 0,
     });
-    // Undated stop defaults to a single day (today), not an empty string.
-    expect(updateArg[stopKey!].dates.start).toBe(updateArg[stopKey!].dates.end);
-    expect(updateArg[stopKey!].dates.start).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  test('passes through explicit lat/lon/dates unchanged instead of defaulting them', async () => {
+  test('carries a different firstStop\'s lat/lon/dates through unchanged (not hardcoded)', async () => {
     const tripId = await createTrip({
       ...baseInput,
       firstStop: {
