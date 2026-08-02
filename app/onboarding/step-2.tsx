@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Brand, Core, Typography, Spacing } from '@/src/design/tokens';
 import { StopForm, type ResolvedStop } from '@/src/features/jernie/StopForm';
@@ -18,13 +18,13 @@ export default function OnboardingStep2() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>First stop</Text>
         <Text style={styles.title}>Where does this trip start?</Text>
       </View>
       <StopForm onSubmit={handleSubmit} />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
