@@ -79,6 +79,15 @@ export async function createTrip(input: CreateTripInput): Promise<string> {
     order: 0,
   };
 
+  // Accepted risk (same class as useJoinTrip.ts's two-step protocol): if this update() rejects
+  // after step 1 already committed, trips/{tripId} is left orphaned — ownerUid set, but no
+  // members/users-index/inviteTokens/stops. There is no client-side recovery: the trips/$tripId
+  // write rule is `!data.exists() && ...`, so once step 1 commits, `data.exists()` is true and
+  // the rule denies ANY further top-level write to that path, including a delete — the node is
+  // create-once and immutable at that level, un-deletable by the client. No retry/rollback is
+  // attempted here; the rejection below is left to propagate to the caller uncaught, same as
+  // useJoinTrip.ts's step 2, so the failure surfaces as a clear error rather than being silently
+  // swallowed or retried.
   const joinedAt = createdAt;
   await database().ref().update({
     [`trips/${tripId}/members/${uid}`]: {

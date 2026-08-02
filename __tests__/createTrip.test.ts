@@ -151,6 +151,23 @@ describe('createTrip', () => {
     expect(tripId.length).toBeGreaterThan(0);
   });
 
+  // Mirrors useJoinTrip.test.ts's "a step-2 rejection surfaces as status: error without the hook
+  // silently retrying" (lines 154-168). createTrip() has no client-side recovery for a step-2
+  // failure after step 1 already committed (the trip node becomes un-deletable by rule once it
+  // exists — see the comment above the update() call in createTrip.ts) — so the only thing this
+  // path is responsible for is not swallowing or silently retrying the rejection.
+  test('a step-2 update() rejection propagates to the caller rather than being swallowed or retried', async () => {
+    (mockSet as jest.Mock).mockResolvedValue(undefined);
+    (mockUpdate as jest.Mock).mockRejectedValue(new Error('network unavailable'));
+
+    await expect(createTrip(baseInput)).rejects.toThrow('network unavailable');
+
+    // Step 1 (the trip write) already committed and is not retried; step 2 was attempted
+    // exactly once — no auto-retry masking the failure.
+    expect(mockSet).toHaveBeenCalledTimes(1);
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+  });
+
   test('picks a colorPack from the 6 defined packs, copying only id/stopColors/heroGradient', async () => {
     const seenIds = new Set<string>();
     const validIds = new Set(TRIP_COLOR_PACKS.map(p => p.id));
