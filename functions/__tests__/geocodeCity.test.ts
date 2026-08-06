@@ -148,6 +148,28 @@ describe('geocodeCity', () => {
       expect(result).toMatchObject({ found: true, city: 'Lower East Side', region: 'NY' });
     });
 
+    test('prefers neighborhood over locality when both are present on the same result (multi-neighborhood NYC trip)', async () => {
+      // Google attaches the containing locality to a neighborhood-level result too — a
+      // search for "Lower East Side, New York, NY" and one for "Midtown, New York, NY"
+      // should resolve to two DIFFERENT city labels ("Lower East Side" / "Midtown"), not
+      // both collapse to "New York", so that a trip with stops in both shows them as
+      // distinct Stops rather than two identically-labeled "New York" entries.
+      const lowerEastSide = {
+        address_components: [
+          { long_name: 'Lower East Side', short_name: 'Lower East Side', types: ['neighborhood', 'political'] },
+          { long_name: 'New York', short_name: 'New York', types: ['locality', 'political'] },
+          { long_name: 'New York', short_name: 'NY', types: ['administrative_area_level_1', 'political'] },
+          { long_name: 'United States', short_name: 'US', types: ['country', 'political'] },
+        ],
+        geometry: { location: { lat: 40.7153, lng: -73.9843 } },
+      };
+      mockFetch.mockResolvedValue(jsonResponse({ status: 'OK', results: [lowerEastSide] }));
+
+      const result = await geocodeCity.run(req({ query: 'Lower East Side, New York, NY' }));
+
+      expect(result).toMatchObject({ found: true, city: 'Lower East Side', region: 'NY' });
+    });
+
     test('leaves city/region undefined (not throwing) when no matching component is present', async () => {
       const sparse = {
         address_components: [{ long_name: 'United States', short_name: 'US', types: ['country', 'political'] }],

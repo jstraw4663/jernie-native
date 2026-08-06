@@ -90,9 +90,14 @@ function validateQuery(data: unknown): string {
 }
 
 // Pulls the first address_components entry matching any of `types`, tried in priority
-// order — lets callers fall back from a precise type (`locality`) to a looser one
-// (`sublocality`/`neighborhood`) when the precise one isn't present, e.g. for a query
-// like "Lower East Side" that Google resolves to a neighborhood rather than a city.
+// order — most-specific-first. Google attaches the *containing* locality to a
+// neighborhood-level result alongside its own neighborhood/sublocality tag (e.g.
+// searching "Lower East Side" returns both `neighborhood: "Lower East Side"` AND
+// `locality: "New York"` on the same result), so checking `locality` first would always
+// win and collapse distinct neighborhoods in the same city down to one city name —
+// exactly the case a multi-stop trip (different hotels/neighborhoods, same city) needs
+// to tell apart. Only falls through to `locality` when no more specific type is present
+// at all, i.e. the query itself resolved to a city-level result (e.g. "Portland, ME").
 function findComponent(
   components: GoogleAddressComponent[],
   types: string[]
@@ -105,7 +110,7 @@ function findComponent(
 }
 
 function deriveCity(components: GoogleAddressComponent[]): string | undefined {
-  return findComponent(components, ['locality', 'sublocality', 'neighborhood'])?.long_name;
+  return findComponent(components, ['neighborhood', 'sublocality', 'locality'])?.long_name;
 }
 
 // short_name (e.g. "ME") matches the app's own Stop.region convention (see
