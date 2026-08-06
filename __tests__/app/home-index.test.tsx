@@ -7,8 +7,13 @@ jest.mock('@/src/features/jernie/TripLoadingScreen', () => ({
 }));
 
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ replace: mockReplace }),
+  useRouter: () => ({ replace: mockReplace, push: mockPush }),
+}));
+
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
 import renderer, { act } from 'react-test-renderer';
@@ -28,6 +33,7 @@ function renderScreen() {
 describe('app/(home)/index', () => {
   beforeEach(() => {
     mockReplace.mockClear();
+    mockPush.mockClear();
   });
 
   test('renders the loading screen while useUserTrips is loading', () => {
@@ -60,5 +66,16 @@ describe('app/(home)/index', () => {
       rowA.props.onPress();
     });
     expect(mockReplace).toHaveBeenCalledWith('/(trips)/trip-a/(tabs)/jernie');
+  });
+
+  test('"Create New Trip" navigates to the onboarding wizard', () => {
+    mockUseUserTrips.mockReturnValue({ trips: [], status: 'ready' });
+    const tree = renderScreen();
+    const createButton = tree.root.findByProps({ testID: 'create-trip-button' });
+
+    act(() => {
+      createButton.props.onPress();
+    });
+    expect(mockPush).toHaveBeenCalledWith('/onboarding/step-1');
   });
 });

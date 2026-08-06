@@ -1,12 +1,14 @@
 import { useCallback } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUserTrips } from '@/src/hooks/useUserTrips';
 import { TripLoadingScreen } from '@/src/features/jernie/TripLoadingScreen';
-import { Core, Radius, Spacing, Typography } from '@/src/design/tokens';
+import { Brand, Core, Radius, Spacing, Typography } from '@/src/design/tokens';
 
 export default function MyTripsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { trips, status } = useUserTrips();
 
   const goToTrip = useCallback(
@@ -19,12 +21,19 @@ export default function MyTripsScreen() {
     [router],
   );
 
+  const createTrip = useCallback(() => {
+    router.push('/onboarding/step-1');
+  }, [router]);
+
   if (status === 'loading') {
     return <TripLoadingScreen />;
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.sm }]}
+    >
       <Text style={styles.title}>My Trips</Text>
       {trips.length === 0 ? (
         <Text style={styles.sub}>You haven't joined any trips yet.</Text>
@@ -43,6 +52,9 @@ export default function MyTripsScreen() {
           </Pressable>
         ))
       )}
+      <Pressable testID="create-trip-button" style={styles.createButton} onPress={createTrip}>
+        <Text style={styles.createButtonText}>Create New Trip</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -63,4 +75,13 @@ const styles = StyleSheet.create({
   },
   rowTitle: { ...Typography.roles.h3, color: Core.text },
   rowMeta: { ...Typography.roles.meta, color: Core.textMuted, marginTop: Spacing.xxs, textTransform: 'capitalize' },
+  createButton: {
+    marginTop: Spacing.xxl,
+    backgroundColor: Brand.gold,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createButtonText: { ...Typography.roles.button, color: Brand.navy },
 });
