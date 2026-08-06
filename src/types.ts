@@ -174,6 +174,7 @@ export interface ItineraryItem {
   label?: string;       // custom items
   time?: string;
   category?: ItineraryItemCategory;
+  notes?: string;
   order: number;
   locked?: boolean;
   groupIds?: string[] | null;
