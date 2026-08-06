@@ -6,8 +6,25 @@ import { useOnboardingDraft } from '@/src/contexts/OnboardingDraftContext';
 
 // A handful of hardcoded suggestions, per the design doc — freeform, not an exhaustive preset
 // list. Tapping toggles membership in `pills`; there's no text-entry path for custom pills in
-// this MVP (YAGNI — nothing downstream needs it yet).
-const VIBE_SUGGESTIONS = ['🦞 Seafood', '🏔️ Hiking', '🏖️ Beach', '🍷 Wine'];
+// this MVP (YAGNI — nothing downstream needs it yet). Ordering matters for existing tests
+// (__tests__/app/onboarding-step-1.test.tsx references pill-0/pill-2 by index) — append new
+// suggestions rather than reordering the first four. Spans a range of trip archetypes (not
+// just food/activity tags) so groups planning something other than a food-and-hike trip still
+// find something that fits.
+const VIBE_SUGGESTIONS = [
+  '🦞 Seafood',
+  '🏔️ Hiking',
+  '🏖️ Beach',
+  '🍷 Wine',
+  '🏙️ City',
+  '👨‍👩‍👧 Family',
+  '💑 Romantic',
+  '🎉 Nightlife',
+  '🚐 Road Trip',
+  '⛷️ Ski',
+  '🏕️ Camping',
+  '🧘 Relax',
+];
 
 export default function OnboardingStep1() {
   const router = useRouter();
