@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Brand, Core, Typography, Spacing } from '@/src/design/tokens';
 import { StopForm, type ResolvedStop } from '@/src/features/jernie/StopForm';
@@ -23,7 +23,9 @@ export default function OnboardingStep2() {
         <Text style={styles.eyebrow}>First stop</Text>
         <Text style={styles.title}>Where does this trip start?</Text>
       </View>
-      <StopForm onSubmit={handleSubmit} />
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <StopForm onSubmit={handleSubmit} />
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -48,5 +50,8 @@ const styles = StyleSheet.create({
   title: {
     ...Typography.roles.h1,
     color: Core.text,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
 });

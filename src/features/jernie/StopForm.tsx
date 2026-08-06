@@ -1,7 +1,17 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { Calendar } from 'react-native-calendars';
+import type { DateData } from 'react-native-calendars';
 import { geocodeCity } from '@/src/lib/geocodeClient';
+import { formatDateRange } from '@/src/utils/dates';
 import { Core, Semantic, Typography, Radius, Spacing } from '@/src/design/tokens';
+
+// react-native-calendars' bundled types omit `markingType` from CalendarProps even though
+// the runtime Day component reads it directly (calendar/day/index.js) — widen the type here
+// rather than casting at every call site.
+const CalendarWithMarking = Calendar as React.ComponentType<
+  React.ComponentProps<typeof Calendar> & { markingType?: 'period' }
+>;
 
 export interface ResolvedStop {
   city: string;
@@ -31,16 +41,20 @@ export interface StopFormProps {
 
 type GeocodeStatus = 'idle' | 'loading' | 'success' | 'error';
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+type PeriodMark = { startingDay?: boolean; endingDay?: boolean; color: string; textColor?: string };
 
-function isValidDate(s: string): boolean {
-  if (!DATE_RE.test(s)) return false;
-  const [year, month, day] = s.split('-').map(Number);
-  // `Date` silently rolls invalid y/m/d over into the next valid date instead of throwing
-  // (e.g. `new Date(2026, 1, 30)` becomes March 2nd) — round-trip through the parsed fields to
-  // catch calendar-invalid-but-regex-shaped input like "2026-02-30" or "2026-13-01".
-  const date = new Date(year, month - 1, day);
-  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+// Local-date (not UTC) construction throughout this file — avoids the off-by-one near
+// local midnight that `new Date().toISOString()` can produce.
+function toISODate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function addDaysISO(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return toISODate(new Date(y, m - 1, d + days));
 }
 
 /**
@@ -70,8 +84,44 @@ export function StopForm({ onSubmit, onCancel, submitLabel = 'Continue' }: StopF
   const trimmedCity = city.trim();
   const isStale = resolved !== null && resolvedFor !== trimmedCity;
   const hasFreshGeocode = geocodeStatus === 'success' && resolved !== null && !isStale;
-  const datesValid = isValidDate(startDate) && isValidDate(endDate) && startDate <= endDate;
+  // Order can no longer be wrong by construction (see handleDayPress's swap logic below),
+  // but the check costs nothing and documents the invariant.
+  const datesValid = !!startDate && !!endDate && startDate <= endDate;
   const canSubmit = hasFreshGeocode && datesValid && !submitting;
+
+  const today = useMemo(() => toISODate(new Date()), []);
+
+  const handleDayPress = ({ dateString }: DateData) => {
+    if (!startDate || endDate) {
+      // No active range yet, or a full range already exists — start a fresh one.
+      setStartDate(dateString);
+      setEndDate('');
+    } else if (dateString < startDate) {
+      // Tapped before the current start — the new tap becomes start, old start becomes end.
+      setEndDate(startDate);
+      setStartDate(dateString);
+    } else {
+      setEndDate(dateString);
+    }
+    setSubmitError(null);
+  };
+
+  const markedDates = useMemo<Record<string, PeriodMark>>(() => {
+    if (!startDate) return {};
+    const rangeEnd = endDate || startDate;
+    const marks: Record<string, PeriodMark> = {};
+    let cursor = startDate;
+    while (cursor <= rangeEnd) {
+      marks[cursor] = {
+        color: Core.action,
+        textColor: Core.white,
+        startingDay: cursor === startDate,
+        endingDay: cursor === rangeEnd,
+      };
+      cursor = addDaysISO(cursor, 1);
+    }
+    return marks;
+  }, [startDate, endDate]);
 
   const handleFindCity = async () => {
     if (!trimmedCity || geocodeStatus === 'loading') return;
@@ -145,6 +195,15 @@ export function StopForm({ onSubmit, onCancel, submitLabel = 'Continue' }: StopF
           autoCorrect={false}
           returnKeyType="search"
           onSubmitEditing={handleFindCity}
+          onBlur={() => {
+            // Auto-resolve on blur too, not just tap/Return — so tabbing straight to the
+            // date picker still gets the city looked up without an extra explicit tap.
+            // `hasFreshGeocode` guards against redundantly re-firing once already resolved
+            // for this exact text; handleFindCity's own guard covers empty/already-loading.
+            if (trimmedCity && geocodeStatus !== 'loading' && !hasFreshGeocode) {
+              void handleFindCity();
+            }
+          }}
         />
         <TouchableOpacity
           testID="stop-form-find-button"
@@ -160,6 +219,9 @@ export function StopForm({ onSubmit, onCancel, submitLabel = 'Continue' }: StopF
         </TouchableOpacity>
       </View>
 
+      {geocodeStatus === 'loading' && (
+        <Text style={s.mutedText}>Looking up "{trimmedCity}"…</Text>
+      )}
       {geocodeStatus === 'error' && geocodeError && (
         <Text style={s.errorText}>{geocodeError}</Text>
       )}
@@ -170,40 +232,31 @@ export function StopForm({ onSubmit, onCancel, submitLabel = 'Continue' }: StopF
       )}
 
       <Text style={[s.label, s.dateLabel]}>Dates</Text>
-      <View style={s.row}>
-        <TextInput
-          testID="stop-form-start-date"
-          style={[s.input, s.dateInput]}
-          value={startDate}
-          onChangeText={text => {
-            setStartDate(text);
-            // Editing a date after a failed submit is the user correcting their input — the
-            // stale error shouldn't linger over the fix.
-            setSubmitError(null);
-          }}
-          placeholder="YYYY-MM-DD"
-          placeholderTextColor={Core.textFaint}
-          autoCorrect={false}
-          keyboardType="numbers-and-punctuation"
-        />
-        <Text style={s.dateSeparator}>–</Text>
-        <TextInput
-          testID="stop-form-end-date"
-          style={[s.input, s.dateInput]}
-          value={endDate}
-          onChangeText={text => {
-            setEndDate(text);
-            setSubmitError(null);
-          }}
-          placeholder="YYYY-MM-DD"
-          placeholderTextColor={Core.textFaint}
-          autoCorrect={false}
-          keyboardType="numbers-and-punctuation"
-        />
-      </View>
-      {startDate && endDate && isValidDate(startDate) && isValidDate(endDate) && startDate > endDate && (
-        <Text style={s.errorText}>End date must be on or after the start date.</Text>
-      )}
+      <Text style={s.mutedText}>
+        {startDate && endDate
+          ? formatDateRange(startDate, endDate)
+          : startDate
+          ? 'Pick an end date'
+          : 'Pick a start and end date'}
+      </Text>
+      <CalendarWithMarking
+        testID="stop-form-calendar"
+        current={today}
+        minDate={today}
+        enableSwipeMonths
+        markingType="period"
+        markedDates={markedDates}
+        onDayPress={handleDayPress}
+        style={s.calendar}
+        theme={{
+          calendarBackground: Core.surfaceMuted,
+          todayTextColor: Core.action,
+          arrowColor: Core.action,
+          dayTextColor: Core.text,
+          textDisabledColor: Core.textFaint,
+          monthTextColor: Core.text,
+        }}
+      />
 
       {submitError && <Text style={s.errorText}>{submitError}</Text>}
 
@@ -258,13 +311,13 @@ const s = StyleSheet.create({
   cityInput: {
     flex: 1,
   },
-  dateInput: {
-    flex: 1,
-    textAlign: 'center',
+  mutedText: {
+    ...Typography.roles.meta,
+    color: Core.textMuted,
+    marginBottom: Spacing.sm,
   },
-  dateSeparator: {
-    ...Typography.roles.body,
-    color: Core.textFaint,
+  calendar: {
+    borderRadius: Radius.md,
   },
   findButton: {
     backgroundColor: Core.action,

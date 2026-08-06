@@ -3,6 +3,16 @@ jest.mock('@/src/lib/geocodeClient', () => ({
   geocodeCity: (...args: unknown[]) => mockGeocodeCity(...args),
 }));
 
+// Same mock-down as StopForm.test.tsx — this file tests screen-level wiring, not the
+// calendar's own internals.
+jest.mock('react-native-calendars', () => {
+  const ReactActual = require('react');
+  const { View } = require('react-native');
+  return {
+    Calendar: (props: Record<string, unknown>) => ReactActual.createElement(View, props),
+  };
+});
+
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush }),
@@ -36,6 +46,18 @@ function renderScreen() {
   return tree;
 }
 
+function pickDay(tree: renderer.ReactTestRenderer, dateString: string) {
+  act(() => {
+    tree.root.findByProps({ testID: 'stop-form-calendar' }).props.onDayPress({
+      dateString,
+      year: Number(dateString.slice(0, 4)),
+      month: Number(dateString.slice(5, 7)),
+      day: Number(dateString.slice(8, 10)),
+      timestamp: new Date(dateString).getTime(),
+    });
+  });
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
 });
@@ -55,8 +77,8 @@ describe('app/onboarding/step-2', () => {
     await act(async () => {
       await tree.root.findByProps({ testID: 'stop-form-find-button' }).props.onPress();
     });
-    act(() => { tree.root.findByProps({ testID: 'stop-form-start-date' }).props.onChangeText('2026-08-10'); });
-    act(() => { tree.root.findByProps({ testID: 'stop-form-end-date' }).props.onChangeText('2026-08-14'); });
+    pickDay(tree, '2026-08-10');
+    pickDay(tree, '2026-08-14');
     await act(async () => {
       await tree.root.findByProps({ testID: 'stop-form-submit-button' }).props.onPress();
     });
@@ -74,8 +96,8 @@ describe('app/onboarding/step-2', () => {
   test('StopForm keeps Continue disabled without a geocode, so this screen never navigates prematurely', async () => {
     const tree = renderScreen();
     act(() => { tree.root.findByProps({ testID: 'stop-form-city-input' }).props.onChangeText('Manhattan'); });
-    act(() => { tree.root.findByProps({ testID: 'stop-form-start-date' }).props.onChangeText('2026-08-10'); });
-    act(() => { tree.root.findByProps({ testID: 'stop-form-end-date' }).props.onChangeText('2026-08-14'); });
+    pickDay(tree, '2026-08-10');
+    pickDay(tree, '2026-08-14');
 
     expect(tree.root.findByProps({ testID: 'stop-form-submit-button' }).props.disabled).toBe(true);
     expect(mockSetFirstStop).not.toHaveBeenCalled();

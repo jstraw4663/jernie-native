@@ -1,6 +1,6 @@
 import React, { useCallback, useImperativeHandle, useRef } from 'react';
 import { StyleSheet } from 'react-native';
-import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView, useBottomSheetSpringConfigs } from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetBackdrop, BottomSheetScrollView, useBottomSheetSpringConfigs } from '@gorhom/bottom-sheet';
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import { useSheetContext } from '@/src/contexts/SheetContext';
 import { useAddStop } from '@/src/hooks/useAddStop';
@@ -92,9 +92,9 @@ export const AddStopSheet = React.forwardRef<AddStopSheetRef, AddStopSheetProps>
       handleIndicatorStyle={s.handle}
       backgroundStyle={s.background}
     >
-      <BottomSheetView style={s.content}>
+      <BottomSheetScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
         <StopForm onSubmit={handleSubmit} onCancel={handleCancel} submitLabel="Add stop" />
-      </BottomSheetView>
+      </BottomSheetScrollView>
     </BottomSheetModal>
   );
 });
