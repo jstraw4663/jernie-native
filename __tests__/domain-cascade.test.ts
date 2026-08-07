@@ -1,9 +1,12 @@
 import {
   parseBookingsFromSnapshot,
   parseItineraryFromSnapshot,
+  parsePlacesFromSnapshot,
   buildBookingRemovalUpdates,
+  buildStopRemovalUpdates,
+  type CascadeCollections,
 } from '@/src/domain/cascade';
-import type { Booking, ItineraryDay } from '@/src/types';
+import type { Booking, ItineraryDay, Place, RentalBooking } from '@/src/types';
 
 // ── parseBookingsFromSnapshot ────────────────────────────────────────────────
 
@@ -171,5 +174,227 @@ describe('buildBookingRemovalUpdates', () => {
     };
     const updates = buildBookingRemovalUpdates('trip-1', 'booking-1', itinerary);
     expect(updates['trips/trip-1/itinerary/stop-a/day-1/items']).toEqual([before, after]);
+  });
+});
+
+// ── parsePlacesFromSnapshot ──────────────────────────────────────────────────
+
+describe('parsePlacesFromSnapshot', () => {
+  test('null/undefined snapshot value returns an empty array', () => {
+    expect(parsePlacesFromSnapshot(null)).toEqual([]);
+    expect(parsePlacesFromSnapshot(undefined)).toEqual([]);
+  });
+
+  test('converts a keyed record into an array of places', () => {
+    const raw = {
+      'place-a': { tripId: 't1', stopId: 's1', name: 'Eventide', category: 'restaurant', must: true, source: 'curator', addedBy: 'uid-1' },
+    };
+    const result = parsePlacesFromSnapshot(raw);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ id: 'place-a', name: 'Eventide' });
+  });
+
+  test('derives id from the RTDB key when the record has no embedded id', () => {
+    const raw = { 'key-1': { tripId: 't1', stopId: 's1', name: 'Portland Head Light', category: 'sight', must: false, source: 'curator', addedBy: 'uid-1' } };
+    const result = parsePlacesFromSnapshot(raw);
+    expect(result[0].id).toBe('key-1');
+  });
+
+  test('prefers an embedded id over the RTDB key when present', () => {
+    const raw = { 'key-1': { id: 'embedded-id', tripId: 't1', stopId: 's1', name: 'Portland Head Light', category: 'sight', must: false, source: 'curator', addedBy: 'uid-1' } };
+    const result = parsePlacesFromSnapshot(raw);
+    expect(result[0].id).toBe('embedded-id');
+  });
+
+  test('parses multiple places from the snapshot', () => {
+    const raw = {
+      'a': { tripId: 't1', stopId: 's1', name: 'Eventide', category: 'restaurant', must: true, source: 'curator', addedBy: 'uid-1' },
+      'b': { tripId: 't1', stopId: 's1', name: 'Portland Head Light', category: 'sight', must: false, source: 'curator', addedBy: 'uid-1' },
+    };
+    const result = parsePlacesFromSnapshot(raw);
+    expect(result).toHaveLength(2);
+    expect(result.map(p => p.id).sort()).toEqual(['a', 'b']);
+  });
+});
+
+// ── buildStopRemovalUpdates ──────────────────────────────────────────────────
+
+describe('buildStopRemovalUpdates', () => {
+  const emptyData: CascadeCollections = { bookings: [], itinerary: {}, places: [] };
+
+  test('always includes the stop-null and itinerary-subtree-null deletion keys', () => {
+    const updates = buildStopRemovalUpdates('trip-1', 'stop-remove', emptyData);
+    expect(updates['trips/trip-1/stops/stop-remove']).toBeNull();
+    expect(updates['trips/trip-1/itinerary/stop-remove']).toBeNull();
+  });
+
+  test('empty bookings/itinerary/places collections does not throw and returns just the two base deletion keys', () => {
+    const updates = buildStopRemovalUpdates('trip-1', 'stop-remove', emptyData);
+    expect(Object.keys(updates).sort()).toEqual([
+      'trips/trip-1/itinerary/stop-remove',
+      'trips/trip-1/stops/stop-remove',
+    ]);
+  });
+
+  test('only bookings whose stopId matches the removed stop get null-ed; other bookings are left untouched (no key at all)', () => {
+    const bookingAtStop: Booking = {
+      id: 'booking-1', tripId: 't1', stopId: 'stop-remove', type: 'restaurant', restaurantName: 'Eventide', date: '2026-07-10',
+    };
+    const bookingElsewhere: Booking = {
+      id: 'booking-2', tripId: 't1', stopId: 'stop-b', type: 'restaurant', restaurantName: 'Fore Street', date: '2026-07-11',
+    };
+    const data: CascadeCollections = { bookings: [bookingAtStop, bookingElsewhere], itinerary: {}, places: [] };
+
+    const updates = buildStopRemovalUpdates('trip-1', 'stop-remove', data);
+
+    expect(updates['trips/trip-1/bookings/booking-1']).toBeNull();
+    expect('trips/trip-1/bookings/booking-2' in updates).toBe(false);
+  });
+
+  test('a rental whose stopId points elsewhere but dropoffStopId matches the removed stop is NOT deleted — only stopId (pickup) triggers deletion', () => {
+    const rentalPickedUpHere: RentalBooking = {
+      id: 'booking-r1', tripId: 't1', stopId: 'stop-remove', type: 'rental', company: 'Enterprise',
+      pickupDate: '2026-07-10', dropoffDate: '2026-07-15', pickupLocation: 'Portland Jetport', dropoffLocation: 'Bar Harbor',
+      dropoffStopId: 'stop-b',
+    };
+    const rentalDroppedOffHere: RentalBooking = {
+      id: 'booking-r2', tripId: 't1', stopId: 'stop-b', type: 'rental', company: 'Hertz',
+      pickupDate: '2026-07-09', dropoffDate: '2026-07-14', pickupLocation: 'Bangor', dropoffLocation: 'Portland Jetport',
+      dropoffStopId: 'stop-remove',
+    };
+    const data: CascadeCollections = { bookings: [rentalPickedUpHere, rentalDroppedOffHere], itinerary: {}, places: [] };
+
+    const updates = buildStopRemovalUpdates('trip-1', 'stop-remove', data);
+
+    expect(updates['trips/trip-1/bookings/booking-r1']).toBeNull();
+    expect('trips/trip-1/bookings/booking-r2' in updates).toBe(false);
+  });
+
+  test('only places whose stopId matches the removed stop get null-ed; other places are left untouched (no key at all)', () => {
+    const placeAtStop: Place = {
+      id: 'place-1', tripId: 't1', stopId: 'stop-remove', name: 'Duckfat', category: 'restaurant', must: true, source: 'curator', addedBy: 'uid-1',
+    };
+    const placeElsewhere: Place = {
+      id: 'place-2', tripId: 't1', stopId: 'stop-b', name: 'Cadillac Mountain', category: 'hike', must: true, source: 'curator', addedBy: 'uid-1',
+    };
+    const data: CascadeCollections = { bookings: [], itinerary: {}, places: [placeAtStop, placeElsewhere] };
+
+    const updates = buildStopRemovalUpdates('trip-1', 'stop-remove', data);
+
+    expect(updates['trips/trip-1/places/place-1']).toBeNull();
+    expect('trips/trip-1/places/place-2' in updates).toBe(false);
+  });
+
+  test('orphan cleanup fires in a SURVIVING stop day for an item referencing a just-deleted booking id', () => {
+    const bookingAtStop: Booking = {
+      id: 'booking-1', tripId: 't1', stopId: 'stop-remove', type: 'restaurant', restaurantName: 'Eventide', date: '2026-07-10',
+    };
+    const matchingItem = { id: 'item-1', type: 'booking' as const, bookingId: 'booking-1', order: 0 };
+    const otherItem = { id: 'item-2', type: 'custom' as const, label: 'Sleep in', order: 1 };
+    const data: CascadeCollections = {
+      bookings: [bookingAtStop],
+      itinerary: {
+        'stop-b': [{ id: 'day-1', stopId: 'stop-b', dateIso: '2026-07-11', items: [matchingItem, otherItem] }],
+      },
+      places: [],
+    };
+
+    const updates = buildStopRemovalUpdates('trip-1', 'stop-remove', data);
+
+    expect(updates['trips/trip-1/itinerary/stop-b/day-1/items']).toEqual([otherItem]);
+  });
+
+  test('orphan cleanup fires in a SURVIVING stop day for an item referencing a just-deleted place id', () => {
+    const placeAtStop: Place = {
+      id: 'place-1', tripId: 't1', stopId: 'stop-remove', name: 'Duckfat', category: 'restaurant', must: true, source: 'curator', addedBy: 'uid-1',
+    };
+    const matchingItem = { id: 'item-1', type: 'place' as const, placeId: 'place-1', order: 0 };
+    const otherItem = { id: 'item-2', type: 'custom' as const, label: 'Sleep in', order: 1 };
+    const data: CascadeCollections = {
+      bookings: [],
+      itinerary: {
+        'stop-b': [{ id: 'day-1', stopId: 'stop-b', dateIso: '2026-07-11', items: [matchingItem, otherItem] }],
+      },
+      places: [placeAtStop],
+    };
+
+    const updates = buildStopRemovalUpdates('trip-1', 'stop-remove', data);
+
+    expect(updates['trips/trip-1/itinerary/stop-b/day-1/items']).toEqual([otherItem]);
+  });
+
+  test('a day with no orphaned refs gets no update key at all', () => {
+    const untouchedItem = { id: 'item-1', type: 'custom' as const, label: 'Sleep in', order: 0 };
+    const data: CascadeCollections = {
+      bookings: [],
+      itinerary: {
+        'stop-b': [{ id: 'day-1', stopId: 'stop-b', dateIso: '2026-07-11', items: [untouchedItem] }],
+      },
+      places: [],
+    };
+
+    const updates = buildStopRemovalUpdates('trip-1', 'stop-remove', data);
+
+    expect('trips/trip-1/itinerary/stop-b/day-1/items' in updates).toBe(false);
+  });
+
+  test('does not emit per-day item keys for the removed stops own itinerary subtree (already wiped wholesale by the base key)', () => {
+    const bookingAtStop: Booking = {
+      id: 'booking-1', tripId: 't1', stopId: 'stop-remove', type: 'restaurant', restaurantName: 'Eventide', date: '2026-07-10',
+    };
+    const itemInRemovedStop = { id: 'item-1', type: 'booking' as const, bookingId: 'booking-1', order: 0 };
+    const data: CascadeCollections = {
+      bookings: [bookingAtStop],
+      itinerary: {
+        'stop-remove': [{ id: 'day-1', stopId: 'stop-remove', dateIso: '2026-07-10', items: [itemInRemovedStop] }],
+      },
+      places: [],
+    };
+
+    const updates = buildStopRemovalUpdates('trip-1', 'stop-remove', data);
+
+    expect('trips/trip-1/itinerary/stop-remove/day-1/items' in updates).toBe(false);
+    // the whole subtree is still nulled via the base key
+    expect(updates['trips/trip-1/itinerary/stop-remove']).toBeNull();
+  });
+
+  test('realistic multi-stop/multi-booking/multi-place fixture: exact update-object shape', () => {
+    const rentalHere: RentalBooking = {
+      id: 'booking-r1', tripId: 't1', stopId: 'stop-remove', type: 'rental', company: 'Enterprise',
+      pickupDate: '2026-07-10', dropoffDate: '2026-07-15', pickupLocation: 'Portland Jetport', dropoffLocation: 'Bar Harbor',
+      dropoffStopId: 'stop-b',
+    };
+    const restaurantElsewhere: Booking = {
+      id: 'booking-x', tripId: 't1', stopId: 'stop-b', type: 'restaurant', restaurantName: 'Fore Street', date: '2026-07-11',
+    };
+    const placeHere: Place = {
+      id: 'place-1', tripId: 't1', stopId: 'stop-remove', name: 'Duckfat', category: 'restaurant', must: true, source: 'curator', addedBy: 'uid-1',
+    };
+    const placeElsewhere: Place = {
+      id: 'place-2', tripId: 't1', stopId: 'stop-b', name: 'Cadillac Mountain', category: 'hike', must: true, source: 'curator', addedBy: 'uid-1',
+    };
+
+    // stop-b: dropoff item for the rental (references the deleted booking) + an untouched custom item
+    const dropoffItem = { id: 'item-1', type: 'booking' as const, bookingId: 'booking-r1', order: 0 };
+    const keepItem = { id: 'item-2', type: 'custom' as const, label: 'Explore downtown', order: 1 };
+
+    const data: CascadeCollections = {
+      bookings: [rentalHere, restaurantElsewhere],
+      itinerary: {
+        'stop-remove': [{ id: 'day-0', stopId: 'stop-remove', dateIso: '2026-07-10', items: [{ id: 'item-0', type: 'booking' as const, bookingId: 'booking-r1', order: 0 }] }],
+        'stop-b': [{ id: 'day-1', stopId: 'stop-b', dateIso: '2026-07-11', items: [dropoffItem, keepItem] }],
+      },
+      places: [placeHere, placeElsewhere],
+    };
+
+    const updates = buildStopRemovalUpdates('trip-1', 'stop-remove', data);
+
+    expect(updates).toEqual({
+      'trips/trip-1/stops/stop-remove': null,
+      'trips/trip-1/itinerary/stop-remove': null,
+      'trips/trip-1/bookings/booking-r1': null,
+      'trips/trip-1/places/place-1': null,
+      'trips/trip-1/itinerary/stop-b/day-1/items': [keepItem],
+    });
   });
 });
