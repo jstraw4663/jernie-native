@@ -63,7 +63,7 @@ function PreTripCard({
     <View style={[styles.card, Shadow.cardResting]}>
       <View style={styles.headerRow}>
         <Text style={styles.tripName} numberOfLines={1}>{trip.name}</Text>
-        <TouchableOpacity onPress={onDismiss} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity testID="cta-dismiss" onPress={onDismiss} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text style={styles.dismiss}>✕</Text>
         </TouchableOpacity>
       </View>

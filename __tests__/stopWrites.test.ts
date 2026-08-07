@@ -124,3 +124,81 @@ describe('removeStop', () => {
     await expect(removeStop('trip-1', 'stop-remove')).rejects.toThrow('database/permission-denied');
   });
 });
+
+// ── updateStop — itinerary day sync ──────────────────────────────────────────
+
+describe('updateStop — keeps itinerary days in step with the stop dates', () => {
+  test('a patch without dates never reads or touches the itinerary', async () => {
+    await updateStop('trip-1', 'stop-1', { city: 'Bar Harbor' });
+    expect(mockRef).not.toHaveBeenCalledWith('trips/trip-1/itinerary/stop-1');
+    expect(mockOnce).not.toHaveBeenCalled();
+  });
+
+  test('widening the range adds the missing days alongside the stop patch, atomically', async () => {
+    (mockOnce as jest.Mock).mockResolvedValue({
+      val: () => ({
+        d1: { id: 'd1', stopId: 'stop-1', dateIso: '2026-08-10', items: [] },
+        d2: { id: 'd2', stopId: 'stop-1', dateIso: '2026-08-11', items: [] },
+      }),
+    });
+
+    await updateStop('trip-1', 'stop-1', { dates: { start: '2026-08-10', end: '2026-08-13' } });
+
+    expect(mockRef).toHaveBeenCalledWith('trips/trip-1/itinerary/stop-1');
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    const updates = (mockUpdate as jest.Mock).mock.calls[0][0];
+
+    expect(updates['trips/trip-1/stops/stop-1/dates']).toEqual({ start: '2026-08-10', end: '2026-08-13' });
+    const added = Object.entries(updates)
+      .filter(([k]) => k.startsWith('trips/trip-1/itinerary/stop-1/'))
+      .map(([, v]) => (v as { dateIso: string }).dateIso);
+    expect(added.sort()).toEqual(['2026-08-12', '2026-08-13']);
+  });
+
+  test('shortening the range deletes the now-empty out-of-range day', async () => {
+    (mockOnce as jest.Mock).mockResolvedValue({
+      val: () => ({
+        d1: { id: 'd1', stopId: 'stop-1', dateIso: '2026-08-10', items: [] },
+        d2: { id: 'd2', stopId: 'stop-1', dateIso: '2026-08-11', items: [] },
+      }),
+    });
+
+    await updateStop('trip-1', 'stop-1', { dates: { start: '2026-08-10', end: '2026-08-10' } });
+
+    const updates = (mockUpdate as jest.Mock).mock.calls[0][0];
+    expect(updates['trips/trip-1/itinerary/stop-1/d2']).toBeNull();
+  });
+
+  test('keeps an out-of-range day that still holds items, so nothing entered is destroyed', async () => {
+    (mockOnce as jest.Mock).mockResolvedValue({
+      val: () => ({
+        d1: { id: 'd1', stopId: 'stop-1', dateIso: '2026-08-10', items: [] },
+        d2: { id: 'd2', stopId: 'stop-1', dateIso: '2026-08-11', items: [{ id: 'i1', type: 'custom', label: 'Dinner', order: 0 }] },
+      }),
+    });
+
+    await updateStop('trip-1', 'stop-1', { dates: { start: '2026-08-10', end: '2026-08-10' } });
+
+    const updates = (mockUpdate as jest.Mock).mock.calls[0][0];
+    expect('trips/trip-1/itinerary/stop-1/d2' in updates).toBe(false);
+  });
+
+  test('a stop with no itinerary yet gets a full set of days', async () => {
+    (mockOnce as jest.Mock).mockResolvedValue({ val: () => null });
+
+    await updateStop('trip-1', 'stop-1', { dates: { start: '2026-08-10', end: '2026-08-11' } });
+
+    const updates = (mockUpdate as jest.Mock).mock.calls[0][0];
+    const dayKeys = Object.keys(updates).filter(k => k.startsWith('trips/trip-1/itinerary/stop-1/'));
+    expect(dayKeys).toHaveLength(2);
+  });
+
+  test('carries the other patched fields through the same update', async () => {
+    (mockOnce as jest.Mock).mockResolvedValue({ val: () => null });
+
+    await updateStop('trip-1', 'stop-1', { city: 'Bar Harbor', dates: { start: '2026-08-10', end: '2026-08-10' } });
+
+    const updates = (mockUpdate as jest.Mock).mock.calls[0][0];
+    expect(updates['trips/trip-1/stops/stop-1/city']).toBe('Bar Harbor');
+  });
+});

@@ -17,7 +17,7 @@ import { bookingBelongsToStop } from '@/src/domain/bookings';
 import { getPlaceEnrichment } from '@/src/domain/placeEnrichment';
 import { getDevNow } from '@/src/utils/devTime';
 import { HeroLayer } from '@/src/features/jernie/HeroLayer';
-import { SampleCTACarousel } from '@/src/features/jernie/SampleCTACarousel';
+import { CTACardZone } from '@/src/features/jernie/CTACardZone';
 import { StopsStrip } from '@/src/features/jernie/StopsStrip';
 import { StopSection } from '@/src/features/jernie/StopSection';
 import { EntityDetailSheet } from '@/src/features/jernie/sheets/EntityDetailSheet';
@@ -43,6 +43,7 @@ export default function JernieTab() {
   const initialIdx = Math.max(0, stops.findIndex(s => s.id === activeStopId));
   const [viewedIdx, setViewedIdx] = useState(initialIdx);
   const [editingStop, setEditingStop] = useState<StopWithColor | null>(null);
+  const [ctaDismissed, setCtaDismissed] = useState(false);
 
   const pagerRef      = useRef<ScrollView>(null);
   const lastPageRef   = useRef(initialIdx);
@@ -58,13 +59,33 @@ export default function JernieTab() {
     scrollY.value = event.contentOffset.y;
   });
 
-  const [expandedDayIds, setExpandedDayIds] = useState<Record<string, string | null>>(() =>
-    Object.fromEntries(stops.map(s => {
+  // Holds ONLY days the user has explicitly opened or closed. The auto-expanded default is
+  // derived below on every render instead of being seeded here — as a useState initializer it
+  // ran once at mount, so stops (and days) arriving later via refetch stayed collapsed forever.
+  const [userExpandedDayIds, setUserExpandedDayIds] = useState<Record<string, string | null>>({});
+
+  const autoExpandedDayIds = useMemo(
+    () => Object.fromEntries(stops.map(s => {
       const days = itinerary[s.id] ?? [];
       const idx = getAutoExpandDayIndex(days, now);
       return [s.id, idx >= 0 ? (days[idx]?.id ?? null) : null];
-    }))
+    })),
+    // `now` is recomputed each render; keying off its ISO day keeps this stable within a day.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [stops, itinerary, now.toISOString().split('T')[0]],
   );
+
+  const expandedDayIdFor = useCallback(
+    (stopId: string) =>
+      // `undefined` means "user hasn't touched this stop" — an explicit null (collapsed) must
+      // win over the auto default, so this checks presence rather than truthiness.
+      stopId in userExpandedDayIds ? userExpandedDayIds[stopId] : (autoExpandedDayIds[stopId] ?? null),
+    [userExpandedDayIds, autoExpandedDayIds],
+  );
+
+  // The stop the user is looking at — hero, CTA card and add-actions all key off this so
+  // they stay in sync while paging, rather than off the date-derived `activeStop`.
+  const visibleStop = stops[viewedIdx] ?? activeStop;
 
   const bookingsByStop = useMemo(
     () => Object.fromEntries(
@@ -75,7 +96,7 @@ export default function JernieTab() {
 
   const handleDayPress = useCallback(
     (stopId: string, dayId: string | null) =>
-      setExpandedDayIds(prev => ({ ...prev, [stopId]: dayId })),
+      setUserExpandedDayIds(prev => ({ ...prev, [stopId]: dayId })),
     [],
   );
 
@@ -230,19 +251,34 @@ export default function JernieTab() {
       <HeroLayer
         trip={trip}
         activeStop={activeStop}
-        visibleStop={stops[viewedIdx] ?? activeStop}
+        visibleStop={visibleStop}
         scrollY={scrollY}
         onEditStop={handleEditStopPress}
       />
 
-      {/* Sample CTA carousel — fades and collapses as user scrolls, reappears at top */}
+      {/* CTA card — fades and collapses as user scrolls, reappears at top. Scoped to the
+          stop being viewed, so it stays coherent with the hero rather than lagging on the
+          date-derived active stop. */}
       <Animated.View
         style={ctaFadeStyle}
         onLayout={e => {
-          if (carouselHeight.value < 0) carouselHeight.value = e.nativeEvent.layout.height;
+          // Guard against 0 — CTACardZone renders null in the post-trip phase and when the
+          // pre-trip card is dismissed, and a 0 captured here would stick as the sentinel.
+          const h = e.nativeEvent.layout.height;
+          if (carouselHeight.value < 0 && h > 0) carouselHeight.value = h;
         }}
       >
-        <SampleCTACarousel />
+        <CTACardZone
+          trip={trip}
+          activeStop={visibleStop}
+          bookings={bookingsByStop[visibleStop.id] ?? []}
+          days={itinerary[visibleStop.id] ?? []}
+          now={now}
+          isDismissed={ctaDismissed}
+          onDismiss={() => setCtaDismissed(true)}
+          onAddBooking={type => handleAddBooking(visibleStop.id, type)}
+          onLogActivity={() => customItemSheetRef.current?.present({ stopId: visibleStop.id })}
+        />
       </Animated.View>
 
       {/* Fixed strip — active pill tracks the viewed page, not just the real trip position */}
@@ -288,7 +324,7 @@ export default function JernieTab() {
                 stop={stop}
                 bookings={bookingsByStop[stop.id] ?? []}
                 days={itinerary[stop.id] ?? []}
-                expandedDayId={expandedDayIds[stop.id] ?? null}
+                expandedDayId={expandedDayIdFor(stop.id)}
                 onDayPress={dayId => handleDayPress(stop.id, dayId)}
                 onBookingPress={booking => handleBookingPress(booking, stop)}
                 onItemPress={item => handleItemPress(item, stop)}

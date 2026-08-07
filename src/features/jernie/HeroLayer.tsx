@@ -89,10 +89,13 @@ export function HeroLayer({ trip, activeStop, visibleStop, scrollY, onEditStop }
           )}
         </View>
 
+        {/* Follows the stop being *viewed*, not the date-derived active stop — the two
+            diverge while paging, and the gradient below already tracks the viewed stop.
+            Reading `activeStop` here left the title frozen on a swipe. */}
         <View style={styles.bottom}>
-          <Text style={styles.city}>{activeStop.city}</Text>
+          <Text style={styles.city}>{effectiveVisibleStop.city}</Text>
           <Text style={styles.subtitle}>
-            {formatDateRange(activeStop.dates.start, activeStop.dates.end)} · {activeStop.city}, {activeStop.region}
+            {formatDateRange(effectiveVisibleStop.dates.start, effectiveVisibleStop.dates.end)} · {effectiveVisibleStop.city}, {effectiveVisibleStop.region}
           </Text>
         </View>
       </Animated.View>

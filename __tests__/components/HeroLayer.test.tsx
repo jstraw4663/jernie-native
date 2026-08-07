@@ -70,17 +70,57 @@ describe('HeroLayer — edit affordance', () => {
     expect(onEditStop).toHaveBeenCalledTimes(1);
   });
 
-  test('still renders the trip name and active stop city alongside the affordance', () => {
+  test('still renders the trip name alongside the affordance', () => {
     const tree = renderHero(
-      <HeroLayer
-        trip={makeTrip()}
-        activeStop={makeStop()}
-        visibleStop={makeStop({ id: 'stop-2', city: 'Brooklyn', color: '#654321' })}
-        onEditStop={() => {}}
-      />,
+      <HeroLayer trip={makeTrip()} activeStop={makeStop()} onEditStop={() => {}} />,
+    );
+    expect(JSON.stringify(tree.toJSON())).toContain('New England');
+  });
+});
+
+describe('HeroLayer — the title block follows the stop being viewed', () => {
+  const BROOKLYN = makeStop({
+    id: 'stop-2', city: 'Brooklyn', region: 'NY', color: '#654321',
+    dates: { start: '2026-08-15', end: '2026-08-18' },
+  });
+
+  test('shows visibleStop\'s city, not activeStop\'s, while paging', () => {
+    const tree = renderHero(
+      <HeroLayer trip={makeTrip()} activeStop={makeStop()} visibleStop={BROOKLYN} />,
     );
     const json = JSON.stringify(tree.toJSON());
-    expect(json).toContain('New England');
-    expect(json).toContain('Portland');
+    expect(json).toContain('Brooklyn');
+    expect(json).not.toContain('Portland');
+  });
+
+  test('shows visibleStop\'s dates and region in the subtitle', () => {
+    const tree = renderHero(
+      <HeroLayer trip={makeTrip()} activeStop={makeStop()} visibleStop={BROOKLYN} />,
+    );
+    const json = JSON.stringify(tree.toJSON());
+    expect(json).toContain('Aug 15');
+    expect(json).toContain('NY');
+    expect(json).not.toContain('ME');
+  });
+
+  test('updates the title when visibleStop changes, as a swipe does', () => {
+    const tree = renderHero(
+      <HeroLayer trip={makeTrip()} activeStop={makeStop()} visibleStop={makeStop()} />,
+    );
+    expect(JSON.stringify(tree.toJSON())).toContain('Portland');
+
+    act(() => {
+      tree.update(
+        <HeroLayer trip={makeTrip()} activeStop={makeStop()} visibleStop={BROOKLYN} />,
+      );
+    });
+    const json = JSON.stringify(tree.toJSON());
+    expect(json).toContain('Brooklyn');
+    expect(json).not.toContain('Portland');
+  });
+
+  test('falls back to activeStop when visibleStop is omitted', () => {
+    const tree = renderHero(<HeroLayer trip={makeTrip()} activeStop={makeStop()} />);
+    expect(JSON.stringify(tree.toJSON())).toContain('Portland');
   });
 });
