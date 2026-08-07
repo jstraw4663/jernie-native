@@ -25,6 +25,7 @@ import { useTripAdmin } from '@/src/hooks/useTripAdmin';
 const mockUseUserTrips = useUserTrips as jest.Mock;
 const mockUseTripAdmin = useTripAdmin as jest.Mock;
 const mockRestoreTrip = jest.fn();
+const mockRefetch = jest.fn();
 
 function renderScreen() {
   let tree: ReturnType<typeof renderer.create>;
@@ -38,7 +39,9 @@ describe('app/(home)/index', () => {
   beforeEach(() => {
     mockReplace.mockClear();
     mockPush.mockClear();
-    mockRestoreTrip.mockClear();
+    mockRefetch.mockClear();
+    mockRestoreTrip.mockReset();
+    mockRestoreTrip.mockResolvedValue(undefined);
     mockUseTripAdmin.mockReturnValue({
       updateTrip: jest.fn(),
       archiveTrip: jest.fn(),
@@ -47,14 +50,14 @@ describe('app/(home)/index', () => {
   });
 
   test('renders the loading screen while useUserTrips is loading', () => {
-    mockUseUserTrips.mockReturnValue({ trips: [], status: 'loading' });
+    mockUseUserTrips.mockReturnValue({ trips: [], status: 'loading', refetch: mockRefetch });
     const tree = renderScreen();
     const loading = tree.root.findByProps({ testID: 'loading' });
     expect(loading).toBeTruthy();
   });
 
   test('renders an empty state with 0 trips', () => {
-    mockUseUserTrips.mockReturnValue({ trips: [], status: 'ready' });
+    mockUseUserTrips.mockReturnValue({ trips: [], status: 'ready', refetch: mockRefetch });
     const tree = renderScreen();
     expect(tree.root.findAllByProps({ testID: 'trip-row-trip-a' })).toHaveLength(0);
     expect(JSON.stringify(tree.toJSON())).toContain("haven't joined any trips");
@@ -67,6 +70,7 @@ describe('app/(home)/index', () => {
         { tripId: 'trip-b', role: 'traveler', joinedAt: 2, name: 'Trip B', deletedAt: null },
       ],
       status: 'ready',
+      refetch: mockRefetch,
     });
     const tree = renderScreen();
     const rowA = tree.root.findByProps({ testID: 'trip-row-trip-a' });
@@ -79,7 +83,7 @@ describe('app/(home)/index', () => {
   });
 
   test('"Create New Trip" navigates to the onboarding wizard', () => {
-    mockUseUserTrips.mockReturnValue({ trips: [], status: 'ready' });
+    mockUseUserTrips.mockReturnValue({ trips: [], status: 'ready', refetch: mockRefetch });
     const tree = renderScreen();
     const createButton = tree.root.findByProps({ testID: 'create-trip-button' });
 
@@ -93,6 +97,7 @@ describe('app/(home)/index', () => {
     mockUseUserTrips.mockReturnValue({
       trips: [{ tripId: 'trip-a', role: 'organizer', joinedAt: 1, name: 'Amalfi Coast', deletedAt: null }],
       status: 'ready',
+      refetch: mockRefetch,
     });
     const tree = renderScreen();
     const json = JSON.stringify(tree.toJSON());
@@ -100,13 +105,14 @@ describe('app/(home)/index', () => {
     expect(json).not.toContain('"trip-a"');
   });
 
-  test('an archived trip is excluded from the main list, empty-state copy keys off the active count, and a Recently Deleted section lists it with a working Restore button', () => {
+  test('an archived trip is excluded from the main list, empty-state copy keys off the active count, and a Recently Deleted section lists it with a working Restore button', async () => {
     mockUseUserTrips.mockReturnValue({
       trips: [
         { tripId: 'trip-active', role: 'organizer', joinedAt: 1, name: 'Active Trip', deletedAt: null },
         { tripId: 'trip-gone', role: 'organizer', joinedAt: 2, name: 'Archived Trip', deletedAt: 1700000000000 },
       ],
       status: 'ready',
+      refetch: mockRefetch,
     });
     const tree = renderScreen();
 
@@ -119,16 +125,45 @@ describe('app/(home)/index', () => {
     const restoreButton = tree.root.findByProps({ testID: 'restore-trip-trip-gone' });
     expect(restoreButton).toBeTruthy();
 
-    act(() => {
-      restoreButton.props.onPress();
+    await act(async () => {
+      await restoreButton.props.onPress();
     });
     expect(mockRestoreTrip).toHaveBeenCalledWith('trip-gone');
+  });
+
+  test('Restore refreshes the list only after the write resolves, since restoreTrip touches only trips/{tripId} and never re-fires the index listener useUserTrips relies on', async () => {
+    let resolveRestore: () => void = () => {};
+    mockRestoreTrip.mockImplementation(() => new Promise<void>(resolve => { resolveRestore = resolve; }));
+    mockUseUserTrips.mockReturnValue({
+      trips: [{ tripId: 'trip-gone', role: 'organizer', joinedAt: 1, name: 'Archived Trip', deletedAt: 1700000000000 }],
+      status: 'ready',
+      refetch: mockRefetch,
+    });
+    const tree = renderScreen();
+    const restoreButton = tree.root.findByProps({ testID: 'restore-trip-trip-gone' });
+
+    let pressPromise: Promise<void> = Promise.resolve();
+    act(() => {
+      pressPromise = restoreButton.props.onPress();
+    });
+
+    // The write is in flight (not yet resolved) — refetch must not have fired yet.
+    expect(mockRestoreTrip).toHaveBeenCalledWith('trip-gone');
+    expect(mockRefetch).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveRestore();
+      await pressPromise;
+    });
+
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
   });
 
   test('does not render a Recently Deleted section when there are no archived trips', () => {
     mockUseUserTrips.mockReturnValue({
       trips: [{ tripId: 'trip-active', role: 'organizer', joinedAt: 1, name: 'Active Trip', deletedAt: null }],
       status: 'ready',
+      refetch: mockRefetch,
     });
     const tree = renderScreen();
     expect(JSON.stringify(tree.toJSON())).not.toContain('Recently Deleted');
@@ -138,6 +173,7 @@ describe('app/(home)/index', () => {
     mockUseUserTrips.mockReturnValue({
       trips: [{ tripId: 'trip-gone', role: 'organizer', joinedAt: 1, name: 'Archived Trip', deletedAt: 1700000000000 }],
       status: 'ready',
+      refetch: mockRefetch,
     });
     const tree = renderScreen();
     expect(JSON.stringify(tree.toJSON())).toContain("haven't joined any trips");

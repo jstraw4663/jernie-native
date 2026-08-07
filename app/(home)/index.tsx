@@ -10,11 +10,23 @@ import { Brand, Core, Radius, Spacing, Typography } from '@/src/design/tokens';
 export default function MyTripsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { trips, status } = useUserTrips();
+  const { trips, status, refetch } = useUserTrips();
   const { restoreTrip } = useTripAdmin();
 
   const active = useMemo(() => trips.filter(t => !t.deletedAt), [trips]);
   const deleted = useMemo(() => trips.filter(t => t.deletedAt), [trips]);
+
+  // restoreTrip only writes trips/{tripId}.deletedAt — it never touches the
+  // users/{uid}/trips index useUserTrips listens on — so its listener never refires on
+  // its own. Without this explicit refetch(), a restored trip would sit in "Recently
+  // Deleted" with a seemingly-broken Restore button until the screen remounted.
+  const onRestore = useCallback(
+    async (tripId: string) => {
+      await restoreTrip(tripId);
+      refetch();
+    },
+    [restoreTrip, refetch],
+  );
 
   const goToTrip = useCallback(
     (tripId: string) => {
@@ -69,7 +81,7 @@ export default function MyTripsScreen() {
               <Pressable
                 testID={`restore-trip-${trip.tripId}`}
                 style={styles.restoreButton}
-                onPress={() => restoreTrip(trip.tripId)}
+                onPress={() => onRestore(trip.tripId)}
               >
                 <Text style={styles.restoreButtonText}>Restore</Text>
               </Pressable>
