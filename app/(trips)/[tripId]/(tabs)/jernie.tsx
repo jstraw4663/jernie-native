@@ -24,8 +24,10 @@ import { EntityDetailSheet } from '@/src/features/jernie/sheets/EntityDetailShee
 import type { EntityDetailSheetRef } from '@/src/features/jernie/sheets/EntityDetailSheet';
 import { StopFormSheet } from '@/src/features/jernie/sheets/StopFormSheet';
 import type { StopFormSheetRef } from '@/src/features/jernie/sheets/StopFormSheet';
+import { BookingFormSheet } from '@/src/features/jernie/sheets/BookingFormSheet';
+import type { BookingFormSheetRef } from '@/src/features/jernie/sheets/BookingFormSheet';
 import { Brand, Core } from '@/src/design/tokens';
-import type { Booking, ItineraryItem, StopWithColor } from '@/src/types';
+import type { Booking, BookingType, ItineraryItem, StopWithColor } from '@/src/types';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -45,6 +47,7 @@ export default function JernieTab() {
   const originPageRef = useRef(initialIdx); // page index when drag began
   const entitySheetRef = useRef<EntityDetailSheetRef>(null);
   const stopFormSheetRef = useRef<StopFormSheetRef>(null);
+  const bookingSheetRef = useRef<BookingFormSheetRef>(null);
 
   const scrollY          = useSharedValue(0);
   const carouselHeight   = useSharedValue(-1); // -1 = not yet measured
@@ -162,6 +165,10 @@ export default function JernieTab() {
     stopFormSheetRef.current?.present();
   }, [stops, viewedIdx, activeStop]);
 
+  const handleAddBooking = useCallback((stopId: string, type: BookingType) => {
+    bookingSheetRef.current?.present({ type, stopId });
+  }, []);
+
   // During swipe — update strip at the 50% crossover point
   const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.max(0, Math.min(
@@ -267,6 +274,7 @@ export default function JernieTab() {
                 onDayPress={dayId => handleDayPress(stop.id, dayId)}
                 onBookingPress={booking => handleBookingPress(booking, stop)}
                 onItemPress={item => handleItemPress(item, stop)}
+                onAddBooking={type => handleAddBooking(stop.id, type)}
               />
               <View style={styles.bottomPad} />
             </Animated.ScrollView>
@@ -281,6 +289,7 @@ export default function JernieTab() {
         editingStop={editingStop ?? undefined}
         onSaved={refetch}
       />
+      <BookingFormSheet ref={bookingSheetRef} tripId={trip.id} onSaved={refetch} />
     </View>
   );
 }
