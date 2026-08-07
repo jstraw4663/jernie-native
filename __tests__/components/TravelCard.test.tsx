@@ -1,8 +1,8 @@
 import React from 'react';
 import renderer from 'react-test-renderer';
-import { Text } from 'react-native';
+import { Text, TouchableOpacity } from 'react-native';
 import { TravelCard } from '@/src/features/jernie/components/TravelCard';
-import type { FlightBooking, RentalBooking } from '@/src/types';
+import type { FlightBooking, RentalBooking, RestaurantBooking } from '@/src/types';
 
 // expo-linear-gradient's real implementation calls into a native color-processing
 // path that this project's jest environment can't satisfy — swap it for a plain
@@ -153,4 +153,30 @@ test('flight: multi-leg booking renders each leg as its own row', () => {
 test('flight: empty legs array falls back gracefully instead of crashing', () => {
   const tree = renderCard(<TravelCard booking={emptyLegsFlight} stopColor="#000" />);
   expect(texts(tree)).toContain('—');
+});
+
+// ── Press handling ─────────────────────────────────────────────────────────────
+
+const restaurant: RestaurantBooking = {
+  id: 'rest-1', tripId: 'trip-1', stopId: 'stop-1', type: 'restaurant',
+  restaurantName: 'Fore Street', date: '2026-08-11', time: '7:30 PM',
+};
+
+test('rental: pressing the card fires onPress', () => {
+  const onPress = jest.fn();
+  const tree = renderCard(<TravelCard booking={sameStopRental} stopColor="#000" onPress={onPress} />);
+  renderer.act(() => { tree.root.findByType(TouchableOpacity).props.onPress(); });
+  expect(onPress).toHaveBeenCalledTimes(1);
+});
+
+test('rental: the card is disabled when no onPress is supplied', () => {
+  const tree = renderCard(<TravelCard booking={sameStopRental} stopColor="#000" />);
+  expect(tree.root.findByType(TouchableOpacity).props.disabled).toBe(true);
+});
+
+test('restaurant: pressing the card fires onPress', () => {
+  const onPress = jest.fn();
+  const tree = renderCard(<TravelCard booking={restaurant} stopColor="#000" onPress={onPress} />);
+  renderer.act(() => { tree.root.findByType(TouchableOpacity).props.onPress(); });
+  expect(onPress).toHaveBeenCalledTimes(1);
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { SheetHero } from './SheetHero';
@@ -12,6 +12,8 @@ import type { HotelBooking } from '@/src/types';
 interface HotelSheetProps {
   booking: HotelBooking;
   stopColor: string;
+  /** When provided, an Edit control opens the booking form for this booking. */
+  onEdit?: () => void;
   onClose: () => void;
 }
 
@@ -29,7 +31,7 @@ const AMENITY_EMOJI: Record<string, string> = {
   Pool: '🏊', Fitness: '💪', 'Free Parking': '🅿️', 'Pet-Friendly': '🐾', Breakfast: '☕', Concierge: '🛎',
 };
 
-export function HotelSheet({ booking, stopColor, onClose }: HotelSheetProps) {
+export function HotelSheet({ booking, stopColor, onEdit, onClose }: HotelSheetProps) {
   const m = MOCK_HOTEL;
   const n = nights(booking.checkIn, booking.checkOut);
   const scrollY = useSharedValue(0);
@@ -53,6 +55,11 @@ export function HotelSheet({ booking, stopColor, onClose }: HotelSheetProps) {
         <View style={s.ratingCol}>
           <Text style={s.stars}>★ {m.rating}</Text>
           <Text style={s.ratingCount}>({m.ratingCount.toLocaleString()})</Text>
+          {onEdit && (
+            <TouchableOpacity testID="sheet-edit-button" style={s.editButton} onPress={onEdit} activeOpacity={0.7}>
+              <Text style={[s.editText, { color: stopColor }]}>Edit</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -119,6 +126,8 @@ const s = StyleSheet.create({
   ratingCol:   { alignItems: 'flex-end', gap: 3, flexShrink: 0 },
   stars:       { fontSize: 13, color: Brand.gold, fontWeight: '700' as const, fontFamily: 'DMSans' },
   ratingCount: { fontSize: 11, color: Core.textFaint, fontFamily: 'DMSans' },
+  editButton:  { borderWidth: 1, borderColor: Core.border, borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 6, marginTop: 4 },
+  editText:    { ...Typography.roles.button },
   section:     { paddingHorizontal: Spacing.base, paddingTop: Spacing.md },
   sectionTitle:{ fontSize: 11, fontFamily: 'DMSans', fontWeight: '700', letterSpacing: 1.3, textTransform: 'uppercase', color: Core.textFaint, marginBottom: Spacing.sm },
   timeline:    { backgroundColor: Core.surface, borderWidth: 1, borderRadius: Radius.xl, overflow: 'hidden', marginBottom: Spacing.md },

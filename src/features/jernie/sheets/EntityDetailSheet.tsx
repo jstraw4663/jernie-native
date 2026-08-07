@@ -8,6 +8,8 @@ import { PlaceSheet } from './PlaceSheet';
 import { HikeSheet } from './HikeSheet';
 import { HotelSheet } from './HotelSheet';
 import { FlightSheet } from './FlightSheet';
+import { RentalSheet } from './RentalSheet';
+import { RestaurantSheet } from './RestaurantSheet';
 import { Core } from '@/src/design/tokens';
 
 export type EntityDetailSheetRef = {
@@ -105,6 +107,7 @@ export const EntityDetailSheet = React.forwardRef<EntityDetailSheetRef, object>(
         <HotelSheet
           booking={payload.booking}
           stopColor={payload.stopColor}
+          onEdit={payload.onEdit}
           onClose={handleClose}
         />
       )}
@@ -112,6 +115,25 @@ export const EntityDetailSheet = React.forwardRef<EntityDetailSheetRef, object>(
         <FlightSheet
           booking={payload.booking}
           stopColor={payload.stopColor}
+          onEdit={payload.onEdit}
+          onClose={handleClose}
+        />
+      )}
+      {payload?.kind === 'rental' && (
+        <RentalSheet
+          booking={payload.booking}
+          stopColor={payload.stopColor}
+          stopLabel={payload.stopLabel}
+          onEdit={payload.onEdit}
+          onClose={handleClose}
+        />
+      )}
+      {payload?.kind === 'restaurant' && (
+        <RestaurantSheet
+          booking={payload.booking}
+          stopColor={payload.stopColor}
+          stopLabel={payload.stopLabel}
+          onEdit={payload.onEdit}
           onClose={handleClose}
         />
       )}

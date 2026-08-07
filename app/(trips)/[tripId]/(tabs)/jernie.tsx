@@ -77,11 +77,18 @@ export default function JernieTab() {
   );
 
   const handleBookingPress = useCallback((booking: Booking, stop: StopWithColor) => {
-    if (booking.type === 'hotel') {
-      entitySheetRef.current?.present({ kind: 'hotel', booking, stopColor: stop.color, stopLabel: stop.city });
-    } else if (booking.type === 'flight') {
-      entitySheetRef.current?.present({ kind: 'flight', booking, stopColor: stop.color, stopLabel: stop.city });
-    }
+    // Edit closes the detail sheet before opening the form — two modals stacked on top of
+    // each other read as a bug, and the user is done with the detail view at that point.
+    const onEdit = () => {
+      entitySheetRef.current?.dismiss();
+      bookingSheetRef.current?.present({ type: booking.type, stopId: stop.id, editingBooking: booking });
+    };
+    const base = { stopColor: stop.color, stopLabel: stop.city, onEdit };
+
+    if (booking.type === 'hotel')           entitySheetRef.current?.present({ kind: 'hotel', booking, ...base });
+    else if (booking.type === 'flight')     entitySheetRef.current?.present({ kind: 'flight', booking, ...base });
+    else if (booking.type === 'rental')     entitySheetRef.current?.present({ kind: 'rental', booking, ...base });
+    else if (booking.type === 'restaurant') entitySheetRef.current?.present({ kind: 'restaurant', booking, ...base });
   }, []);
 
   const handleItemPress = useCallback((item: ItineraryItem, stop: StopWithColor) => {

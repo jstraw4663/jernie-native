@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,6 +14,8 @@ import type { FlightBooking } from '@/src/types';
 interface FlightSheetProps {
   booking: FlightBooking;
   stopColor: string;
+  /** When provided, an Edit control opens the booking form for this booking. */
+  onEdit?: () => void;
   onClose: () => void;
 }
 
@@ -32,7 +34,7 @@ const STATUS: Record<string, { label: string; bg: string; border: string; color:
   unknown:   { label: '? Unknown',   bg: STATUS_STYLES['default'].bg,   border: STATUS_STYLES['default'].border,   color: STATUS_STYLES['default'].text },
 };
 
-export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
+export function FlightSheet({ booking, stopColor, onEdit, onClose }: FlightSheetProps) {
   const m = MOCK_FLIGHT;
   const st = STATUS[m.status] ?? STATUS.unknown;
   const scrollY = useSharedValue(0);
@@ -62,9 +64,16 @@ export function FlightSheet({ booking, stopColor, onClose }: FlightSheetProps) {
         </View>
       </SheetHero>
       <BottomSheetScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
-      <View style={s.titleBlock}>
-        <Text style={s.name}>{firstLeg.origin} → {lastLeg.destination} · {firstLeg.flightNumber}</Text>
-        <Text style={s.subtitle}>{firstLeg.airline} · {firstLeg.departureDate}</Text>
+      <View style={s.titleRow}>
+        <View style={s.titleBlock}>
+          <Text style={s.name}>{firstLeg.origin} → {lastLeg.destination} · {firstLeg.flightNumber}</Text>
+          <Text style={s.subtitle}>{firstLeg.airline} · {firstLeg.departureDate}</Text>
+        </View>
+        {onEdit && (
+          <TouchableOpacity testID="sheet-edit-button" style={s.editButton} onPress={onEdit} activeOpacity={0.7}>
+            <Text style={[s.editText, { color: stopColor }]}>Edit</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={s.section}>
@@ -132,7 +141,10 @@ const s = StyleSheet.create({
   heroAirport:  { fontSize: 28, fontWeight: '800' as const, color: Core.white, fontFamily: 'DMSans', letterSpacing: -0.5 },
   heroArrow:    { fontSize: 18, color: hexWithAlpha(Core.white, 0.45), paddingHorizontal: 4 },
   heroMeta:     { fontSize: 12, color: hexWithAlpha(Core.white, 0.65), fontFamily: 'DMSans', marginTop: 3 },
-  titleBlock:   { padding: Spacing.base, paddingBottom: Spacing.sm },
+  titleRow:     { padding: Spacing.base, paddingBottom: Spacing.sm, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
+  titleBlock:   { flex: 1 },
+  editButton:   { borderWidth: 1, borderColor: Core.border, borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 6, flexShrink: 0 },
+  editText:     { ...Typography.roles.button },
   name:         { fontFamily: 'Fraunces', fontSize: 22, color: Core.text, marginBottom: 3, lineHeight: 26 },
   subtitle:     { ...Typography.roles.meta, color: Core.textMuted, lineHeight: 18 },
   section:      { paddingHorizontal: Spacing.base, paddingTop: Spacing.md },
