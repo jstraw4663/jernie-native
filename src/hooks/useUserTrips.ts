@@ -7,6 +7,8 @@ export interface UserTripEntry {
   tripId: string;
   role: TripMemberRole;
   joinedAt: number;
+  name: string;
+  deletedAt: number | null;
 }
 
 export interface UserTripsState {
@@ -20,7 +22,7 @@ export function useUserTrips(): UserTripsState {
   useEffect(() => {
     let cancelled = false;
     let tripsRef: FirebaseDatabaseTypes.Reference | null = null;
-    let listener: ((snap: { val: () => Record<string, { role: TripMemberRole; joinedAt: number }> | null }) => void) | null = null;
+    let listener: ((snap: { val: () => Record<string, { role: TripMemberRole; joinedAt: number }> | null }) => void | Promise<void>) | null = null;
 
     setState({ trips: [], status: 'loading' });
 
@@ -34,15 +36,31 @@ export function useUserTrips(): UserTripsState {
       if (cancelled) return;
 
       const ref = database().ref(`users/${uid}/trips`);
-      const onValue = (snap: { val: () => Record<string, { role: TripMemberRole; joinedAt: number }> | null }) => {
+      const onValue = async (snap: { val: () => Record<string, { role: TripMemberRole; joinedAt: number }> | null }) => {
         const val = snap.val();
         if (val === null) {
           // A brand-new user who hasn't joined any trip yet is a normal state.
-          setState({ trips: [], status: 'ready' });
+          if (!cancelled) setState({ trips: [], status: 'ready' });
           return;
         }
-        const trips: UserTripEntry[] = Object.entries(val)
-          .map(([tripId, v]) => ({ tripId, role: v.role, joinedAt: v.joinedAt }));
+        const trips: UserTripEntry[] = await Promise.all(
+          Object.entries(val).map(async ([tripId, v]) => {
+            const tripSnap = await database().ref(`trips/${tripId}`).once('value');
+            const t = (tripSnap.val() ?? {}) as { name?: string; deletedAt?: number | null };
+            return {
+              tripId,
+              role: v.role,
+              joinedAt: v.joinedAt,
+              // A trip the user was removed from (or one mid-deletion) can read back null —
+              // fall back to the id rather than rendering an empty row.
+              name: t.name ?? tripId,
+              deletedAt: t.deletedAt ?? null,
+            };
+          }),
+        );
+        // The per-trip reads above are async, so the component may have unmounted
+        // while they were in flight — re-check before touching state.
+        if (cancelled) return;
         setState({ trips, status: 'ready' });
       };
       const onCancel = () => setState(prev => ({ ...prev, status: 'error' }));

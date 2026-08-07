@@ -1,8 +1,9 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUserTrips } from '@/src/hooks/useUserTrips';
+import { useTripAdmin } from '@/src/hooks/useTripAdmin';
 import { TripLoadingScreen } from '@/src/features/jernie/TripLoadingScreen';
 import { Brand, Core, Radius, Spacing, Typography } from '@/src/design/tokens';
 
@@ -10,6 +11,10 @@ export default function MyTripsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { trips, status } = useUserTrips();
+  const { restoreTrip } = useTripAdmin();
+
+  const active = useMemo(() => trips.filter(t => !t.deletedAt), [trips]);
+  const deleted = useMemo(() => trips.filter(t => t.deletedAt), [trips]);
 
   const goToTrip = useCallback(
     (tripId: string) => {
@@ -35,10 +40,10 @@ export default function MyTripsScreen() {
       contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.sm }]}
     >
       <Text style={styles.title}>My Trips</Text>
-      {trips.length === 0 ? (
+      {active.length === 0 ? (
         <Text style={styles.sub}>You haven't joined any trips yet.</Text>
       ) : (
-        trips.map(trip => (
+        active.map(trip => (
           <Pressable
             key={trip.tripId}
             testID={`trip-row-${trip.tripId}`}
@@ -46,7 +51,7 @@ export default function MyTripsScreen() {
             onPress={() => goToTrip(trip.tripId)}
           >
             <View>
-              <Text style={styles.rowTitle}>{trip.tripId}</Text>
+              <Text style={styles.rowTitle}>{trip.name}</Text>
               <Text style={styles.rowMeta}>{trip.role}</Text>
             </View>
           </Pressable>
@@ -55,6 +60,23 @@ export default function MyTripsScreen() {
       <Pressable testID="create-trip-button" style={styles.createButton} onPress={createTrip}>
         <Text style={styles.createButtonText}>Create New Trip</Text>
       </Pressable>
+      {deleted.length > 0 && (
+        <View style={styles.deletedSection}>
+          <Text style={styles.deletedHeading}>Recently Deleted</Text>
+          {deleted.map(trip => (
+            <View key={trip.tripId} style={styles.deletedRow}>
+              <Text style={styles.deletedRowTitle}>{trip.name}</Text>
+              <Pressable
+                testID={`restore-trip-${trip.tripId}`}
+                style={styles.restoreButton}
+                onPress={() => restoreTrip(trip.tripId)}
+              >
+                <Text style={styles.restoreButtonText}>Restore</Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -84,4 +106,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   createButtonText: { ...Typography.roles.button, color: Brand.navy },
+  deletedSection: { marginTop: Spacing.xxl },
+  deletedHeading: { ...Typography.roles.label, color: Core.textMuted, marginBottom: Spacing.sm },
+  deletedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: Radius.list,
+    borderWidth: 1,
+    borderColor: Core.border,
+    paddingVertical: Spacing.base,
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  deletedRowTitle: { ...Typography.roles.h3, color: Core.textMuted },
+  restoreButton: {
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Core.border,
+  },
+  restoreButtonText: { ...Typography.roles.label, color: Core.action },
 });

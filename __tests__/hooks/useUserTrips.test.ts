@@ -9,7 +9,7 @@ import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useUserTrips } from '@/src/hooks/useUserTrips';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { mockOn, mockOff, mockRef } = jest.requireMock('@react-native-firebase/database');
+const { mockOn, mockOff, mockOnce, mockRef } = jest.requireMock('@react-native-firebase/database');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { auth: mockAuth } = jest.requireMock('@/src/lib/firebase');
 
@@ -27,6 +27,7 @@ beforeEach(() => {
       return cb;
     },
   );
+  (mockOnce as jest.Mock).mockResolvedValue({ val: () => null });
 });
 
 describe('useUserTrips', () => {
@@ -44,8 +45,8 @@ describe('useUserTrips', () => {
   test('normalizes keyed trips-index object into an array of {tripId, role, joinedAt}', async () => {
     const { result } = renderHook(() => useUserTrips());
     await waitFor(() => expect(mockOn).toHaveBeenCalled());
-    act(() => {
-      capturedOnCallback?.({
+    await act(async () => {
+      await capturedOnCallback?.({
         val: () => ({
           'trip-1': { role: 'organizer', joinedAt: 1000 },
           'trip-2': { role: 'traveler', joinedAt: 2000 },
@@ -59,10 +60,39 @@ describe('useUserTrips', () => {
     expect(trip1?.joinedAt).toBe(1000);
   });
 
+  test('fetches each trip name and deletedAt from trips/{tripId}, normalizing an absent deletedAt to null', async () => {
+    const responses = [
+      { val: () => ({ name: 'Paris Getaway', deletedAt: 1700000000000 }) },
+      { val: () => ({ name: 'Rome Weekend' }) }, // no deletedAt field at all in this snapshot
+    ];
+    let call = 0;
+    (mockOnce as jest.Mock).mockImplementation(() => Promise.resolve(responses[call++]));
+
+    const { result } = renderHook(() => useUserTrips());
+    await waitFor(() => expect(mockOn).toHaveBeenCalled());
+    await act(async () => {
+      await capturedOnCallback?.({
+        val: () => ({
+          'trip-1': { role: 'organizer', joinedAt: 1000 },
+          'trip-2': { role: 'traveler', joinedAt: 2000 },
+        }),
+      });
+    });
+
+    expect(result.current.status).toBe('ready');
+    const trip1 = result.current.trips.find(t => t.tripId === 'trip-1');
+    const trip2 = result.current.trips.find(t => t.tripId === 'trip-2');
+    expect(trip1?.name).toBe('Paris Getaway');
+    expect(trip1?.deletedAt).toBe(1700000000000);
+    expect(trip2?.name).toBe('Rome Weekend');
+    expect(trip2?.deletedAt).toBeNull();
+    expect(mockOnce).toHaveBeenCalledTimes(2);
+  });
+
   test('treats a null snapshot as ready with an empty array (a brand-new user has joined no trips)', async () => {
     const { result } = renderHook(() => useUserTrips());
     await waitFor(() => expect(mockOn).toHaveBeenCalled());
-    act(() => { capturedOnCallback?.({ val: () => null }); });
+    await act(async () => { await capturedOnCallback?.({ val: () => null }); });
     expect(result.current.status).toBe('ready');
     expect(result.current.trips).toEqual([]);
   });
