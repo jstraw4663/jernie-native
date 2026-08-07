@@ -93,6 +93,16 @@ describe('parseItineraryFromSnapshot', () => {
     expect(result['stop-a']).toHaveLength(1);
     expect(result['stop-b']).toHaveLength(2);
   });
+
+  test('defaults items to [] when the raw day record has no items key (RTDB omits empty containers on read)', () => {
+    const raw = {
+      'stop-a': {
+        'day-1': { stopId: 'stop-a', dateIso: '2026-07-10' }, // no items key at all
+      },
+    };
+    const result = parseItineraryFromSnapshot(raw);
+    expect(result['stop-a'][0].items).toEqual([]);
+  });
 });
 
 // ── buildBookingRemovalUpdates ───────────────────────────────────────────────
@@ -174,6 +184,15 @@ describe('buildBookingRemovalUpdates', () => {
     };
     const updates = buildBookingRemovalUpdates('trip-1', 'booking-1', itinerary);
     expect(updates['trips/trip-1/itinerary/stop-a/day-1/items']).toEqual([before, after]);
+  });
+
+  test('does not throw on a day with an absent items key (RTDB omits empty containers on read) — treated as items: []', () => {
+    const itinerary = parseItineraryFromSnapshot({
+      'stop-a': { 'day-1': { stopId: 'stop-a', dateIso: '2026-07-10' } }, // no items key
+    });
+    expect(() => buildBookingRemovalUpdates('trip-1', 'booking-1', itinerary)).not.toThrow();
+    const updates = buildBookingRemovalUpdates('trip-1', 'booking-1', itinerary);
+    expect(Object.keys(updates)).toEqual(['trips/trip-1/bookings/booking-1']);
   });
 });
 
@@ -396,5 +415,28 @@ describe('buildStopRemovalUpdates', () => {
       'trips/trip-1/places/place-1': null,
       'trips/trip-1/itinerary/stop-b/day-1/items': [keepItem],
     });
+  });
+
+  test('does not throw when a surviving stop day parsed from a snapshot has an absent items key', () => {
+    const itinerary = parseItineraryFromSnapshot({
+      'stop-b': { 'day-1': { stopId: 'stop-b', dateIso: '2026-07-11' } }, // no items key
+    });
+    const data: CascadeCollections = { bookings: [], itinerary, places: [] };
+    expect(() => buildStopRemovalUpdates('trip-1', 'stop-remove', data)).not.toThrow();
+  });
+
+  test('nulls a surviving rental bookings dangling dropoffStopId when the removed stop was its dropoff', () => {
+    const rentalElsewhere: RentalBooking = {
+      id: 'booking-r1', tripId: 't1', stopId: 'stop-a', type: 'rental', company: 'Enterprise',
+      pickupDate: '2026-07-10', dropoffDate: '2026-07-15', pickupLocation: 'Portland Jetport', dropoffLocation: 'Bar Harbor',
+      dropoffStopId: 'stop-remove',
+    };
+    const data: CascadeCollections = { bookings: [rentalElsewhere], itinerary: {}, places: [] };
+
+    const updates = buildStopRemovalUpdates('trip-1', 'stop-remove', data);
+
+    expect(updates['trips/trip-1/bookings/booking-r1/dropoffStopId']).toBeNull();
+    // Not a full deletion — the booking itself survives, only the dangling field is patched.
+    expect('trips/trip-1/bookings/booking-r1' in updates).toBe(false);
   });
 });

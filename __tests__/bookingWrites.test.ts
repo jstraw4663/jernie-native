@@ -102,6 +102,25 @@ describe('addBooking', () => {
     };
     await expect(addBooking('trip-1', input)).rejects.toThrow('database/permission-denied');
   });
+
+  test('strips explicit undefined-valued optional fields before writing (e.g. a form leaving confirmationCode unset)', async () => {
+    const input: Omit<FlightBooking, 'id' | 'tripId'> = {
+      stopId: 'stop-1',
+      type: 'flight',
+      legs: [
+        {
+          flightNumber: 'B6 274', airline: 'JetBlue', origin: 'BOS', destination: 'PWM',
+          departureDate: '2026-07-10', departureTime: '7:15 AM', arrivalTime: '8:22 AM',
+        },
+      ],
+      confirmationCode: undefined,
+    };
+
+    await addBooking('trip-1', input);
+
+    const writeArg = (mockSet as jest.Mock).mock.calls[0][0];
+    expect('confirmationCode' in writeArg).toBe(false);
+  });
 });
 
 // ── updateBooking ────────────────────────────────────────────────────────────

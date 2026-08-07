@@ -106,6 +106,19 @@ describe('normalizeTripSnapshot', () => {
     const { stops } = normalizeTripSnapshot(withKeylessStop as never);
     expect(stops[0].id).toBe('stop-x');
   });
+
+  test('defaults itinerary day items to [] when the raw day record has no items key (RTDB omits empty containers on read)', () => {
+    const withKeylessItems = {
+      ...BASE,
+      itinerary: {
+        'stop-a': {
+          'day-1': { id: 'day-1', stopId: 'stop-a', dateIso: '2026-07-10' }, // no items key at all
+        },
+      },
+    };
+    const { itinerary } = normalizeTripSnapshot(withKeylessItems as never);
+    expect(itinerary['stop-a'][0].items).toEqual([]);
+  });
 });
 
 // ── useTripData hook-level tests ─────────────────────────────────────────────

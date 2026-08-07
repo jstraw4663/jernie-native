@@ -60,7 +60,9 @@ export function normalizeTripSnapshot(val: Record<string, unknown>): {
   const itinerary: Record<string, ItineraryDay[]> = {};
   for (const [stopId, days] of Object.entries(rawItinerary)) {
     itinerary[stopId] = Object.entries(days)
-      .map(([key, d]) => ({ ...d, id: d.id ?? key } as ItineraryDay))
+      // RTDB omits empty containers — a day whose `items` array was written as `[]` has no
+      // `items` key on read at all, so default it back to `[]` here rather than leaving it undefined.
+      .map(([key, d]) => ({ ...d, id: d.id ?? key, items: d.items ?? [] } as ItineraryDay))
       .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
   }
 

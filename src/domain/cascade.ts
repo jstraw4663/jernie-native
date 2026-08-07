@@ -9,7 +9,9 @@ export function parseItineraryFromSnapshot(raw: unknown): Record<string, Itinera
   const rec = (raw ?? {}) as Record<string, Record<string, Omit<ItineraryDay, 'id'> & { id?: string }>>;
   const out: Record<string, ItineraryDay[]> = {};
   for (const [stopId, days] of Object.entries(rec)) {
-    out[stopId] = Object.entries(days).map(([key, d]) => ({ ...d, id: d.id ?? key } as ItineraryDay));
+    // RTDB omits empty containers — a day whose `items` array was written as `[]` has no
+    // `items` key on read at all, so default it back to `[]` here rather than leaving it undefined.
+    out[stopId] = Object.entries(days).map(([key, d]) => ({ ...d, id: d.id ?? key, items: d.items ?? [] } as ItineraryDay));
   }
   return out;
 }
@@ -68,6 +70,14 @@ export function buildStopRemovalUpdates(
 
   const removedPlaceIds = new Set(data.places.filter(p => p.stopId === stopId).map(p => p.id));
   for (const id of removedPlaceIds) updates[`trips/${tripId}/places/${id}`] = null;
+
+  // A surviving rental (pickup stop elsewhere) whose dropoff was at the removed stop keeps
+  // existing, but its dropoffStopId now dangles — null just that field, not the whole booking.
+  for (const b of data.bookings) {
+    if (b.type === 'rental' && b.stopId !== stopId && b.dropoffStopId === stopId) {
+      updates[`trips/${tripId}/bookings/${b.id}/dropoffStopId`] = null;
+    }
+  }
 
   for (const [otherStopId, days] of Object.entries(data.itinerary)) {
     if (otherStopId === stopId) continue; // already wiped wholesale above

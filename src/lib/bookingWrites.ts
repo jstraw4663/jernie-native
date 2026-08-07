@@ -20,7 +20,9 @@ export async function addBooking(tripId: string, input: NewBooking): Promise<str
   await authReady;
   const bookingId = generateId();
   const booking = { ...input, id: bookingId, tripId } as Booking;
-  await database().ref(`trips/${tripId}/bookings/${bookingId}`).set(booking);
+  // Shallow strip is sufficient here — no booking type has nested optional objects
+  // (FlightLeg's fields are all required), so a top-level filter covers every case.
+  await database().ref(`trips/${tripId}/bookings/${bookingId}`).set(stripUndefined(booking));
   return bookingId;
 }
 
