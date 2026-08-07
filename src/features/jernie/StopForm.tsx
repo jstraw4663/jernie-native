@@ -37,6 +37,12 @@ export interface StopFormProps {
   onCancel?: () => void;
   /** Label for the submit button. Defaults to "Continue". */
   submitLabel?: string;
+  /**
+   * Seeds the form for edit mode. The city counts as already-resolved (geocodeStatus starts
+   * 'success' with resolvedFor set), so an unedited city needs no re-lookup — but editing the
+   * city text still invalidates it via the existing `isStale` check.
+   */
+  initialValues?: ResolvedStop;
 }
 
 type GeocodeStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -65,18 +71,20 @@ function addDaysISO(dateStr: string, days: number): string {
  * sheet and the onboarding wizard's first-stop step both render this directly and just supply a
  * different `onSubmit`.
  */
-export function StopForm({ onSubmit, onCancel, submitLabel = 'Continue' }: StopFormProps) {
-  const [city, setCity] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+export function StopForm({ onSubmit, onCancel, submitLabel = 'Continue', initialValues }: StopFormProps) {
+  const [city, setCity] = useState(initialValues?.city ?? '');
+  const [startDate, setStartDate] = useState(initialValues?.dates.start ?? '');
+  const [endDate, setEndDate] = useState(initialValues?.dates.end ?? '');
 
-  const [geocodeStatus, setGeocodeStatus] = useState<GeocodeStatus>('idle');
+  const [geocodeStatus, setGeocodeStatus] = useState<GeocodeStatus>(initialValues ? 'success' : 'idle');
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
   // The resolved lat/lon/city/region from the last SUCCESSFUL geocode, plus the exact city text
   // that was resolved — if `city` drifts from `resolvedFor` (the user edits the field after a
   // successful lookup), the resolution is stale and must not be trusted for submission anymore.
-  const [resolved, setResolved] = useState<{ city: string; region: string; lat: number; lon: number } | null>(null);
-  const [resolvedFor, setResolvedFor] = useState<string | null>(null);
+  const [resolved, setResolved] = useState<{ city: string; region: string; lat: number; lon: number } | null>(
+    initialValues ? { city: initialValues.city, region: initialValues.region, lat: initialValues.lat, lon: initialValues.lon } : null
+  );
+  const [resolvedFor, setResolvedFor] = useState<string | null>(initialValues?.city.trim() ?? null);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);

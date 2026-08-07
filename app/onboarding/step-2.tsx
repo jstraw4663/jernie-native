@@ -32,7 +32,7 @@ export default function OnboardingStep2() {
 
 const styles = StyleSheet.create({
   // Core.bg (light) rather than Brand.navy — StopForm's own inputs/text are styled for a light
-  // surface (Core.text, Core.surfaceMuted; see AddStopSheet's identical Core.bg host), so this
+  // surface (Core.text, Core.surfaceMuted; see StopFormSheet's identical Core.bg host), so this
   // screen matches that instead of forcing StopForm onto a dark background it wasn't built for.
   container: {
     flex: 1,
