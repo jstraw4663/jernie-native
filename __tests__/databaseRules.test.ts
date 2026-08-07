@@ -49,3 +49,16 @@ describe('database.rules.json — duplicated write-rule expressions stay in sync
     expect(writeRuleFor(MEMBER_WRITABLE_COLLECTIONS[0])).not.toBe(writeRuleFor(OWNER_ONLY_COLLECTIONS[0]));
   });
 });
+
+describe('database.rules.json — trips/$tripId/deletedAt', () => {
+  test('the deletedAt node exists with a string .write rule', () => {
+    expect(() => writeRuleFor('deletedAt')).not.toThrow();
+  });
+
+  test('deletedAt is owner-only (matches the name/pills/colorPack/setupIntent rule), not the broader owner-or-member form', () => {
+    const deletedAtRule = writeRuleFor('deletedAt');
+    expect(deletedAtRule).toContain('ownerUid');
+    expect(deletedAtRule).toBe(writeRuleFor('name'));
+    expect(deletedAtRule).not.toBe(writeRuleFor('stops'));
+  });
+});

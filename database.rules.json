@@ -47,7 +47,8 @@
         "name":             { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" },
         "pills":            { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" },
         "colorPack":        { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" },
-        "setupIntent":      { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" }
+        "setupIntent":      { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" },
+        "deletedAt":        { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" }
       }
     }
   }
