@@ -1,18 +1,52 @@
-import { View, Text, StyleSheet, TouchableOpacity, Share } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Share } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Core, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { Core, Semantic, Typography, Radius, Spacing } from '@/src/design/tokens';
 import { getBuildLabel } from '@/src/version';
 import { useTripContext } from '@/src/contexts/TripContext';
+import { useTripAdmin } from '@/src/hooks/useTripAdmin';
+import { confirmDelete } from '@/src/utils/confirmDelete';
+import { auth } from '@/src/lib/firebase';
 
 export default function ProfileTab() {
   const router = useRouter();
-  const { trip } = useTripContext();
+  const { trip, refetch } = useTripContext();
+  const { updateTrip, archiveTrip } = useTripAdmin();
+  const [name, setName] = useState(trip.name);
+  const [error, setError] = useState<string | null>(null);
   const inviteLink = `jernie://join/${trip.inviteToken}`;
+
+  const isOwner = trip.ownerUid === auth().currentUser?.uid;
+  const saveDisabled = name.trim().length === 0 || name === trip.name;
 
   const handleShareInvite = () => {
     Share.share({
       message: `Join "${trip.name}" on Jernie: ${inviteLink}`,
       url: inviteLink,
+    });
+  };
+
+  const handleSave = async () => {
+    if (saveDisabled) return;
+    try {
+      await updateTrip(trip.id, { name });
+      setError(null);
+      refetch();
+    } catch {
+      setError("Couldn't save the trip name. Try again.");
+    }
+  };
+
+  const handleDelete = () => {
+    confirmDelete({
+      title: 'Delete trip?',
+      message: `"${trip.name}" moves to Recently Deleted. You can restore it from My Trips.`,
+      confirmLabel: 'Delete trip',
+      onConfirm: () => {
+        archiveTrip(trip.id)
+          .then(() => router.replace('/(home)' as never))
+          .catch(() => setError("Couldn't delete this trip. Try again."));
+      },
     });
   };
 
@@ -29,6 +63,32 @@ export default function ProfileTab() {
           <Text style={styles.inviteButtonText}>Share invite link</Text>
         </TouchableOpacity>
       </View>
+
+      {isOwner && (
+        <View style={styles.settingsBlock}>
+          <Text style={styles.settingsLabel}>Trip name</Text>
+          <TextInput
+            testID="trip-name-input"
+            style={styles.nameInput}
+            value={name}
+            onChangeText={setName}
+          />
+          <TouchableOpacity
+            testID="save-trip-button"
+            disabled={saveDisabled}
+            style={[styles.saveButton, saveDisabled && styles.saveButtonDisabled]}
+            onPress={handleSave}
+          >
+            <Text style={styles.saveButtonText}>Save</Text>
+          </TouchableOpacity>
+
+          {error && <Text style={styles.errorText}>{error}</Text>}
+
+          <TouchableOpacity testID="delete-trip-button" style={styles.deleteButton} onPress={handleDelete}>
+            <Text style={styles.deleteButtonText}>Delete trip</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {__DEV__ && (
         // `replace`, not `push`: leaving this trip should unmount its TripProvider (and
@@ -63,6 +123,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   inviteButtonText: { ...Typography.roles.button, color: Core.textInverse },
+
+  settingsBlock: {
+    marginTop: Spacing.xxl,
+    width: '100%',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  settingsLabel: { ...Typography.roles.label, color: Core.textMuted },
+  nameInput: {
+    ...Typography.roles.body,
+    color: Core.text,
+    backgroundColor: Core.surfaceMuted,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.sm,
+    width: '100%',
+    textAlign: 'center',
+  },
+  saveButton: {
+    marginTop: Spacing.xs,
+    backgroundColor: Core.action,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+  },
+  saveButtonDisabled: {
+    opacity: 0.5,
+  },
+  saveButtonText: { ...Typography.roles.button, color: Core.textInverse },
+  errorText: { ...Typography.roles.meta, color: Semantic.error, textAlign: 'center' },
+
+  deleteButton: {
+    marginTop: Spacing.md,
+    backgroundColor: Semantic.errorTint,
+    borderWidth: 1,
+    borderColor: Semantic.error,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+  },
+  deleteButtonText: { ...Typography.roles.button, color: Semantic.error },
 
   switchButton: {
     marginTop: Spacing.xxl,
