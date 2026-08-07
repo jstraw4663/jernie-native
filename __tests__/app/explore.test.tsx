@@ -28,6 +28,10 @@ jest.mock('@/src/lib/itineraryWrites', () => ({
   addPlaceToItinerary: (...args: unknown[]) => mockAddPlaceToItinerary(...args),
 }));
 
+jest.mock('@/src/utils/devTime', () => ({
+  getDevNow: () => new Date('2026-07-01T12:00:00'),
+}));
+
 const mockRefetch = jest.fn();
 let mockContextValue: Record<string, unknown>;
 jest.mock('@/src/contexts/TripContext', () => ({
@@ -114,7 +118,7 @@ describe('app/(trips)/[tripId]/(tabs)/explore', () => {
     expect(t).not.toContain('Eventide');
   });
 
-  test('tapping a place card, then "Add to Portland", writes the itinerary item and refetches', () => {
+  test('tapping a place card, then "Add to Portland", opens the day picker without writing yet', () => {
     const tree = renderScreen();
 
     // Open the detail sheet for Eventide (stop-a → Portland) via its list card.
@@ -132,7 +136,53 @@ describe('app/(trips)/[tripId]/(tabs)/explore', () => {
     })!;
     act(() => { findAncestorOnPress(addNode)(); });
 
+    // The picker is up and nothing has been written — the user still has to choose a day.
+    expect(tree.root.findAllByProps({ testID: `day-picker-row-${EMPTY_DAY.id}` }).length).toBeGreaterThan(0);
+    expect(mockAddPlaceToItinerary).not.toHaveBeenCalled();
+  });
+
+  test('picking a day in the picker writes the itinerary item and refetches', async () => {
+    const tree = renderScreen();
+
+    const eventideNode = tree.root.findAllByType(Text).find(t => {
+      const c = t.props.children;
+      return (Array.isArray(c) ? c.join('') : String(c)) === 'Eventide';
+    })!;
+    act(() => { findAncestorOnPress(eventideNode)(); });
+
+    const addNode = tree.root.findAllByType(Text).find(t => {
+      const c = t.props.children;
+      return (Array.isArray(c) ? c.join('') : String(c)) === 'Add to Portland';
+    })!;
+    act(() => { findAncestorOnPress(addNode)(); });
+
+    await act(async () => {
+      tree.root.findByProps({ testID: `day-picker-row-${EMPTY_DAY.id}` }).props.onPress();
+      await Promise.resolve();
+    });
+
     expect(mockAddPlaceToItinerary).toHaveBeenCalledWith('trip-1', RESTAURANT, EMPTY_DAY);
+    expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  test('the picker only offers days from the pressed place\'s stop', () => {
+    const tree = renderScreen();
+
+    const beehiveNode = tree.root.findAllByType(Text).find(t => {
+      const c = t.props.children;
+      return (Array.isArray(c) ? c.join('') : String(c)) === 'Beehive Trail';
+    })!;
+    act(() => { findAncestorOnPress(beehiveNode)(); });
+
+    const addNode = tree.root.findAllByType(Text).find(t => {
+      const c = t.props.children;
+      return (Array.isArray(c) ? c.join('') : String(c)) === 'Add to Bar Harbor';
+    })!;
+    act(() => { findAncestorOnPress(addNode)(); });
+
+    // Beehive Trail lives on stop-b, so only stop-b's day is offered by default.
+    expect(tree.root.findAllByProps({ testID: 'day-picker-row-day-2' }).length).toBeGreaterThan(0);
+    expect(tree.root.findAllByProps({ testID: `day-picker-row-${EMPTY_DAY.id}` })).toHaveLength(0);
   });
 });
 

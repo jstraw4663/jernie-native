@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTripContext } from '@/src/contexts/TripContext';
 import {
   getShuffleSeed, buildCarouselRows, matchesCategoryFilter, matchesStopFilter, matchesSearch,
-  sortPlaces, getAddedPlaceIds, getDefaultDayForStop,
+  sortPlaces, getAddedPlaceIds,
 } from '@/src/domain/explore';
 import type { FilterId, SortKey } from '@/src/domain/explore';
 import { addPlaceToItinerary } from '@/src/lib/itineraryWrites';
@@ -15,6 +15,8 @@ import { PlaceCarouselRow } from '@/src/features/jernie/explore/PlaceCarouselRow
 import { PlaceList } from '@/src/features/jernie/explore/PlaceList';
 import { EntityDetailSheet } from '@/src/features/jernie/sheets/EntityDetailSheet';
 import type { EntityDetailSheetRef } from '@/src/features/jernie/sheets/EntityDetailSheet';
+import { DayPickerSheet } from '@/src/features/jernie/sheets/DayPickerSheet';
+import type { DayPickerSheetRef } from '@/src/features/jernie/sheets/DayPickerSheet';
 import { Core, Spacing, Typography } from '@/src/design/tokens';
 import type { Place } from '@/src/types';
 
@@ -34,6 +36,7 @@ export default function ExploreTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('rating');
   const entitySheetRef = useRef<EntityDetailSheetRef>(null);
+  const dayPickerRef = useRef<DayPickerSheetRef>(null);
 
   const shuffleSeed = useMemo(() => getShuffleSeed(Date.now()), []);
   const addedPlaceIds = useMemo(() => getAddedPlaceIds(itinerary), [itinerary]);
@@ -79,13 +82,19 @@ export default function ExploreTab() {
       place,
       enrichment: getPlaceEnrichment(enrichment, place),
       isAdded: addedPlaceIds.has(place.id),
+      // Previously this auto-picked the stop's first day and silently did nothing when the
+      // stop had none. The picker gives the user the choice and makes the empty case visible.
       onAdd: () => {
-        const day = getDefaultDayForStop(itinerary, place.stopId);
-        if (!day) return;
-        addPlaceToItinerary(trip.id, place, day).then(refetch).catch(console.error);
+        entitySheetRef.current?.dismiss();
+        dayPickerRef.current?.present({
+          stopId: place.stopId,
+          onPick: day => {
+            addPlaceToItinerary(trip.id, place, day).then(refetch).catch(console.error);
+          },
+        });
       },
     });
-  }, [stops, enrichment, addedPlaceIds, itinerary, trip.id, refetch]);
+  }, [stops, enrichment, addedPlaceIds, trip.id, refetch]);
 
   const stopFilterItems = useMemo(() => [
     { id: 'all', label: 'All Stops' },
@@ -127,6 +136,7 @@ export default function ExploreTab() {
       </ScrollView>
 
       <EntityDetailSheet ref={entitySheetRef} />
+      <DayPickerSheet ref={dayPickerRef} />
     </View>
   );
 }
