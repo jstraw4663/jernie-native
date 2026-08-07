@@ -38,6 +38,7 @@ export default function JernieTab() {
 
   const initialIdx = Math.max(0, stops.findIndex(s => s.id === activeStopId));
   const [viewedIdx, setViewedIdx] = useState(initialIdx);
+  const [editingStop, setEditingStop] = useState<StopWithColor | null>(null);
 
   const pagerRef      = useRef<ScrollView>(null);
   const lastPageRef   = useRef(initialIdx);
@@ -147,9 +148,19 @@ export default function JernieTab() {
     }
   }, [stops]);
 
+  // Add and edit share one sheet ref; `editingStop` is what tells them apart, so the add
+  // path must clear it first — otherwise the sheet reopens in edit mode from a prior press.
   const handleAddStopPress = useCallback(() => {
+    setEditingStop(null);
     stopFormSheetRef.current?.present();
   }, []);
+
+  // Targets the stop the user is *looking at* (the paged `viewedIdx`), not the date-derived
+  // `activeStop` — those diverge while paging, and editing should follow the eye.
+  const handleEditStopPress = useCallback(() => {
+    setEditingStop(stops[viewedIdx] ?? activeStop);
+    stopFormSheetRef.current?.present();
+  }, [stops, viewedIdx, activeStop]);
 
   // During swipe — update strip at the 50% crossover point
   const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -196,6 +207,7 @@ export default function JernieTab() {
         activeStop={activeStop}
         visibleStop={stops[viewedIdx] ?? activeStop}
         scrollY={scrollY}
+        onEditStop={handleEditStopPress}
       />
 
       {/* Sample CTA carousel — fades and collapses as user scrolls, reappears at top */}
@@ -263,7 +275,12 @@ export default function JernieTab() {
       </ScrollView>
 
       <EntityDetailSheet ref={entitySheetRef} />
-      <StopFormSheet ref={stopFormSheetRef} tripId={trip.id} onSaved={refetch} />
+      <StopFormSheet
+        ref={stopFormSheetRef}
+        tripId={trip.id}
+        editingStop={editingStop ?? undefined}
+        onSaved={refetch}
+      />
     </View>
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -20,9 +20,11 @@ interface HeroLayerProps {
   activeStop: StopWithColor;              // date-based — drives phase pill label
   visibleStop?: StopWithColor;            // scroll-position — drives compact strip city/emoji (optional)
   scrollY?: SharedValue<number>; // when omitted, hero renders at full height without animation
+  /** When provided, a `···` control renders top-right; pressing it should open the stop editor. */
+  onEditStop?: () => void;
 }
 
-export function HeroLayer({ trip, activeStop, visibleStop, scrollY }: HeroLayerProps) {
+export function HeroLayer({ trip, activeStop, visibleStop, scrollY, onEditStop }: HeroLayerProps) {
   const effectiveVisibleStop = visibleStop ?? activeStop;
   const _fallbackScrollY = useSharedValue(0);
   const effectiveScrollY = scrollY ?? _fallbackScrollY;
@@ -73,6 +75,18 @@ export function HeroLayer({ trip, activeStop, visibleStop, scrollY }: HeroLayerP
             <View style={styles.phaseDot} />
             <Text style={styles.phaseText}>{phaseLabel}</Text>
           </View>
+          {onEditStop && (
+            <TouchableOpacity
+              testID="hero-edit-button"
+              accessibilityRole="button"
+              accessibilityLabel="Edit stop"
+              style={styles.editButton}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              onPress={onEditStop}
+            >
+              <Text style={styles.editGlyph}>···</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.bottom}>
@@ -112,6 +126,7 @@ const styles = StyleSheet.create({
   },
   pillRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   tripPill: {
@@ -144,6 +159,22 @@ const styles = StyleSheet.create({
   phaseText: {
     ...Typography.roles.label,
     color: Semantic.warning,
+  },
+  editButton: {
+    marginLeft: 'auto',
+    width: 32,
+    height: 32,
+    borderRadius: Radius.full,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editGlyph: {
+    ...Typography.roles.label,
+    color: 'rgba(255,255,255,0.9)',
+    lineHeight: 14,
   },
   bottom: {
     paddingBottom: Spacing.xl,
