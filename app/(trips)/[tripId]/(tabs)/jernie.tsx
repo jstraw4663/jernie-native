@@ -26,6 +26,8 @@ import { StopFormSheet } from '@/src/features/jernie/sheets/StopFormSheet';
 import type { StopFormSheetRef } from '@/src/features/jernie/sheets/StopFormSheet';
 import { BookingFormSheet } from '@/src/features/jernie/sheets/BookingFormSheet';
 import type { BookingFormSheetRef } from '@/src/features/jernie/sheets/BookingFormSheet';
+import { CustomItemSheet } from '@/src/features/jernie/sheets/CustomItemSheet';
+import type { CustomItemSheetRef } from '@/src/features/jernie/sheets/CustomItemSheet';
 import { Brand, Core } from '@/src/design/tokens';
 import type { Booking, BookingType, ItineraryItem, StopWithColor } from '@/src/types';
 
@@ -48,6 +50,7 @@ export default function JernieTab() {
   const entitySheetRef = useRef<EntityDetailSheetRef>(null);
   const stopFormSheetRef = useRef<StopFormSheetRef>(null);
   const bookingSheetRef = useRef<BookingFormSheetRef>(null);
+  const customItemSheetRef = useRef<CustomItemSheetRef>(null);
 
   const scrollY          = useSharedValue(0);
   const carouselHeight   = useSharedValue(-1); // -1 = not yet measured
@@ -92,6 +95,14 @@ export default function JernieTab() {
   }, []);
 
   const handleItemPress = useCallback((item: ItineraryItem, stop: StopWithColor) => {
+    // Custom items are user-authored free text — they open the editor, not a detail view.
+    // The write layer needs the owning day, which is only derivable from the itinerary.
+    if (item.type === 'custom') {
+      const day = (itinerary[stop.id] ?? []).find(d => d.items.some(i => i.id === item.id));
+      if (day) customItemSheetRef.current?.present({ stopId: stop.id, day, editingItem: item });
+      return;
+    }
+
     const place = item.placeId ? places.find(p => p.id === item.placeId) : undefined;
 
     if (place) {
@@ -117,7 +128,7 @@ export default function JernieTab() {
     } else if (item.category === 'hike') {
       entitySheetRef.current?.present({ kind: 'hike', name: label, stopLabel: stop.city, stopColor: stop.color });
     }
-  }, [places, enrichment]);
+  }, [places, enrichment, itinerary]);
 
   // Capture which page the drag originated from (before the 50% crossover updates lastPageRef)
   const handleScrollBeginDrag = useCallback(() => {
@@ -282,6 +293,7 @@ export default function JernieTab() {
                 onBookingPress={booking => handleBookingPress(booking, stop)}
                 onItemPress={item => handleItemPress(item, stop)}
                 onAddBooking={type => handleAddBooking(stop.id, type)}
+                onAddItineraryItem={() => customItemSheetRef.current?.present({ stopId: stop.id })}
               />
               <View style={styles.bottomPad} />
             </Animated.ScrollView>
@@ -297,6 +309,7 @@ export default function JernieTab() {
         onSaved={refetch}
       />
       <BookingFormSheet ref={bookingSheetRef} tripId={trip.id} onSaved={refetch} />
+      <CustomItemSheet ref={customItemSheetRef} tripId={trip.id} onSaved={refetch} />
     </View>
   );
 }

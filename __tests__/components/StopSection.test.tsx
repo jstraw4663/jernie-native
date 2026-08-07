@@ -31,7 +31,11 @@ const RESTAURANT: RestaurantBooking = {
   restaurantName: 'Fore Street', date: '2026-08-11',
 };
 
-function renderSection(bookings: Booking[], onAddBooking?: (type: string) => void) {
+function renderSection(
+  bookings: Booking[],
+  onAddBooking?: (type: string) => void,
+  onAddItineraryItem?: () => void,
+) {
   let tree!: renderer.ReactTestRenderer;
   act(() => {
     tree = renderer.create(
@@ -42,6 +46,7 @@ function renderSection(bookings: Booking[], onAddBooking?: (type: string) => voi
         expandedDayId={null}
         onDayPress={() => {}}
         onAddBooking={onAddBooking as ((type: never) => void) | undefined}
+        onAddItineraryItem={onAddItineraryItem}
       />,
     );
   });
@@ -92,5 +97,19 @@ describe('StopSection — per-type add affordances', () => {
     const tree = renderSection([HOTEL, RESTAURANT], () => {});
     const json = JSON.stringify(tree.toJSON());
     expect(json.split('The Press Hotel').length - 1).toBe(1);
+  });
+});
+
+describe('StopSection — itinerary add affordance', () => {
+  test('renders no itinerary add control when the callback is omitted', () => {
+    const tree = renderSection([HOTEL], () => {});
+    expect(tree.root.findAllByProps({ testID: 'add-itinerary-item' })).toHaveLength(0);
+  });
+
+  test('renders the control even when the stop has no itinerary days yet', () => {
+    const onAddItineraryItem = jest.fn();
+    const tree = renderSection([HOTEL], () => {}, onAddItineraryItem);
+    act(() => { tree.root.findByProps({ testID: 'add-itinerary-item' }).props.onPress(); });
+    expect(onAddItineraryItem).toHaveBeenCalledTimes(1);
   });
 });

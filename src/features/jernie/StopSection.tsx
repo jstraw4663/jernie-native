@@ -15,6 +15,8 @@ interface StopSectionProps {
   onItemPress?: (item: ItineraryItem) => void;
   /** When provided, each booking type gets a "+" affordance that opens the booking form. */
   onAddBooking?: (type: BookingType) => void;
+  /** When provided, an "Add" affordance on the Itinerary heading opens the custom-item form. */
+  onAddItineraryItem?: () => void;
 }
 
 // Fixed display order, so a stop's sections don't reshuffle as bookings are added.
@@ -51,6 +53,7 @@ function AddPill({ testID, label, onPress }: { testID: string; label: string; on
 
 export function StopSection({
   stop, bookings, days, expandedDayId, onDayPress, onBookingPress, onItemPress, onAddBooking,
+  onAddItineraryItem,
 }: StopSectionProps) {
   const grouped = BOOKING_GROUPS.map(group => ({
     ...group,
@@ -101,10 +104,16 @@ export function StopSection({
         </View>
       )}
 
-      {/* Itinerary — day cards */}
-      {days.length > 0 && (
+      {/* Itinerary — day cards. The heading (and its add control) render even with no days,
+          so an empty itinerary is still a place the user can add to. */}
+      {(days.length > 0 || onAddItineraryItem) && (
         <>
-          <SectionLabel title="Itinerary" />
+          <SectionLabel
+            title="Itinerary"
+            action={onAddItineraryItem && (
+              <AddPill testID="add-itinerary-item" label="Add" onPress={onAddItineraryItem} />
+            )}
+          />
           <View style={styles.daysWrapper}>
             {days.map((day, idx) => (
               <ItineraryDayRow
