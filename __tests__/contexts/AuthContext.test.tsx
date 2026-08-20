@@ -93,6 +93,7 @@ describe('signInWithApple', () => {
     mockRequestApple.mockResolvedValue({
       credential: { providerId: 'apple.com' }, displayName: 'Ada', email: 'ada@example.com',
     });
+    mockWriteLinked.mockReset().mockResolvedValue(undefined);
   });
 
   it('links the credential onto the anonymous uid, preserving it', async () => {
@@ -109,6 +110,18 @@ describe('signInWithApple', () => {
     expect(mockWriteLinked).toHaveBeenCalledWith('anon-uid', {
       displayName: 'Ada', email: 'ada@example.com', now: expect.any(Number),
     });
+  });
+
+  it('still reports success when the profile write fails after the credential link resolves', async () => {
+    render();
+    emit({ uid: 'anon-uid', isAnonymous: true, linkWithCredential: mockLink });
+    mockLink.mockResolvedValue({ user: { uid: 'anon-uid', isAnonymous: false } });
+    mockWriteLinked.mockRejectedValue(new Error('profile write failed'));
+
+    let outcome!: Awaited<ReturnType<typeof captured.signInWithApple>>;
+    await act(async () => { outcome = await captured.signInWithApple(); });
+
+    expect(outcome).toEqual({ ok: true, user: { uid: 'anon-uid', isAnonymous: false } });
   });
 
   it('returns a collision outcome carrying a signIn escape hatch', async () => {
