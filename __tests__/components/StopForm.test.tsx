@@ -17,7 +17,7 @@ jest.mock('react-native-calendars', () => {
 
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { StopForm } from '@/src/features/jernie/StopForm';
+import { StopForm, type ResolvedStop } from '@/src/features/jernie/StopForm';
 
 function renderForm(ui: React.ReactElement) {
   let tree!: renderer.ReactTestRenderer;
@@ -365,5 +365,53 @@ describe('StopForm', () => {
   test('submitLabel customizes the submit button text', () => {
     const tree = renderForm(<StopForm onSubmit={jest.fn()} submitLabel="Add stop" />);
     expect(JSON.stringify(tree.toJSON())).toContain('Add stop');
+  });
+});
+
+describe('StopForm — edit mode (initialValues)', () => {
+  const INITIAL: ResolvedStop = {
+    city: 'Portland',
+    region: 'ME',
+    lat: 43.6,
+    lon: -70.2,
+    dates: { start: '2026-05-22', end: '2026-05-24' },
+  };
+
+  test('seeds city and dates, renders the range, and enables submit without any geocode call', () => {
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} initialValues={INITIAL} />);
+
+    expect(tree.root.findByProps({ testID: 'stop-form-city-input' }).props.value).toBe('Portland');
+    expect(JSON.stringify(tree.toJSON())).toContain('May 22');
+    expect(submitDisabled(tree)).toBe(false);
+    expect(mockGeocodeCity).not.toHaveBeenCalled();
+  });
+
+  test('submitting with seeded initialValues calls onSubmit with exactly those values', async () => {
+    const onSubmit = jest.fn();
+    const tree = renderForm(<StopForm onSubmit={onSubmit} initialValues={INITIAL} />);
+
+    await pressSubmit(tree);
+
+    expect(onSubmit).toHaveBeenCalledWith(INITIAL);
+    expect(mockGeocodeCity).not.toHaveBeenCalled();
+  });
+
+  test('editing the seeded city invalidates the resolution until a fresh geocode succeeds', async () => {
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} initialValues={INITIAL} />);
+    expect(submitDisabled(tree)).toBe(false);
+
+    typeCity(tree, 'Bangor');
+    expect(submitDisabled(tree)).toBe(true);
+
+    mockGeocodeCity.mockResolvedValue({ found: true, lat: 44.8, lon: -68.77, city: 'Bangor', region: 'ME' });
+    await pressFind(tree);
+    expect(submitDisabled(tree)).toBe(false);
+  });
+
+  test('without initialValues, the form still starts empty and idle (unchanged add-mode behavior)', () => {
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
+    expect(tree.root.findByProps({ testID: 'stop-form-city-input' }).props.value).toBe('');
+    expect(submitDisabled(tree)).toBe(true);
+    expect(mockGeocodeCity).not.toHaveBeenCalled();
   });
 });

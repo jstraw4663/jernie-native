@@ -165,3 +165,36 @@ test('getStopColor: cycles when order >= stopColors.length', () => {
   expect(getStopColor({ order: 4 }, TEST_TRIP)).toBe('#1E7B8C');  // 4 % 3 === 1
   expect(getStopColor({ order: 5 }, TEST_TRIP)).toBe('#2F6B47');  // 5 % 3 === 2
 });
+
+// compareStopsChronologically
+import { compareStopsChronologically } from '@/src/domain/trip';
+
+describe('compareStopsChronologically', () => {
+  const stop = (start: string, end: string, order: number) => ({ dates: { start, end }, order });
+
+  it('sorts by start date regardless of creation order', () => {
+    const stops = [
+      stop('2026-03-12', '2026-03-14', 0), // Charlotte, entered 1st
+      stop('2026-03-16', '2026-03-18', 1), // Charleston, entered 2nd
+      stop('2026-03-14', '2026-03-16', 2), // Columbia, entered 3rd
+    ];
+    const sorted = [...stops].sort(compareStopsChronologically);
+    expect(sorted.map(s => s.dates.start)).toEqual(['2026-03-12', '2026-03-14', '2026-03-16']);
+  });
+
+  it('breaks a same-start tie with the earlier end date', () => {
+    const a = stop('2026-03-12', '2026-03-13', 5);
+    const b = stop('2026-03-12', '2026-03-20', 1);
+    expect([b, a].sort(compareStopsChronologically)).toEqual([a, b]);
+  });
+
+  it('falls back to creation order when dates are identical', () => {
+    const first  = stop('2026-03-12', '2026-03-14', 1);
+    const second = stop('2026-03-12', '2026-03-14', 7);
+    expect([second, first].sort(compareStopsChronologically)).toEqual([first, second]);
+  });
+
+  it('returns 0 for fully identical stops', () => {
+    expect(compareStopsChronologically(stop('2026-03-12', '2026-03-14', 3), stop('2026-03-12', '2026-03-14', 3))).toBe(0);
+  });
+});

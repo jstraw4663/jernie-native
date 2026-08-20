@@ -19,7 +19,7 @@ interface TravelCardProps {
 export function TravelCard({ booking, stopColor, stopCity, stopId, onPress }: TravelCardProps) {
   if (booking.type === 'flight')     return <FlightCard booking={booking} stopCity={stopCity} onPress={onPress} />;
   if (booking.type === 'hotel')      return <HotelCard  booking={booking} stopColor={stopColor} onPress={onPress} />;
-  if (booking.type === 'rental')     return <RentalCard booking={booking} stopColor={stopColor} stopId={stopId} />;
+  if (booking.type === 'rental')     return <RentalCard booking={booking} stopColor={stopColor} stopId={stopId} onPress={onPress} />;
   if (booking.type === 'restaurant') return <RestaurantCard booking={booking} onPress={onPress} />;
   return null;
 }
@@ -121,7 +121,7 @@ function HotelCard({ booking, stopColor, onPress }: { booking: Extract<Booking, 
 
 // ── Rental card — stop-color tinted surface ───────────────────────────────────
 
-function RentalCard({ booking, stopColor, stopId }: { booking: Extract<Booking, { type: 'rental' }>, stopColor: string, stopId?: string }) {
+function RentalCard({ booking, stopColor, stopId, onPress }: { booking: Extract<Booking, { type: 'rental' }>, stopColor: string, stopId?: string, onPress?: () => void }) {
   // Only cross-stop rentals (pickup in one stop, dropoff in another) are ambiguous
   // enough to need a badge — a same-stop rental has no "which end is this?" question.
   const isCrossStop = !!booking.dropoffStopId && booking.dropoffStopId !== booking.stopId;
@@ -133,7 +133,10 @@ function RentalCard({ booking, stopColor, stopId }: { booking: Extract<Booking, 
     null;
 
   return (
-    <View
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={onPress ? 0.85 : 1}
+      disabled={!onPress}
       style={[
         styles.surfaceCard,
         { borderColor: hexWithAlpha(stopColor, 0.18) },
@@ -160,7 +163,7 @@ function RentalCard({ booking, stopColor, stopId }: { booking: Extract<Booking, 
           {isDropoffStopHere ? booking.dropoffLocation : booking.pickupLocation}
         </Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 

@@ -9,7 +9,7 @@ import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useUserTrips } from '@/src/hooks/useUserTrips';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { mockOn, mockOff, mockRef } = jest.requireMock('@react-native-firebase/database');
+const { mockOn, mockOff, mockOnce, mockRef } = jest.requireMock('@react-native-firebase/database');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { auth: mockAuth } = jest.requireMock('@/src/lib/firebase');
 
@@ -27,6 +27,7 @@ beforeEach(() => {
       return cb;
     },
   );
+  (mockOnce as jest.Mock).mockResolvedValue({ val: () => null });
 });
 
 describe('useUserTrips', () => {
@@ -44,8 +45,8 @@ describe('useUserTrips', () => {
   test('normalizes keyed trips-index object into an array of {tripId, role, joinedAt}', async () => {
     const { result } = renderHook(() => useUserTrips());
     await waitFor(() => expect(mockOn).toHaveBeenCalled());
-    act(() => {
-      capturedOnCallback?.({
+    await act(async () => {
+      await capturedOnCallback?.({
         val: () => ({
           'trip-1': { role: 'organizer', joinedAt: 1000 },
           'trip-2': { role: 'traveler', joinedAt: 2000 },
@@ -59,12 +60,125 @@ describe('useUserTrips', () => {
     expect(trip1?.joinedAt).toBe(1000);
   });
 
+  test('fetches each trip name and deletedAt from trips/{tripId}, normalizing an absent deletedAt to null', async () => {
+    const responses = [
+      { val: () => ({ name: 'Paris Getaway', deletedAt: 1700000000000 }) },
+      { val: () => ({ name: 'Rome Weekend' }) }, // no deletedAt field at all in this snapshot
+    ];
+    let call = 0;
+    (mockOnce as jest.Mock).mockImplementation(() => Promise.resolve(responses[call++]));
+
+    const { result } = renderHook(() => useUserTrips());
+    await waitFor(() => expect(mockOn).toHaveBeenCalled());
+    await act(async () => {
+      await capturedOnCallback?.({
+        val: () => ({
+          'trip-1': { role: 'organizer', joinedAt: 1000 },
+          'trip-2': { role: 'traveler', joinedAt: 2000 },
+        }),
+      });
+    });
+
+    expect(result.current.status).toBe('ready');
+    const trip1 = result.current.trips.find(t => t.tripId === 'trip-1');
+    const trip2 = result.current.trips.find(t => t.tripId === 'trip-2');
+    expect(trip1?.name).toBe('Paris Getaway');
+    expect(trip1?.deletedAt).toBe(1700000000000);
+    expect(trip2?.name).toBe('Rome Weekend');
+    expect(trip2?.deletedAt).toBeNull();
+    expect(mockOnce).toHaveBeenCalledTimes(2);
+  });
+
   test('treats a null snapshot as ready with an empty array (a brand-new user has joined no trips)', async () => {
     const { result } = renderHook(() => useUserTrips());
     await waitFor(() => expect(mockOn).toHaveBeenCalled());
-    act(() => { capturedOnCallback?.({ val: () => null }); });
+    await act(async () => { await capturedOnCallback?.({ val: () => null }); });
     expect(result.current.status).toBe('ready');
     expect(result.current.trips).toEqual([]);
+  });
+
+  test('a denied per-trip read (once() rejects) surfaces status: error rather than leaving the hook stuck', async () => {
+    // Per database.rules.json, trips/{tripId}'s .read rule denies a non-owner/non-member
+    // outright — that's a rejection, not a null/empty snapshot.
+    (mockOnce as jest.Mock).mockImplementation(() => Promise.reject(new Error('permission-denied')));
+
+    const { result } = renderHook(() => useUserTrips());
+    await waitFor(() => expect(mockOn).toHaveBeenCalled());
+    await act(async () => {
+      await capturedOnCallback?.({
+        val: () => ({ 'trip-1': { role: 'organizer', joinedAt: 1000 } }),
+      });
+    });
+
+    expect(result.current.status).toBe('error');
+  });
+
+  test("a stale, slower enrichment run cannot clobber a newer one's state (sequence guard)", async () => {
+    let resolveFirst: (v: { val: () => unknown }) => void = () => {};
+    const firstRead = new Promise<{ val: () => unknown }>(resolve => { resolveFirst = resolve; });
+    let call = 0;
+    (mockOnce as jest.Mock).mockImplementation(() => {
+      call += 1;
+      // The first onValue firing's per-trip read stays pending until resolveFirst() is
+      // called below; the second firing's per-trip read resolves immediately, so it can
+      // finish (and setState) first, simulating out-of-order completion.
+      return call === 1 ? firstRead : Promise.resolve({ val: () => ({ name: 'Fresh Name', deletedAt: null }) });
+    });
+
+    const { result } = renderHook(() => useUserTrips());
+    await waitFor(() => expect(mockOn).toHaveBeenCalled());
+
+    let firstInvocation: Promise<void> | undefined;
+    act(() => {
+      firstInvocation = capturedOnCallback?.({
+        val: () => ({ 'trip-1': { role: 'organizer', joinedAt: 1000 } }),
+      }) as Promise<void> | undefined;
+    });
+
+    // The index listener fires again before the first firing's per-trip read resolves.
+    await act(async () => {
+      await capturedOnCallback?.({
+        val: () => ({ 'trip-1': { role: 'organizer', joinedAt: 1000 } }),
+      });
+    });
+    expect(result.current.trips[0]?.name).toBe('Fresh Name');
+
+    // Now let the stale first firing's read resolve — its setState must be discarded.
+    await act(async () => {
+      resolveFirst({ val: () => ({ name: 'Stale Name', deletedAt: null }) });
+      await firstInvocation;
+    });
+
+    expect(result.current.trips[0]?.name).toBe('Fresh Name');
+  });
+
+  test('refetch() re-runs per-trip enrichment against the last-known index without waiting for the index listener to refire', async () => {
+    // Mirrors restoreTrip/archiveTrip: they write only trips/{tripId}, never
+    // users/{uid}/trips, so the index the on('value') listener watches never changes.
+    let call = 0;
+    (mockOnce as jest.Mock).mockImplementation(() =>
+      Promise.resolve(
+        call++ === 0
+          ? { val: () => ({ name: 'Trip', deletedAt: 1700000000000 }) }
+          : { val: () => ({ name: 'Trip', deletedAt: null }) },
+      ),
+    );
+
+    const { result } = renderHook(() => useUserTrips());
+    await waitFor(() => expect(mockOn).toHaveBeenCalled());
+    await act(async () => {
+      await capturedOnCallback?.({
+        val: () => ({ 'trip-1': { role: 'organizer', joinedAt: 1000 } }),
+      });
+    });
+    expect(result.current.trips[0]?.deletedAt).toBe(1700000000000);
+
+    act(() => {
+      result.current.refetch();
+    });
+
+    await waitFor(() => expect(result.current.trips[0]?.deletedAt).toBeNull());
+    expect(mockOnce).toHaveBeenCalledTimes(2);
   });
 
   test('cancel callback surfaces status: error', async () => {

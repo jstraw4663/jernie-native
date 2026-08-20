@@ -13,6 +13,28 @@ export function getStopColor(stop: Pick<Stop, 'order'>, trip: Pick<Trip, 'colorP
   return resolveStopColor(trip.colorPack, stop.order);
 }
 
+/**
+ * Display order for stops: chronological by date, NOT by `order`.
+ *
+ * `order` is assigned as `max(order)+1` at creation (see useAddStop), so sorting by it
+ * shows stops in the sequence they were typed in — wrong the moment someone adds a stop
+ * that falls between two existing ones. Dates are YYYY-MM-DD, so string comparison is
+ * chronological.
+ *
+ * `order` survives only as the final tiebreak, and remains the stop's color-palette index
+ * (see getStopColor) — sorting never renumbers it, so a stop keeps its color for life.
+ */
+export function compareStopsChronologically(
+  a: Pick<Stop, 'dates' | 'order'>,
+  b: Pick<Stop, 'dates' | 'order'>,
+): number {
+  return (
+    a.dates.start.localeCompare(b.dates.start) ||
+    a.dates.end.localeCompare(b.dates.end) ||
+    a.order - b.order
+  );
+}
+
 // ── Date helpers ─────────────────────────────────────────────────────────────
 
 /**

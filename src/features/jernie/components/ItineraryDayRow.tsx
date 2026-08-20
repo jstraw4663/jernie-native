@@ -91,7 +91,7 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
 
   return (
     <View style={styles.wrapper}>
-      <TouchableOpacity onPress={onPress} style={styles.header} activeOpacity={0.7}>
+      <TouchableOpacity testID={`itinerary-day-${day.id}`} onPress={onPress} style={styles.header} activeOpacity={0.7}>
         <View style={styles.headerLeft}>
           <View style={[styles.dot, {
             backgroundColor: stopColor,

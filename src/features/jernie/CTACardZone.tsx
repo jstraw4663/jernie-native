@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import type { Trip, StopWithColor, Booking, ItineraryDay } from '@/src/types';
+import type { Trip, StopWithColor, Booking, ItineraryDay, BookingType } from '@/src/types';
 import { Core, Semantic, Typography, Radius, Shadow, Spacing } from '@/src/design/tokens';
 import { hexWithAlpha } from '@/src/utils/colors';
 import { isTodayBooking, getBookingDisplay } from '@/src/domain/bookings';
@@ -13,6 +13,10 @@ interface CTACardZoneProps {
   now: Date;
   isDismissed: boolean;
   onDismiss: () => void;
+  /** Opens the booking form for a type — from a pre-trip setup row or an in-trip quick action. */
+  onAddBooking?: (type: BookingType) => void;
+  /** In-trip only: opens the custom itinerary-item flow. */
+  onLogActivity?: () => void;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -25,6 +29,15 @@ const SETUP_ROWS: Array<{ key: SetupKey; emoji: string; label: string; cta: stri
   { key: 'car',         emoji: '🚗', label: 'Rental car',  cta: 'Add →'  },
   { key: 'restaurants', emoji: '🍽️', label: 'Restaurants', cta: 'Add →'  },
 ];
+
+// SETUP_ROWS' keys come from Trip['setupIntent'] and are NOT the BookingType strings —
+// map by key, never by array position.
+const SETUP_ROW_BOOKING_TYPE: Record<SetupKey, BookingType> = {
+  flights: 'flight',
+  stays: 'hotel',
+  car: 'rental',
+  restaurants: 'restaurant',
+};
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -44,12 +57,13 @@ function computeDayNumber(startIso: string, todayIso: string): number {
 function PreTripCard({
   trip,
   onDismiss,
-}: { trip: Trip; onDismiss: () => void }) {
+  onAddBooking,
+}: { trip: Trip; onDismiss: () => void; onAddBooking?: (type: BookingType) => void }) {
   return (
     <View style={[styles.card, Shadow.cardResting]}>
       <View style={styles.headerRow}>
         <Text style={styles.tripName} numberOfLines={1}>{trip.name}</Text>
-        <TouchableOpacity onPress={onDismiss} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity testID="cta-dismiss" onPress={onDismiss} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text style={styles.dismiss}>✕</Text>
         </TouchableOpacity>
       </View>
@@ -58,7 +72,13 @@ function PreTripCard({
         {SETUP_ROWS.map(row => {
           const done = trip.setupIntent[row.key];
           return (
-            <View key={row.key} style={styles.checkRow}>
+            <TouchableOpacity
+              key={row.key}
+              testID={`setup-row-${row.key}`}
+              style={styles.checkRow}
+              activeOpacity={0.7}
+              onPress={() => onAddBooking?.(SETUP_ROW_BOOKING_TYPE[row.key])}
+            >
               <View style={[styles.checkIcon, done ? styles.checkIconDone : styles.checkIconTodo]}>
                 <Text style={styles.checkEmoji}>{row.emoji}</Text>
               </View>
@@ -70,7 +90,7 @@ function PreTripCard({
               <Text style={[styles.checkBadge, done ? styles.checkBadgeDone : styles.checkBadgeTodo]}>
                 {done ? '✓' : '·'}
               </Text>
-            </View>
+            </TouchableOpacity>
           );
         })}
       </View>
@@ -89,7 +109,16 @@ function InTripCard({
   bookings,
   days,
   todayIso,
-}: { activeStop: StopWithColor; bookings: Booking[]; days: ItineraryDay[]; todayIso: string }) {
+  onAddBooking,
+  onLogActivity,
+}: {
+  activeStop: StopWithColor;
+  bookings: Booking[];
+  days: ItineraryDay[];
+  todayIso: string;
+  onAddBooking?: (type: BookingType) => void;
+  onLogActivity?: () => void;
+}) {
   const dayNum = computeDayNumber(activeStop.dates.start, todayIso);
   const dateStr = parseDateLabel(todayIso);
   const todayBookings = bookings.filter(b => isTodayBooking(b, todayIso));
@@ -138,18 +167,34 @@ function InTripCard({
 
       {/* Quick-add actions */}
       <View style={styles.quickActionsRow}>
-        <QuickActionButton emoji="🍽️" label="Add restaurant" color={activeStop.color} />
-        <QuickActionButton emoji="✚" label="Log activity" color={activeStop.color} />
+        <QuickActionButton
+          testID="quick-action-restaurant"
+          emoji="🍽️"
+          label="Add restaurant"
+          color={activeStop.color}
+          onPress={() => onAddBooking?.('restaurant')}
+        />
+        <QuickActionButton
+          testID="quick-action-log-activity"
+          emoji="✚"
+          label="Log activity"
+          color={activeStop.color}
+          onPress={onLogActivity}
+        />
       </View>
     </View>
   );
 }
 
-function QuickActionButton({ emoji, label, color }: { emoji: string; label: string; color: string }) {
+function QuickActionButton({ testID, emoji, label, color, onPress }: {
+  testID: string; emoji: string; label: string; color: string; onPress?: () => void;
+}) {
   return (
     <TouchableOpacity
+      testID={testID}
       style={[styles.quickBtn, { borderColor: hexWithAlpha(color, 0.3) }]}
       activeOpacity={0.7}
+      onPress={onPress}
     >
       <Text style={[styles.quickBtnText, { color }]}>{emoji}{'  '}{label}</Text>
     </TouchableOpacity>
@@ -166,6 +211,8 @@ export function CTACardZone({
   now,
   isDismissed,
   onDismiss,
+  onAddBooking,
+  onLogActivity,
 }: CTACardZoneProps) {
   const todayIso = now.toISOString().split('T')[0];
   const phase: 'pre' | 'in' | 'post' =
@@ -176,9 +223,18 @@ export function CTACardZone({
   if (phase === 'pre' && isDismissed) return null;
 
   if (phase === 'pre') {
-    return <PreTripCard trip={trip} onDismiss={onDismiss} />;
+    return <PreTripCard trip={trip} onDismiss={onDismiss} onAddBooking={onAddBooking} />;
   }
-  return <InTripCard activeStop={activeStop} bookings={bookings} days={days} todayIso={todayIso} />;
+  return (
+    <InTripCard
+      activeStop={activeStop}
+      bookings={bookings}
+      days={days}
+      todayIso={todayIso}
+      onAddBooking={onAddBooking}
+      onLogActivity={onLogActivity}
+    />
+  );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────

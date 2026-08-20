@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { database, authReady } from '@/src/lib/firebase';
 import { generateId } from '@/src/utils/id';
+import { syncItineraryDaysForRange } from '@/src/domain/itinerary';
 import type { Stop } from '@/src/types';
 
 export interface AddStopInput {
@@ -26,6 +27,11 @@ export interface AddStopState {
  * writes with `order: Math.max(...orders, -1) + 1`, which behaves like `currentStops.length` for
  * a dense 0..n-1 sequence but also tolerates gaps. No mid-trip insertion or renumbering — that's
  * explicitly out of scope; a newly added stop always lands at the end.
+ *
+ * Also seeds one empty itinerary day per date in the stop's range, in the SAME root-level
+ * multi-path update as the stop itself — so a stop can never exist without its day rows, which
+ * is what left newly added stops with a blank itinerary section. Each leaf path is still
+ * permission-checked individually, so `stops` and `itinerary` rules both apply as before.
  */
 export function useAddStop(): AddStopState {
   const addStop = useCallback(async (tripId: string, input: AddStopInput): Promise<string> => {
@@ -49,7 +55,18 @@ export function useAddStop(): AddStopState {
       order: nextOrder,
     };
 
-    await database().ref(`trips/${tripId}/stops/${stopId}`).set(stop);
+    const { toAdd } = syncItineraryDaysForRange({
+      stopId,
+      dates: input.dates,
+      existingDays: [],
+      generateId,
+    });
+
+    const updates: Record<string, unknown> = { [`trips/${tripId}/stops/${stopId}`]: stop };
+    for (const day of toAdd) {
+      updates[`trips/${tripId}/itinerary/${stopId}/${day.id}`] = day;
+    }
+    await database().ref().update(updates);
 
     return stopId;
   }, []);

@@ -119,6 +119,24 @@ describe('normalizeTripSnapshot', () => {
     const { itinerary } = normalizeTripSnapshot(withKeylessItems as never);
     expect(itinerary['stop-a'][0].items).toEqual([]);
   });
+
+  it('orders stops chronologically, not by creation order, and leaves order/color untouched', () => {
+    const result = normalizeTripSnapshot({
+      id: 'trip-1', name: 'T', ownerUid: 'u1', createdAt: 1, pills: [], inviteToken: 'tok',
+      colorPack: { id: 'coastal', stopColors: ['#AAA', '#BBB', '#CCC'], heroGradient: ['#111', '#222'] },
+      setupIntent: { flights: true, stays: true, car: true, restaurants: true },
+      stops: {
+        's1': { tripId: 'trip-1', city: 'Charlotte',  region: 'NC', emoji: '📍', lat: 1, lon: 1, dates: { start: '2026-03-12', end: '2026-03-14' }, order: 0 },
+        's2': { tripId: 'trip-1', city: 'Charleston', region: 'SC', emoji: '📍', lat: 1, lon: 1, dates: { start: '2026-03-16', end: '2026-03-18' }, order: 1 },
+        's3': { tripId: 'trip-1', city: 'Columbia',   region: 'SC', emoji: '📍', lat: 1, lon: 1, dates: { start: '2026-03-14', end: '2026-03-16' }, order: 2 },
+      },
+    });
+
+    expect(result.stops.map(s => s.city)).toEqual(['Charlotte', 'Columbia', 'Charleston']);
+    // order is a color index, never renumbered by sorting
+    expect(result.stops.map(s => s.order)).toEqual([0, 2, 1]);
+    expect(result.stops.map(s => s.color)).toEqual(['#AAA', '#CCC', '#BBB']);
+  });
 });
 
 // ── useTripData hook-level tests ─────────────────────────────────────────────

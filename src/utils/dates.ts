@@ -12,3 +12,14 @@ export function formatDateRange(start: string, end: string): string {
   }
   return `${MONTHS[s.getMonth()]} ${s.getDate()} – ${MONTHS[e.getMonth()]} ${e.getDate()}`;
 }
+
+const WEEKDAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+/**
+ * Formats a single ISO date as "Fri, Jul 10". Same T12:00:00 guard as formatDateRange —
+ * parsing a bare YYYY-MM-DD yields UTC midnight, which reads as the previous day west of it.
+ */
+export function formatDayLabel(iso: string): string {
+  const d = new Date(iso + 'T12:00:00');
+  return `${WEEKDAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
+}

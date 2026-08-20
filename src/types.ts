@@ -47,6 +47,10 @@ export interface Trip {
   inviteToken: string;
   colorPack: TripColorPackRef;
   setupIntent: SetupIntent;
+  // Soft-delete marker. Set by archiveTrip, cleared by restoreTrip. A future scheduled
+  // job hard-deletes trips archived beyond a retention window; nothing does that today,
+  // so an archived trip's data stays intact and restorable.
+  deletedAt?: number | null;
 }
 
 // ── Stop ────────────────────────────────────────────────────────────────────
