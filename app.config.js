@@ -33,6 +33,7 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: "com.jernie.app",
+      usesAppleSignIn: true,
       newArchEnabled: true,
       googleServicesFile:
         process.env.GOOGLE_SERVICES_IOS ?? "./GoogleService-Info.plist",
@@ -53,6 +54,7 @@ module.exports = {
         process.env.GOOGLE_SERVICES_ANDROID ?? "./google-services.json",
     },
     plugins: [
+      "expo-apple-authentication",
       "expo-router",
       "expo-font",
       "@react-native-firebase/app",
