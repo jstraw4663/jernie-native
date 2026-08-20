@@ -49,7 +49,6 @@ import renderer, { act } from 'react-test-renderer';
 import { Text } from 'react-native';
 import JernieTab from '@/app/(trips)/[tripId]/(tabs)/jernie';
 import { CTACardZone } from '@/src/features/jernie/CTACardZone';
-import { SampleCTACarousel } from '@/src/features/jernie/SampleCTACarousel';
 import { ItineraryDayRow } from '@/src/features/jernie/components/ItineraryDayRow';
 import type { Trip, StopWithColor } from '@/src/types';
 
@@ -103,15 +102,12 @@ describe('JernieTab — CTA zone', () => {
     // The real card is driven by trip.setupIntent and carries pressable setup rows.
     expect(tree.root.findAllByProps({ testID: 'setup-row-flights' }).length).toBeGreaterThan(0);
     expect(t).toContain('New England');
-    // Text unique to SampleCTACarousel's fixed mock cards must be gone.
+    // Text unique to the deleted mock carousel's fixed cards must never come back.
     expect(t).not.toContain('Dinner Reservation');
   });
 
-  test('mounts CTACardZone and not the mock carousel that owned the stray dots', () => {
+  test('mounts exactly one CTACardZone', () => {
     const tree = renderScreen();
-    // The dots were SampleCTACarousel's own page indicator over 5 hardcoded cards —
-    // unmounting the carousel is what removes them.
-    expect(tree.root.findAllByType(SampleCTACarousel)).toHaveLength(0);
     expect(tree.root.findAllByType(CTACardZone)).toHaveLength(1);
   });
 
