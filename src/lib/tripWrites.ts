@@ -1,4 +1,4 @@
-import { database, authReady } from '@/src/lib/firebase';
+import { database, getAuthedUser } from '@/src/lib/firebase';
 import { stripUndefined } from '@/src/utils/stripUndefined';
 import type { Trip } from '@/src/types';
 
@@ -6,7 +6,7 @@ export type TripPatch = Partial<Pick<Trip, 'name' | 'pills'>>;
 
 /** Owner-only per RTDB rules (`name`/`pills` each carry an ownerUid check). */
 export async function updateTrip(tripId: string, patch: TripPatch): Promise<void> {
-  await authReady;
+  await getAuthedUser();
   await database().ref(`trips/${tripId}`).update(stripUndefined(patch));
 }
 
@@ -16,11 +16,11 @@ export async function updateTrip(tripId: string, patch: TripPatch): Promise<void
  * `trips/{tripId}` create-only, and a shared trip's other members would lose it silently.
  */
 export async function archiveTrip(tripId: string): Promise<void> {
-  await authReady;
+  await getAuthedUser();
   await database().ref(`trips/${tripId}`).update({ deletedAt: Date.now() });
 }
 
 export async function restoreTrip(tripId: string): Promise<void> {
-  await authReady;
+  await getAuthedUser();
   await database().ref(`trips/${tripId}`).update({ deletedAt: null });
 }

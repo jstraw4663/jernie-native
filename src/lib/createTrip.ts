@@ -1,4 +1,4 @@
-import { database, authReady } from '@/src/lib/firebase';
+import { database, getAuthedUser } from '@/src/lib/firebase';
 import { writeTripOnce } from '@/src/lib/atomicTripWrite';
 import { generateId } from '@/src/utils/id';
 import { TRIP_COLOR_PACKS } from '@/src/design/tripPacks';
@@ -32,7 +32,7 @@ export interface CreateTripInput {
 //   step 2 — only after step 1 resolves, a single update() bundling the organizer's membership
 //            record, the user's trips index entry, the invite token lookup, and the first stop
 export async function createTrip(input: CreateTripInput): Promise<string> {
-  const user = await authReady;
+  const user = await getAuthedUser();
   const uid = user.uid;
 
   const tripId = generateId();

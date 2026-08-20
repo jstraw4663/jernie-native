@@ -14,7 +14,7 @@
 // that cannot load for real inside Jest's Node environment.
 jest.mock('@react-native-firebase/database');
 jest.mock('@/src/lib/firebase', () => ({
-  authReady: Promise.resolve({ uid: 'jeremy-uid' }),
+  getAuthedUser: () => Promise.resolve({ uid: 'jeremy-uid' }),
   auth: jest.fn(() => ({ currentUser: { uid: 'jeremy-uid' } })),
   database: require('@react-native-firebase/database').default,
 }));

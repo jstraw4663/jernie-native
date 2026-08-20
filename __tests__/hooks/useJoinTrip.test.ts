@@ -1,6 +1,6 @@
 jest.mock('@react-native-firebase/database');
 jest.mock('@/src/lib/firebase', () => ({
-  authReady: Promise.resolve({ uid: 'test-uid' }),
+  getAuthedUser: () => Promise.resolve({ uid: 'test-uid' }),
   auth: jest.fn(() => ({ currentUser: { uid: 'test-uid', displayName: 'Test User' } })),
   database: require('@react-native-firebase/database').default,
 }));

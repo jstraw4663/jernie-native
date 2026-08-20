@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FirebaseDatabaseTypes } from '@react-native-firebase/database';
-import { auth, authReady, database } from '@/src/lib/firebase';
+import { auth, getAuthedUser, database } from '@/src/lib/firebase';
 import type { TripMemberRole } from '@/src/types';
 
 export interface UserTripEntry {
@@ -81,7 +81,7 @@ export function useUserTrips(): UserTripsState {
     setState({ trips: [], status: 'loading' });
 
     (async () => {
-      await authReady;
+      await getAuthedUser();
       const uid = auth().currentUser?.uid;
       if (!uid) {
         if (!cancelledRef.current) setState({ trips: [], status: 'error' });

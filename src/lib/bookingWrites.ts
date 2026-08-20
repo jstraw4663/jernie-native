@@ -1,4 +1,4 @@
-import { database, authReady } from '@/src/lib/firebase';
+import { database, getAuthedUser } from '@/src/lib/firebase';
 import { generateId } from '@/src/utils/id';
 import { stripUndefined } from '@/src/utils/stripUndefined';
 import { buildBookingRemovalUpdates, parseItineraryFromSnapshot } from '@/src/domain/cascade';
@@ -17,7 +17,7 @@ export type BookingPatch =
   | Partial<Omit<RestaurantBooking, 'id' | 'tripId' | 'type'>>;
 
 export async function addBooking(tripId: string, input: NewBooking): Promise<string> {
-  await authReady;
+  await getAuthedUser();
   const bookingId = generateId();
   const booking = { ...input, id: bookingId, tripId } as Booking;
   // Shallow strip is sufficient here — no booking type has nested optional objects
@@ -27,12 +27,12 @@ export async function addBooking(tripId: string, input: NewBooking): Promise<str
 }
 
 export async function updateBooking(tripId: string, bookingId: string, patch: BookingPatch): Promise<void> {
-  await authReady;
+  await getAuthedUser();
   await database().ref(`trips/${tripId}/bookings/${bookingId}`).update(stripUndefined(patch));
 }
 
 export async function removeBooking(tripId: string, bookingId: string): Promise<void> {
-  await authReady;
+  await getAuthedUser();
   const snap = await database().ref(`trips/${tripId}/itinerary`).once('value');
   const itinerary = parseItineraryFromSnapshot(snap.val());
   const updates = buildBookingRemovalUpdates(tripId, bookingId, itinerary);

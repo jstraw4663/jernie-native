@@ -1,4 +1,4 @@
-import { database, authReady } from '@/src/lib/firebase';
+import { database, getAuthedUser } from '@/src/lib/firebase';
 import { generateId } from '@/src/utils/id';
 import { stripUndefined } from '@/src/utils/stripUndefined';
 import { buildAddToItineraryItem } from '@/src/domain/explore';
@@ -23,7 +23,7 @@ export async function addCustomItineraryItem(
   day: ItineraryDay,
   input: CustomItineraryItemInput,
 ): Promise<void> {
-  await authReady;
+  await getAuthedUser();
   const newItem = buildCustomItineraryItem(input, day.items, generateId());
   await database().ref(`trips/${tripId}/itinerary/${day.stopId}/${day.id}/items`).set([...day.items, newItem]);
 }
@@ -37,7 +37,7 @@ export async function updateItineraryItem(
   itemId: string,
   patch: ItineraryItemPatch,
 ): Promise<void> {
-  await authReady;
+  await getAuthedUser();
   const cleaned = stripUndefined(patch);
   const updatedItems = day.items.map(i => (i.id === itemId ? { ...i, ...cleaned } : i));
   await database().ref(`trips/${tripId}/itinerary/${day.stopId}/${day.id}/items`).set(updatedItems);
@@ -45,7 +45,7 @@ export async function updateItineraryItem(
 
 /** Type-agnostic remove: works identically for 'place', 'booking', and 'custom' items. */
 export async function removeItineraryItem(tripId: string, day: ItineraryDay, itemId: string): Promise<void> {
-  await authReady;
+  await getAuthedUser();
   const remaining = day.items.filter(i => i.id !== itemId);
   await database().ref(`trips/${tripId}/itinerary/${day.stopId}/${day.id}/items`).set(remaining);
 }

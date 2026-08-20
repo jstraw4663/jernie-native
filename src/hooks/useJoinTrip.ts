@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { auth, authReady, database } from '@/src/lib/firebase';
+import { auth, getAuthedUser, database } from '@/src/lib/firebase';
 import type { TripMemberRole } from '@/src/types';
 
 export type JoinTripStatus = 'idle' | 'joining' | 'success' | 'error';
@@ -28,7 +28,7 @@ export function useJoinTrip(): JoinTripState {
     setStatus('joining');
     setError(null);
     try {
-      await authReady;
+      await getAuthedUser();
       const uid = auth().currentUser?.uid;
       if (!uid) throw new Error('not authenticated');
 

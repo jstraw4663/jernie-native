@@ -1,6 +1,6 @@
 jest.mock('@react-native-firebase/database');
 jest.mock('@/src/lib/firebase', () => ({
-  authReady: Promise.resolve({ uid: 'test-uid' }),
+  getAuthedUser: () => Promise.resolve({ uid: 'test-uid' }),
   auth: jest.fn(() => ({ currentUser: { uid: 'test-uid', displayName: 'Test User' } })),
   database: require('@react-native-firebase/database').default,
 }));
@@ -37,7 +37,7 @@ describe('useUserTrips', () => {
     expect(result.current.trips).toEqual([]);
   });
 
-  test('registers the listener at users/{uid}/trips after authReady resolves', async () => {
+  test('registers the listener at users/{uid}/trips after getAuthedUser resolves', async () => {
     renderHook(() => useUserTrips());
     await waitFor(() => expect(mockRef).toHaveBeenCalledWith('users/test-uid/trips'));
   });

@@ -36,7 +36,7 @@
 //      places render, confirm the merged rental (Portland pickup → Southwest Harbor/Bangor
 //      dropoff) and the Beehive-vs-Jordan-Pond group-scoped item behave correctly.
 
-import { auth, authReady, database } from '@/src/lib/firebase';
+import { auth, getAuthedUser, database } from '@/src/lib/firebase';
 import { writeTripOnce } from '@/src/lib/atomicTripWrite';
 import pwaTripRaw from './pwaTripSnapshot.json';
 import { buildImportPayload, NEW_TRIP_ID, type PwaData } from './importPwaTrip.transform';
@@ -53,7 +53,7 @@ function generateInviteToken(): string {
 }
 
 export async function runPwaImport(): Promise<{ tripId: string; inviteToken: string }> {
-  await authReady;
+  await getAuthedUser();
   const uid = auth().currentUser?.uid;
   if (!uid) throw new Error('not authenticated — anonymous sign-in must complete before running the import');
 

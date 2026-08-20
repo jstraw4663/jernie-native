@@ -29,7 +29,7 @@ jest.mock('react-native-calendars', () => {
 });
 // Single choke point for every write path the screen's sheets pull in.
 jest.mock('@/src/lib/firebase', () => ({
-  authReady: Promise.resolve({ uid: 'uid-1' }),
+  getAuthedUser: () => Promise.resolve({ uid: 'uid-1' }),
   auth: () => ({}),
   database: () => ({ ref: () => ({ set: jest.fn(), update: jest.fn(), once: jest.fn() }) }),
   firestore: () => ({}),

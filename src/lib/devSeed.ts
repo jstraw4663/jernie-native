@@ -1,5 +1,5 @@
 import { createMMKV } from 'react-native-mmkv';
-import { database, authReady } from './firebase';
+import { database, getAuthedUser } from './firebase';
 import { writeTripOnce } from './atomicTripWrite';
 import type { Booking, ItineraryDay } from '@/src/types';
 
@@ -13,7 +13,7 @@ export async function maybeSeedDevData(): Promise<void> {
   if (!__DEV__) return;
   if (seedStorage.getBoolean(SEED_KEY)) return;
 
-  const user = await authReady;
+  const user = await getAuthedUser();
 
   const stops = {
     'stop-portland': {

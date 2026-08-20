@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { database, authReady } from '@/src/lib/firebase';
+import { database, getAuthedUser } from '@/src/lib/firebase';
 import { generateId } from '@/src/utils/id';
 import { syncItineraryDaysForRange } from '@/src/domain/itinerary';
 import type { Stop } from '@/src/types';
@@ -35,7 +35,7 @@ export interface AddStopState {
  */
 export function useAddStop(): AddStopState {
   const addStop = useCallback(async (tripId: string, input: AddStopInput): Promise<string> => {
-    await authReady;
+    await getAuthedUser();
 
     const stopsSnap = await database().ref(`trips/${tripId}/stops`).once('value');
     const rawStops = (stopsSnap.val() as Record<string, { order?: number }> | null) ?? {};

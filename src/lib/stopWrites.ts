@@ -1,4 +1,4 @@
-import { database, authReady } from '@/src/lib/firebase';
+import { database, getAuthedUser } from '@/src/lib/firebase';
 import { stripUndefined } from '@/src/utils/stripUndefined';
 import {
   buildStopRemovalUpdates, parseBookingsFromSnapshot, parseItineraryFromSnapshot, parsePlacesFromSnapshot,
@@ -17,7 +17,7 @@ function parseStopDays(raw: unknown): ItineraryDay[] {
 }
 
 export async function updateStop(tripId: string, stopId: string, patch: StopPatch): Promise<void> {
-  await authReady;
+  await getAuthedUser();
   const cleaned = stripUndefined(patch);
 
   // Only a date change can invalidate the day rows, so anything else stays a single
@@ -51,7 +51,7 @@ export async function updateStop(tripId: string, stopId: string, patch: StopPatc
 }
 
 export async function removeStop(tripId: string, stopId: string): Promise<void> {
-  await authReady;
+  await getAuthedUser();
   const [bookingsSnap, itinerarySnap, placesSnap] = await Promise.all([
     database().ref(`trips/${tripId}/bookings`).once('value'),
     database().ref(`trips/${tripId}/itinerary`).once('value'),

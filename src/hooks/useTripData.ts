@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createMMKV } from 'react-native-mmkv';
-import { database, authReady } from '@/src/lib/firebase';
+import { database, getAuthedUser } from '@/src/lib/firebase';
 import type { Trip, Stop, StopWithColor, Booking, ItineraryDay, Place, TripColorPackRef, SetupIntent } from '@/src/types';
 import { getStopColor, compareStopsChronologically } from '@/src/domain/trip';
 
@@ -90,7 +90,7 @@ export function useTripData(tripId: string): TripDataState {
   const doFetch = useCallback(async () => {
     setState(prev => ({ ...prev, status: 'loading' }));
     try {
-      await authReady;
+      await getAuthedUser();
       const snap = await database().ref(`trips/${tripId}`).once('value');
       const val = snap.val() as Record<string, unknown> | null;
       if (!val) throw new Error('no data');

@@ -9,7 +9,7 @@ jest.mock('react-native-mmkv', () => ({
 
 jest.mock('@react-native-firebase/database');
 jest.mock('@/src/lib/firebase', () => ({
-  authReady: Promise.resolve({ uid: 'owner-uid' }),
+  getAuthedUser: () => Promise.resolve({ uid: 'owner-uid' }),
   database: require('@react-native-firebase/database').default,
 }));
 

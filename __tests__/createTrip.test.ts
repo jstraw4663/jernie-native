@@ -1,6 +1,6 @@
 jest.mock('@react-native-firebase/database');
 jest.mock('@/src/lib/firebase', () => ({
-  authReady: Promise.resolve({ uid: 'test-uid' }),
+  getAuthedUser: () => Promise.resolve({ uid: 'test-uid' }),
   database: require('@react-native-firebase/database').default,
 }));
 
@@ -56,7 +56,7 @@ describe('createTrip', () => {
     expect(mockUpdate).toHaveBeenCalledTimes(1);
   });
 
-  test('step 1: writes a complete Trip object to trips/{tripId}, ownerUid from authReady', async () => {
+  test('step 1: writes a complete Trip object to trips/{tripId}, ownerUid from getAuthedUser', async () => {
     const tripId = await createTrip(baseInput);
 
     expect(mockRef).toHaveBeenCalledWith(`trips/${tripId}`);
