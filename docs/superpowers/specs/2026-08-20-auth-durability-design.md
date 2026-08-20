@@ -6,8 +6,15 @@
 
 ## Problem
 
-Every Jernie account is anonymous. A tester who reinstalls the app, or switches phones,
-loses their trip permanently and unrecoverably. No other beta blocker matters until this
+Every Jernie account is anonymous. A tester who switches phones loses their trip permanently
+and unrecoverably.
+
+The anonymous UID is not a placeholder — it is a real Firebase account that genuinely owns the
+trip in RTDB, and `linkWithCredential` upgrades it *in place* without copying or overwriting
+anything. Storage is therefore not the problem. **Recovery is.** The anonymous credential
+lives only in one device's keychain, so after a device change the trip still sits in RTDB,
+fully intact, owned by a UID nobody can ever authenticate as again — no email, no proof of
+ownership, unreachable permanently. Only linking fixes that. No other beta blocker matters until this
 one is closed — an unreliable account makes every other feature untrustworthy.
 
 Secondarily, `authReady` in `src/lib/firebase.ts` is a fire-once module promise. It resolves
@@ -25,7 +32,8 @@ Locked with Jeremy during brainstorming:
 | Providers | **Apple Sign In only** for this beta | Magic link deferred to a Phase 5 call. Every TestFlight tester is on iOS and has an Apple ID, so coverage is 100%. |
 | Credential collision | **Block and explain** | No migration Cloud Function. See *Collision* below. |
 | Auth position in wizard | **Step 3**, before `createTrip` | Collisions inside the wizard are free — no trip exists yet. |
-| Skip / "Save later" | **No skip for the beta** | The entire anonymous-TTL subsystem (38-day expiry, escalating day-30/34/37 prompts) is removed from scope and not built. Reinstate before public launch. |
+| Skip / "Save later" | **Skippable, gated at invite** | Anonymous use stays fully functional. Sharing an invite requires a linked account. See *Anonymous durability*. |
+| Unlinked trip expiry | **Nudge, never delete** | `anonCreatedAt` drives escalating reminders. Nothing is ever auto-deleted — a 38-day TTL could destroy a tester's itinerary mid-trip. |
 | `authReady` replacement | **Re-armable `getAuthedUser()`** | Explicit; ~18 mechanical call-site edits. Rejected alternatives in *Approaches not taken*. |
 
 ## Architecture
@@ -111,7 +119,8 @@ users/{uid}/
   displayName: string
   email:       string | null    // nullable — see below
   plan:        'anonymous' | 'free' | 'pro'
-  linkedAt:    number
+  anonCreatedAt: number       // written at first anonymous sign-in; drives the save nudge
+  linkedAt:    number         // set on link, with plan flipping to 'free'
   trips:       { [tripId]: true }    // existing
 ```
 
@@ -130,7 +139,10 @@ because users may hide behind a `privaterelay.appleid.com` relay address.
 ### Step 3 — Save your trip
 
 New `app/onboarding/step-3.tsx`. `step-2.tsx:17` reroutes to it; it continues to step-4.
-Continue is enabled only after a successful link — there is no skip.
+
+A **"Save later" skip** is offered in secondary styling — present and unobstructed, but not
+competing with the primary action. Skipping leaves the user anonymous and fully functional;
+the mechanisms in *Anonymous durability* carry them from there.
 
 The save card previews the trip name and colour. This requires a change: **`createTrip`
 currently picks the colour pack randomly inside itself** (`createTrip.ts:41`), so step 3 has
@@ -139,6 +151,45 @@ and is passed into `createTrip` as input. This also removes `Math.random()` from
 of a function the tests otherwise pin down, making trip creation deterministic.
 
 The spec's 5-dot progress indicator was never built and is **not** in scope here.
+
+### Anonymous durability
+
+Three mechanisms make skipping safe without ever destroying data.
+
+**`anonCreatedAt`.** Written once to `users/{uid}` at the moment `signInAnonymously()` creates
+a new user — inside `initAuth`, on the branch where there was no `currentUser` — alongside
+`plan: 'anonymous'`. Naturally write-once per UID, so returning users cost no app-open write.
+
+**The save nudge.** A card in `CTACardZone`. It **cannot** be a phase variant: the router
+returns null for `post` and for dismissed `pre` (`CTACardZone.tsx:222-223`), but an unsaved
+trip needs nudging in every phase — most of all post-trip, when the trip has become a memory
+worth keeping. It therefore sits **above** the phase router as a precedence check: anonymous
+and due renders the save card and returns; otherwise control falls through to the existing
+logic untouched.
+
+It carries its own snooze state, separate from the existing `isDismissed` boolean which
+belongs to the setup card. **Dismiss snoozes rather than kills** — a permanently dismissible
+nudge converts nobody. Counted from `anonCreatedAt`:
+
+| Age | Behaviour |
+|---|---|
+| 0–6 days | Nothing. Don't nag someone still building their trip. |
+| 7+ days | Save card, gentle copy. Dismiss snoozes 7 days. |
+| 21+ days | Same card, firmer copy. Dismiss snoozes 3 days. |
+| Ever | Never deleted. |
+
+Snooze state lives in MMKV keyed by UID — device-scoped, matching the anonymous session it
+describes.
+
+**The invite gate.** `profile.tsx`'s share-invite button (`profile.tsx:62`) requires a linked
+account. For an anonymous user, tapping it opens the sign-in prompt instead of the share
+sheet, with an honest reason: if the organizer's device is lost, the shared trip is orphaned
+for *everyone* in it, not only them.
+
+Accepting an invite stays open to anonymous users. Gating the join side would demand sign-in
+from someone who just tapped a friend's link and has not yet seen the app — the worst possible
+moment to ask. The cost is that an anonymous joiner who loses their device becomes a ghost
+member the organizer cannot remove; revisit after the beta if that proves to matter.
 
 ### Collision
 
@@ -213,6 +264,11 @@ single-device, single-account testing, which is the whole reason the phase exist
 5. Sign out → lands on a fresh anonymous UID with an empty list; a subsequent write succeeds
    (this is the `getAuthedUser` re-arm proving itself).
 6. Delete account → trips archived, user removed, re-registration possible.
+7. Skip step 3, then link later from Profile → the trip created while anonymous survives on
+   the same UID.
+8. Anonymous organizer taps share-invite → sign-in prompt, not the share sheet.
+
+Nudge scheduling is unit-tested against an injected clock rather than waited out on device.
 
 ## Approaches not taken
 
@@ -234,6 +290,6 @@ single-device, single-account testing, which is the whole reason the phase exist
 
 ## Out of scope
 
-Anonymous TTL and its expiry prompts (deleted by the no-skip decision) · Google Sign-In ·
-magic link · the 5-dot progress indicator · full deletion cascade · `.validate` on
-`users/{uid}` (Phase 2).
+Automatic deletion of unlinked trips and the scheduled Cloud Function it would need ·
+gating the join side of invites · Google Sign-In · magic link · the 5-dot progress indicator ·
+full deletion cascade · `.validate` on `users/{uid}` (Phase 2).
