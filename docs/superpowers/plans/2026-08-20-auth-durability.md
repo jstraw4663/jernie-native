@@ -584,7 +584,7 @@ export function isAppleCancellation(err: unknown): boolean {
 - [ ] **Step 4: Run tests**
 
 Run: `npx jest __tests__/appleAuth.test.ts`
-Expected: PASS, 9 tests.
+Expected: PASS, 8 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -903,7 +903,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 - [ ] **Step 4: Run tests**
 
 Run: `npx jest __tests__/contexts/AuthContext.test.tsx`
-Expected: PASS, 10 tests.
+Expected: PASS, 9 tests.
 
 - [ ] **Step 5: Mount the provider**
 
@@ -1431,7 +1431,8 @@ git commit -m "feat(onboarding): add step 3 save-your-trip with Apple sign-in an
   - `type NudgeLevel = 'none' | 'gentle' | 'firm'`
   - `nudgeLevel(anonCreatedAt: number, now: number): NudgeLevel`
   - `snoozeMsFor(level: NudgeLevel): number`
-  - `shouldShowNudge(p: { status: string; anonCreatedAt: number | null; snoozedUntil: number | null; now: number }): NudgeLevel | null`
+  - `shouldShowNudge(p: { status: string; anonCreatedAt: number | null; snoozedUntil: number | null; now: number }): DueNudgeLevel | null`
+  - `type DueNudgeLevel = Exclude<NudgeLevel, 'none'>`
   - `readSnooze(uid: string): number | null` / `writeSnooze(uid: string, until: number): void`
 
 - [ ] **Step 1: Write the failing scheduling test**
@@ -1509,6 +1510,10 @@ Create `src/domain/saveNudge.ts`:
 
 export type NudgeLevel = 'none' | 'gentle' | 'firm';
 
+// What shouldShowNudge can actually emit — 'none' collapses to null there, so the card
+// never has to render a level that means "do not render".
+export type DueNudgeLevel = Exclude<NudgeLevel, 'none'>;
+
 const DAY = 24 * 60 * 60 * 1000;
 const GENTLE_AFTER = 7 * DAY;
 const FIRM_AFTER = 21 * DAY;
@@ -1530,7 +1535,7 @@ export function shouldShowNudge(p: {
   anonCreatedAt: number | null;
   snoozedUntil: number | null;
   now: number;
-}): NudgeLevel | null {
+}): DueNudgeLevel | null {
   if (p.status !== 'anonymous') return null;
   if (p.anonCreatedAt === null) return null;
   if (p.snoozedUntil !== null && p.now < p.snoozedUntil) return null;
@@ -1630,7 +1635,7 @@ git commit -m "feat(auth): add save-nudge scheduling and per-uid snooze storage"
 - Modify: `__tests__/components/CTACardZone.test.tsx`
 
 **Interfaces:**
-- Consumes: `NudgeLevel` (Task 9), `useAuth` (Task 5).
+- Consumes: `DueNudgeLevel` (Task 9), `useAuth` (Task 5).
 - Produces: `CTACardZone` gains an optional prop `saveNudge?: { level: NudgeLevel; onSave: () => void; onSnooze: () => void } | null`.
 
 - [ ] **Step 1: Write the failing test**
@@ -1732,15 +1737,15 @@ Expected: FAIL — no `save-nudge-card`.
 In `src/features/jernie/CTACardZone.tsx`, add to the props interface (near `isDismissed`, line 14):
 
 ```ts
-  saveNudge?: { level: NudgeLevel; onSave: () => void; onSnooze: () => void } | null;
+  saveNudge?: { level: DueNudgeLevel; onSave: () => void; onSnooze: () => void } | null;
 ```
 
-Import the type: `import type { NudgeLevel } from '@/src/domain/saveNudge';`
+Import the type: `import type { DueNudgeLevel } from '@/src/domain/saveNudge';`
 
 Add the card component beside `PreTripCard` / `InTripCard`:
 
 ```tsx
-function SaveTripCard({ level, onSave, onSnooze }: { level: NudgeLevel; onSave: () => void; onSnooze: () => void }) {
+function SaveTripCard({ level, onSave, onSnooze }: { level: DueNudgeLevel; onSave: () => void; onSnooze: () => void }) {
   const firm = level === 'firm';
   return (
     <View testID="save-nudge-card" style={styles.card}>
