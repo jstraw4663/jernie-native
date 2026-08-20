@@ -3,9 +3,9 @@ import { SplashScreen, Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { AuthProvider } from '@/src/contexts/AuthContext';
 import { ConnectivityProvider } from '@/src/contexts/ConnectivityContext';
 import { SheetProvider } from '@/src/contexts/SheetContext';
-import { initAuth } from '@/src/lib/firebase';
 import { maybeSeedDevData } from '@/src/lib/devSeed';
 
 SplashScreen.preventAutoHideAsync();
@@ -22,9 +22,9 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    initAuth()
-      .then(() => maybeSeedDevData())
-      .catch(console.error);
+    // AuthProvider (mounted below) now owns initAuth(); maybeSeedDevData() waits for the
+    // resulting user itself via getAuthedUser(), so it no longer needs to be chained here.
+    maybeSeedDevData().catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -38,11 +38,13 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <BottomSheetModalProvider>
-        <ConnectivityProvider>
-          <SheetProvider>
-            <Stack screenOptions={{ headerShown: false }} />
-          </SheetProvider>
-        </ConnectivityProvider>
+        <AuthProvider>
+          <ConnectivityProvider>
+            <SheetProvider>
+              <Stack screenOptions={{ headerShown: false }} />
+            </SheetProvider>
+          </ConnectivityProvider>
+        </AuthProvider>
       </BottomSheetModalProvider>
     </GestureHandlerRootView>
   );
