@@ -7,7 +7,22 @@ import type { Booking, ItineraryDay } from '@/src/types';
 // using the anonymous auth UID as ownerUid so RTDB rules pass on subsequent reads.
 
 const seedStorage = createMMKV({ id: 'jernie-seed' });
-const SEED_KEY = 'seeded_v2_dev_trip_001';
+// Bumped from v2 so devices seeded before SEED_OWNER_KEY existed re-run once and record
+// their owner. Re-running is safe: writeTripOnce(..., 'continue') treats an existing trip as
+// fine rather than overwriting it.
+const SEED_KEY = 'seeded_v3_dev_trip_001';
+const SEED_OWNER_KEY = 'seed_owner_uid';
+
+/**
+ * The uid that wrote the dev seed, or null if nothing has been seeded on this device.
+ *
+ * RTDB rules scope dev-trip-001 to its members, and the seed runs once per device — so after
+ * a sign-out or account deletion the new anonymous uid cannot read it. app/index.tsx uses
+ * this to decide whether its __DEV__ zero-trip fallback still points somewhere reachable.
+ */
+export function getSeedOwnerUid(): string | null {
+  return seedStorage.getString(SEED_OWNER_KEY) ?? null;
+}
 
 export async function maybeSeedDevData(): Promise<void> {
   if (!__DEV__) return;
@@ -250,5 +265,6 @@ export async function maybeSeedDevData(): Promise<void> {
   });
 
   seedStorage.set(SEED_KEY, true);
+  seedStorage.set(SEED_OWNER_KEY, user.uid);
   console.log('[devSeed] Seeded dev-trip-001 as uid:', user.uid);
 }

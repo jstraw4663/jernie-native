@@ -3,6 +3,9 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingVi
 import { useRouter } from 'expo-router';
 import { Brand, Core, Typography, Radius, Spacing } from '@/src/design/tokens';
 import { useOnboardingDraft } from '@/src/contexts/OnboardingDraftContext';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { useUserTrips } from '@/src/hooks/useUserTrips';
+import { confirmAdoptExistingAccount } from '@/src/lib/collisionPrompt';
 
 // A handful of hardcoded suggestions, per the design doc — freeform, not an exhaustive preset
 // list. Tapping toggles membership in `pills`; there's no text-entry path for custom pills in
@@ -37,7 +40,45 @@ export default function OnboardingStep1() {
   const [organizerHandle, setOrganizerHandleLocal] = useState(draft.organizerHandle);
   const [selectedPills, setSelectedPills] = useState<string[]>(draft.pills);
 
+  // A user with no trips lands here (app/index.tsx), which makes step 1 the only screen a
+  // returning user on a new phone can reach. Sign-in used to live only on step 3 — after a
+  // trip already existed — so restoring an account meant creating a throwaway trip first and
+  // then walking through the collision warning to abandon it.
+  const { status, signInWithApple } = useAuth();
+  const { trips, status: tripsStatus } = useUserTrips();
+  const [signingIn, setSigningIn] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
+
   const canContinue = name.trim().length > 0 && organizerHandle.trim().length > 0;
+
+  const handleSignIn = async () => {
+    if (signingIn) return;
+    setSigningIn(true);
+    setSignInError(null);
+    const outcome = await signInWithApple();
+    // Deliberately no draft writes on this path — signing in navigates out of the wizard, and
+    // a half-typed trip name must not follow the user into their restored account.
+    if (outcome.ok) { setSigningIn(false); router.replace('/'); return; }
+    if (outcome.reason === 'cancelled') { setSigningIn(false); return; }
+    if (outcome.reason === 'credential-already-in-use') {
+      // useUserTrips() reports 'loading'/'error' with an empty trips array, which would read
+      // as "nothing to lose" and adopt silently — same gate as Profile and step 3.
+      if (tripsStatus !== 'ready') {
+        setSigningIn(false);
+        setSignInError("Can't verify your trips yet — try again in a moment.");
+        return;
+      }
+      // On the flow this screen exists for — a fresh install with no trips — this resolves
+      // true without prompting, so the collision never surfaces to the user at all.
+      const adopt = await confirmAdoptExistingAccount(trips.length);
+      if (!adopt) { setSigningIn(false); return; }
+      try { setSigningIn(false); await outcome.signIn(); router.replace('/'); }
+      catch { setSigningIn(false); setSignInError("Couldn't sign in. Try again."); }
+      return;
+    }
+    setSigningIn(false);
+    setSignInError(outcome.message);
+  };
 
   const togglePill = (pill: string) => {
     setSelectedPills(prev => (prev.includes(pill) ? prev.filter(p => p !== pill) : [...prev, pill]));
@@ -108,6 +149,21 @@ export default function OnboardingStep1() {
       >
         <Text style={styles.continueButtonText}>Continue</Text>
       </TouchableOpacity>
+
+      {signInError && <Text style={styles.signInError}>{signInError}</Text>}
+
+      {status !== 'authenticated' && (
+        <TouchableOpacity
+          testID="step1-signin"
+          style={styles.signIn}
+          onPress={() => { void handleSignIn(); }}
+          disabled={signingIn}
+        >
+          <Text style={styles.signInText}>
+            {signingIn ? 'Signing in…' : 'Already have an account? Sign in'}
+          </Text>
+        </TouchableOpacity>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -181,5 +237,21 @@ const styles = StyleSheet.create({
   continueButtonText: {
     ...Typography.roles.button,
     color: Brand.navy,
+  },
+  signIn: {
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  signInText: {
+    ...Typography.roles.body,
+    color: 'rgba(255,255,255,0.55)',
+    textDecorationLine: 'underline',
+  },
+  signInError: {
+    ...Typography.roles.meta,
+    color: '#F5A9B8',
+    marginTop: Spacing.base,
+    textAlign: 'center',
   },
 });

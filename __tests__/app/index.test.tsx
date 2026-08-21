@@ -11,6 +11,14 @@ jest.mock('expo-router', () => {
     Redirect: ({ href }: { href: string }) => <Text testID="redirect">{href}</Text>,
   };
 });
+// The dev seed is written once per device and its trip is readable only by the uid that
+// wrote it, so the __DEV__ fallback has to know whether the current uid is that one.
+let mockAuthState: { user: { uid: string } | null };
+jest.mock('@/src/contexts/AuthContext', () => ({ useAuth: () => mockAuthState }));
+const mockGetSeedOwnerUid = jest.fn();
+jest.mock('@/src/lib/devSeed', () => ({
+  getSeedOwnerUid: () => mockGetSeedOwnerUid(),
+}));
 
 import renderer, { act } from 'react-test-renderer';
 import Index from '@/app/index';
@@ -29,6 +37,11 @@ function renderIndex() {
 describe('app/index', () => {
   const originalDev = (globalThis as { __DEV__?: boolean }).__DEV__;
 
+  beforeEach(() => {
+    mockAuthState = { user: { uid: 'seed-uid' } };
+    mockGetSeedOwnerUid.mockReturnValue('seed-uid');
+  });
+
   afterEach(() => {
     (globalThis as { __DEV__?: boolean }).__DEV__ = originalDev;
   });
@@ -39,11 +52,39 @@ describe('app/index', () => {
     expect(tree?.props.testID).toBe('loading');
   });
 
-  test('0 trips in __DEV__ redirects to the seeded dev trip', () => {
+  test('0 trips in __DEV__ redirects to the seeded dev trip for the uid that seeded it', () => {
     (globalThis as { __DEV__?: boolean }).__DEV__ = true;
     mockUseUserTrips.mockReturnValue({ trips: [], status: 'ready' });
     const tree = renderIndex();
     expect(tree?.children[0]).toBe('/(trips)/dev-trip-001/(tabs)/jernie');
+  });
+
+  // Sign-out and account deletion both land on a fresh anonymous uid, and the seed only ever
+  // runs once per device — so that uid cannot read dev-trip-001. Redirecting there stranded
+  // the user on an unreadable trip AND hid onboarding, which carries the only sign-in entry
+  // point available to someone with no trips.
+  test('0 trips in __DEV__ falls through to onboarding when the uid did not seed the dev trip', () => {
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
+    mockAuthState = { user: { uid: 'fresh-anon-uid' } };
+    mockUseUserTrips.mockReturnValue({ trips: [], status: 'ready' });
+    const tree = renderIndex();
+    expect(tree?.children[0]).toBe('/onboarding/step-1');
+  });
+
+  test('0 trips in __DEV__ falls through to onboarding when nothing has been seeded yet', () => {
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
+    mockGetSeedOwnerUid.mockReturnValue(null);
+    mockUseUserTrips.mockReturnValue({ trips: [], status: 'ready' });
+    const tree = renderIndex();
+    expect(tree?.children[0]).toBe('/onboarding/step-1');
+  });
+
+  test('0 trips in __DEV__ falls through to onboarding before any user has resolved', () => {
+    (globalThis as { __DEV__?: boolean }).__DEV__ = true;
+    mockAuthState = { user: null };
+    mockUseUserTrips.mockReturnValue({ trips: [], status: 'ready' });
+    const tree = renderIndex();
+    expect(tree?.children[0]).toBe('/onboarding/step-1');
   });
 
   test('0 trips outside __DEV__ redirects to onboarding step 1', () => {
