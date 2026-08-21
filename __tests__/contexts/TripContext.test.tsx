@@ -4,6 +4,11 @@ jest.mock('@/src/hooks/useTripMembers', () => ({ useTripMembers: jest.fn() }));
 jest.mock('@/src/hooks/useTripGroups', () => ({ useTripGroups: jest.fn() }));
 jest.mock('@/src/hooks/useFirestoreEnrichment', () => ({ useFirestoreEnrichment: jest.fn() }));
 jest.mock('@/src/lib/firebase', () => ({ auth: jest.fn() }));
+jest.mock('@/src/contexts/ConnectivityContext', () => ({ useConnectivityState: jest.fn() }));
+// OfflineBanner reads insets; react-test-renderer has no SafeAreaProvider above it.
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
 
 import React from 'react';
 import renderer from 'react-test-renderer';
@@ -14,6 +19,7 @@ import { useTripMembers } from '@/src/hooks/useTripMembers';
 import { useTripGroups } from '@/src/hooks/useTripGroups';
 import { useFirestoreEnrichment } from '@/src/hooks/useFirestoreEnrichment';
 import { auth } from '@/src/lib/firebase';
+import { useConnectivityState } from '@/src/contexts/ConnectivityContext';
 import type { Trip, Booking, ItineraryDay, TripMember, Group } from '@/src/types';
 
 const mockUseTripData = useTripData as jest.Mock;
@@ -22,6 +28,7 @@ const mockUseTripMembers = useTripMembers as jest.Mock;
 const mockUseTripGroups = useTripGroups as jest.Mock;
 const mockUseFirestoreEnrichment = useFirestoreEnrichment as jest.Mock;
 const mockAuth = auth as jest.Mock;
+const mockUseConnectivityState = useConnectivityState as jest.Mock;
 
 const trip: Trip = {
   id: 'trip-1',
@@ -88,12 +95,14 @@ function setupMocks(currentUid: string | null) {
     places: [],
     status: 'ready',
     fromCache: false,
+    cachedAt: null,
     retry: jest.fn(),
   });
   mockUseTripConfirms.mockReturnValue({ confirms: {}, setConfirm: jest.fn() });
   mockUseTripMembers.mockReturnValue({ members, status: 'ready' });
   mockUseTripGroups.mockReturnValue({ groups, status: 'ready' });
   mockUseFirestoreEnrichment.mockReturnValue({});
+  mockUseConnectivityState.mockReturnValue({ isOnline: true, wasOffline: false, pendingWriteCount: 0 });
 }
 
 function Capture({ onCapture }: { onCapture: (ctx: TripContextValue) => void }) {
@@ -189,5 +198,57 @@ describe('TripProvider group-visibility filtering', () => {
 
     expect(captured.bookings).toBe(firstBookings);
     expect(captured.itinerary).toBe(firstItinerary);
+  });
+});
+
+describe('TripProvider cache passthrough', () => {
+  test('re-exports cachedAt so the Profile tab can age the snapshot on screen', () => {
+    setupMocks('alice');
+    const writtenAt = 1_700_000_000_000;
+    mockUseTripData.mockReturnValue({
+      trip, stops: [], bookings, itinerary, places: [],
+      status: 'loading', fromCache: true, cachedAt: writtenAt, retry: jest.fn(),
+    });
+    let captured!: TripContextValue;
+    renderer.act(() => {
+      renderer.create(
+        <TripProvider tripId="trip-1">
+          <Capture onCapture={(ctx) => { captured = ctx; }} />
+        </TripProvider>,
+      );
+    });
+    expect(captured.cachedAt).toBe(writtenAt);
+  });
+});
+
+describe('OfflineBanner', () => {
+  function renderBanner(pendingWriteCount: number): string {
+    setupMocks('alice');
+    mockUseTripData.mockReturnValue({
+      trip, stops: [], bookings, itinerary, places: [],
+      status: 'loading', fromCache: true, cachedAt: null, retry: jest.fn(),
+    });
+    mockUseConnectivityState.mockReturnValue({ isOnline: false, wasOffline: true, pendingWriteCount });
+    let tree!: renderer.ReactTestRenderer;
+    renderer.act(() => {
+      tree = renderer.create(<TripProvider tripId="trip-1"><Capture onCapture={() => {}} /></TripProvider>);
+    });
+    return JSON.stringify(tree.toJSON());
+  }
+
+  test('says nothing about pending writes when the queue is empty', () => {
+    expect(renderBanner(0)).toContain('Showing saved trip');
+    expect(renderBanner(0)).not.toContain('waiting to sync');
+  });
+
+  test('names the queued writes so an offline user knows their edits survived', () => {
+    // Without this the banner reads as "your app is broken" rather than "your app is holding
+    // your edits" — the single most reassuring thing it can say while offline.
+    expect(renderBanner(3)).toContain('3 changes waiting to sync');
+  });
+
+  test('singularises a single pending write', () => {
+    expect(renderBanner(1)).toContain('1 change waiting to sync');
+    expect(renderBanner(1)).not.toContain('1 changes');
   });
 });

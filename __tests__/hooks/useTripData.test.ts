@@ -202,6 +202,55 @@ describe('useTripData', () => {
     expect(result.current.trip?.id).toBe('trip-1');  // cached trip must survive
   });
 
+  test('stamps cachedAt on a successful fetch so freshness is knowable straight away', async () => {
+    (mockOnce as jest.Mock).mockResolvedValue({ val: () => BASE });
+    const before = Date.now();
+    const { result } = renderHook(() => useTripData('trip-1'));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(result.current.cachedAt).toBeGreaterThanOrEqual(before);
+  });
+
+  test('restores cachedAt from the snapshot on re-mount, not the time of the re-mount', async () => {
+    // The whole point of the field: it must describe when the DATA was written, not when it
+    // was read back, or a week-old snapshot would report itself as fresh on every launch.
+    const { trip } = normalizeTripSnapshot(BASE);
+    const writtenAt = Date.now() - 3 * 60 * 60 * 1000;
+    _mmkvStore['trip_snapshot_trip-aged'] = JSON.stringify({
+      trip, stops: [], bookings: [], itinerary: {}, places: [], cachedAt: writtenAt,
+    });
+    (mockOnce as jest.Mock).mockReturnValue(new Promise(() => {}));  // stall fetch
+    const { result } = renderHook(() => useTripData('trip-aged'));
+    expect(result.current.fromCache).toBe(true);
+    expect(result.current.cachedAt).toBe(writtenAt);
+  });
+
+  test('reports null cachedAt for a snapshot written before the field existed', async () => {
+    // Every device that ran an earlier build still has one of these in MMKV. It must read
+    // back as null rather than undefined so getCacheStatus can treat it as unknown age.
+    const { trip } = normalizeTripSnapshot(BASE);
+    _mmkvStore['trip_snapshot_trip-legacy'] = JSON.stringify({
+      trip, stops: [], bookings: [], itinerary: {}, places: [],
+    });
+    (mockOnce as jest.Mock).mockReturnValue(new Promise(() => {}));
+    const { result } = renderHook(() => useTripData('trip-legacy'));
+    expect(result.current.fromCache).toBe(true);
+    expect(result.current.cachedAt).toBeNull();
+  });
+
+  test('keeps cachedAt through a failed re-fetch', async () => {
+    const { trip } = normalizeTripSnapshot(BASE);
+    const writtenAt = Date.now() - 60_000;
+    _mmkvStore['trip_snapshot_trip-offline'] = JSON.stringify({
+      trip, stops: [], bookings: [], itinerary: {}, places: [], cachedAt: writtenAt,
+    });
+    (mockOnce as jest.Mock).mockRejectedValue(new Error('network error'));
+    const { result } = renderHook(() => useTripData('trip-offline'));
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    // The offline banner reads this to say how old the copy on screen is; losing it on the
+    // failure that makes it relevant would be exactly backwards.
+    expect(result.current.cachedAt).toBe(writtenAt);
+  });
+
   test('retry re-triggers fetch', async () => {
     (mockOnce as jest.Mock).mockRejectedValue(new Error('fail'));
     const { result } = renderHook(() => useTripData('trip-1'));

@@ -6,6 +6,7 @@ import { useTripConfirms } from '@/src/hooks/useTripConfirms';
 import { useTripMembers } from '@/src/hooks/useTripMembers';
 import { useTripGroups } from '@/src/hooks/useTripGroups';
 import { useFirestoreEnrichment } from '@/src/hooks/useFirestoreEnrichment';
+import { useConnectivityState } from '@/src/contexts/ConnectivityContext';
 import { auth } from '@/src/lib/firebase';
 import { filterVisibleToUser } from '@/src/domain/groups';
 import { TripLoadingScreen } from '@/src/features/jernie/TripLoadingScreen';
@@ -26,6 +27,8 @@ export interface TripContextValue {
   confirms: Record<string, boolean>;
   setConfirm: (itemId: string, confirmed: boolean) => void;
   fromCache: boolean;
+  /** When the snapshot on screen was written; null if unknown. Feeds getCacheStatus(). */
+  cachedAt: number | null;
   status: 'loading' | 'ready' | 'error';
   refetch: () => void;
 }
@@ -45,12 +48,19 @@ interface TripProviderProps {
 
 function OfflineBanner({ onRetry }: { onRetry: () => void }) {
   const insets = useSafeAreaInsets();
+  const { pendingWriteCount } = useConnectivityState();
+  // Naming the queued writes is the difference between "my app is broken" and "my app is
+  // holding my edits" — without it, a user offline mid-trip has no way to tell whether the
+  // change they just made survived.
+  const pending = pendingWriteCount > 0
+    ? ` · ${pendingWriteCount} change${pendingWriteCount === 1 ? '' : 's'} waiting to sync`
+    : '';
   return (
     <Pressable
       style={[styles.banner, { paddingTop: insets.top + Spacing.sm }]}
       onPress={onRetry}
     >
-      <Text style={styles.bannerText}>Showing saved trip · Tap to retry</Text>
+      <Text style={styles.bannerText}>Showing saved trip · Tap to retry{pending}</Text>
     </Pressable>
   );
 }
@@ -108,6 +118,7 @@ export function TripProvider({ tripId, children }: TripProviderProps) {
     confirms: confirmsState.confirms,
     setConfirm: confirmsState.setConfirm,
     fromCache: tripData.fromCache,
+    cachedAt: tripData.cachedAt,
     status: tripData.status,
     refetch: tripData.retry,
   };

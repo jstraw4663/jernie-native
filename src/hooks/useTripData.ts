@@ -14,6 +14,12 @@ export interface TripDataState {
   places: Place[];
   status: 'loading' | 'ready' | 'error';
   fromCache: boolean;
+  /**
+   * When the snapshot currently in state was written. Null when there has never been a
+   * cached snapshot, or when the one restored predates this field. Surfaced so the Profile
+   * tab's cache card can tell a two-minute-old copy from a three-day-old one.
+   */
+  cachedAt: number | null;
   retry: () => void;
 }
 
@@ -81,10 +87,12 @@ export function useTripData(tripId: string): TripDataState {
       const raw = cacheStorage.getString(cacheKey);
       if (raw) {
         const cached = JSON.parse(raw) as CachedSnapshot;
-        return { trip: cached.trip, stops: cached.stops, bookings: cached.bookings, itinerary: cached.itinerary, places: cached.places ?? [], status: 'loading', fromCache: true };
+        // cachedAt ?? null, not cachedAt: snapshots written before this field existed are
+        // still in MMKV on every device that ran an earlier build.
+        return { trip: cached.trip, stops: cached.stops, bookings: cached.bookings, itinerary: cached.itinerary, places: cached.places ?? [], status: 'loading', fromCache: true, cachedAt: cached.cachedAt ?? null };
       }
     } catch {}
-    return { trip: null, stops: [], bookings: [], itinerary: {}, places: [], status: 'loading', fromCache: false };
+    return { trip: null, stops: [], bookings: [], itinerary: {}, places: [], status: 'loading', fromCache: false, cachedAt: null };
   });
 
   const doFetch = useCallback(async () => {
@@ -97,7 +105,7 @@ export function useTripData(tripId: string): TripDataState {
       const normalized = normalizeTripSnapshot(val);
       const cached: CachedSnapshot = { ...normalized, cachedAt: Date.now() };
       cacheStorage.set(cacheKey, JSON.stringify(cached));
-      setState({ ...normalized, status: 'ready', fromCache: false });
+      setState({ ...normalized, status: 'ready', fromCache: false, cachedAt: cached.cachedAt });
     } catch {
       setState(prev => ({ ...prev, status: 'error' }));
     }
