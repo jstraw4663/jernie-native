@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable, ScrollView, TextInput, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, TextInput, StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Core, Semantic, Radius, Spacing, Typography, Animation } from '@/src/design/tokens';
@@ -30,14 +30,18 @@ interface AdminPanelProps {
  */
 export function AdminPanel({ visible, onClose, cachedAt, fromCache, places, enrichment }: AdminPanelProps) {
   const insets = useSafeAreaInsets();
-  const offset = useSharedValue(1);
+  const { width } = useWindowDimensions();
+  // Translated by a measured width rather than a '100%' string: percentage transforms are a
+  // recent and uneven RN feature, and a silently-ignored one would leave the panel covering
+  // the screen permanently.
+  const offset = useSharedValue(width);
   const [queue, setQueue] = useState<WriteQueueEntry[]>(() => getQueue());
   const [warpInput, setWarpInput] = useState(() => getDevNowOverride() ?? '');
   const [warpError, setWarpError] = useState<string | null>(null);
 
   useEffect(() => {
-    offset.value = withSpring(visible ? 0 : 1, Animation.springs.snappy);
-  }, [visible, offset]);
+    offset.value = withSpring(visible ? 0 : width, Animation.springs.snappy);
+  }, [visible, width, offset]);
 
   useEffect(() => {
     if (!visible) return;
@@ -46,7 +50,7 @@ export function AdminPanel({ visible, onClose, cachedAt, fromCache, places, enri
   }, [visible]);
 
   const slide = useAnimatedStyle(() => ({
-    transform: [{ translateX: `${offset.value * 100}%` }],
+    transform: [{ translateX: offset.value }],
   }));
 
   const build = getBuildInfo();
