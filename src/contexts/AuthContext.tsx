@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
-import { initAuth } from '@/src/lib/firebase';
+import { initAuth, database } from '@/src/lib/firebase';
 import { requestAppleCredential, isAppleCancellation } from '@/src/lib/appleAuth';
 import { ensureAnonProfile, writeLinkedProfile, readAnonCreatedAt } from '@/src/lib/userProfile';
+import { deleteAccountData } from '@/src/lib/deleteAccount';
 
 export type LinkOutcome =
   | { ok: true; user: FirebaseAuthTypes.User }
@@ -104,8 +105,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deleteAccount = useCallback(async () => {
-    throw new Error('deleteAccount is implemented in Task 6');
-  }, []);
+    const current = auth().currentUser;
+    if (!current) throw new Error('Not signed in');
+
+    const snap = await database().ref(`users/${current.uid}/trips`).once('value');
+    const tripIds = snap.exists() ? Object.keys(snap.val() as Record<string, true>) : [];
+
+    await deleteAccountData(current.uid, tripIds);
+
+    try {
+      await current.delete();
+    } catch (err) {
+      if ((err as { code?: string })?.code === 'auth/requires-recent-login') {
+        const outcome = await signInWithApple();
+        if (!outcome.ok) throw new Error('Please sign in again to confirm deletion');
+        await auth().currentUser?.delete();
+      } else {
+        throw err;
+      }
+    }
+    await auth().signInAnonymously();
+  }, [signInWithApple]);
 
   return (
     <AuthContext.Provider value={{ user, status, anonCreatedAt, signInWithApple, signOut, deleteAccount }}>
