@@ -29,9 +29,14 @@ npx expo export --platform ios --output-dir /tmp/verify
 
 Then restart Metro with `npx expo start --clear`.
 
-To stop it recurring, install watchman (needs sudo; the Ubuntu `apt` package is 4.9.0 from
-2017 and React Native warns against it). A current build is staged at
-`~/.local/share/watchman-dist`:
+Restarting is usually enough. Installing `watchman` stops it recurring, but it is **optional**
+— it is a background daemon with its own failure modes (`watchman watch-del-all`), and it needs
+sudo. Worth doing only if the restarts get annoying.
+
+If you do: **do not `apt install watchman`.** watchman itself is current and actively developed
+(releases weekly), but Debian/Ubuntu's *package* has been frozen at 4.9.0 since 2017 — that
+specific ancient build is what React Native warns against, not watchman. A current build is
+staged at `~/.local/share/watchman-dist`:
 
 ```bash
 sudo mkdir -p /usr/local/bin /usr/local/lib /usr/local/var/run/watchman
