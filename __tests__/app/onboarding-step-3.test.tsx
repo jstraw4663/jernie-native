@@ -1,6 +1,7 @@
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
 const mockSignInWithApple = jest.fn();
+const mockConfirmAdopt = jest.fn();
 
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush, replace: mockReplace }) }));
 jest.mock('@/src/contexts/AuthContext', () => ({
@@ -13,6 +14,16 @@ jest.mock('@/src/contexts/OnboardingDraftContext', () => ({
       colorPack: { id: 'p', stopColors: ['#2C5880'], heroGradient: ['#111111', '#222222'] },
     },
   }),
+}));
+jest.mock('@/src/lib/collisionPrompt', () => ({
+  confirmAdoptExistingAccount: (...a: unknown[]) => mockConfirmAdopt(...a),
+}));
+
+// The trip-count query behind the C3/I4 collision gate — a user who already owns trips can
+// reach step 3 via "Create New Trip" from My Trips, so the silent-adopt path must be earned.
+let mockUserTripsState: { trips: unknown[]; status: 'loading' | 'ready' | 'error' };
+jest.mock('@/src/hooks/useUserTrips', () => ({
+  useUserTrips: () => mockUserTripsState,
 }));
 
 import React from 'react';
@@ -32,7 +43,10 @@ function texts(tree: renderer.ReactTestRenderer): string {
   }).join(' | ');
 }
 
-beforeEach(() => { jest.clearAllMocks(); });
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockUserTripsState = { trips: [], status: 'ready' };
+});
 
 describe('Onboarding step 3', () => {
   it('previews the trip name from the draft', () => {
@@ -69,13 +83,73 @@ describe('Onboarding step 3', () => {
     expect(texts(tree)).toContain('network down');
   });
 
-  // No trip exists yet at step 3, so a collision costs nothing — sign in and carry on.
-  it('signs into the existing account on collision and continues', async () => {
-    const signIn = jest.fn().mockResolvedValue(undefined);
-    mockSignInWithApple.mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
-    const tree = render();
-    await act(async () => { await tree.root.findByProps({ testID: 'step3-apple-button' }).props.onPress(); });
-    expect(signIn).toHaveBeenCalled();
-    expect(mockPush).toHaveBeenCalledWith('/onboarding/step-4');
+  describe('collision handling (credential-already-in-use)', () => {
+    // A genuine first-run user reaching step 3 the normal way owns nothing yet —
+    // confirmAdoptExistingAccount itself no-ops at zero trips (tested in collisionPrompt.test.ts);
+    // this mock stands in for that and is told to resolve true, mirroring that real behaviour.
+    it('signs into the existing account on collision and continues when nothing is at risk', async () => {
+      const signIn = jest.fn().mockResolvedValue(undefined);
+      mockSignInWithApple.mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+      mockConfirmAdopt.mockResolvedValue(true);
+      const tree = render();
+      await act(async () => { await tree.root.findByProps({ testID: 'step3-apple-button' }).props.onPress(); });
+      expect(mockConfirmAdopt).toHaveBeenCalledWith(0);
+      expect(signIn).toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledWith('/onboarding/step-4');
+    });
+
+    // "Create New Trip" from My Trips (app/(home)/index.tsx) routes here too, so a user who
+    // already owns trips can reach this screen — the collision must warn before abandoning
+    // the anonymous uid, exactly like Profile's collision handling.
+    it('warns before adopting when the user already owns trips, and does not sign in on decline', async () => {
+      mockUserTripsState = { trips: [{ tripId: 't1' }, { tripId: 't2' }], status: 'ready' };
+      const signIn = jest.fn().mockResolvedValue(undefined);
+      mockSignInWithApple.mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+      mockConfirmAdopt.mockResolvedValue(false);
+      const tree = render();
+      await act(async () => { await tree.root.findByProps({ testID: 'step3-apple-button' }).props.onPress(); });
+      expect(mockConfirmAdopt).toHaveBeenCalledWith(2);
+      expect(signIn).not.toHaveBeenCalled();
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    // useUserTrips() reports an empty array while 'loading' or on 'error' — trusting
+    // .length there would silently adopt with no warning even when trips are actually at
+    // risk, so the gate refuses outright rather than treating "not yet known" as "zero".
+    it('refuses to adopt and does not navigate while the owned-trip count is still loading', async () => {
+      mockUserTripsState = { trips: [], status: 'loading' };
+      const signIn = jest.fn().mockResolvedValue(undefined);
+      mockSignInWithApple.mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+      const tree = render();
+      await act(async () => { await tree.root.findByProps({ testID: 'step3-apple-button' }).props.onPress(); });
+      expect(mockConfirmAdopt).not.toHaveBeenCalled();
+      expect(signIn).not.toHaveBeenCalled();
+      expect(mockPush).not.toHaveBeenCalled();
+      expect(texts(tree)).toContain("Can't verify your trips");
+    });
+
+    it('refuses to adopt and does not navigate when the owned-trip count failed to load', async () => {
+      mockUserTripsState = { trips: [], status: 'error' };
+      const signIn = jest.fn().mockResolvedValue(undefined);
+      mockSignInWithApple.mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+      const tree = render();
+      await act(async () => { await tree.root.findByProps({ testID: 'step3-apple-button' }).props.onPress(); });
+      expect(mockConfirmAdopt).not.toHaveBeenCalled();
+      expect(signIn).not.toHaveBeenCalled();
+      expect(mockPush).not.toHaveBeenCalled();
+      expect(texts(tree)).toContain("Can't verify your trips");
+    });
+
+    // T8 (deferred at the original spec): signIn() rejecting inside the collision branch
+    // must surface an error and must not navigate — abandoning the uid can fail partway.
+    it('surfaces an error and does not navigate when signIn() rejects after the user confirms adoption', async () => {
+      const signIn = jest.fn().mockRejectedValue(new Error('sign-in failed'));
+      mockSignInWithApple.mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+      mockConfirmAdopt.mockResolvedValue(true);
+      const tree = render();
+      await act(async () => { await tree.root.findByProps({ testID: 'step3-apple-button' }).props.onPress(); });
+      expect(mockPush).not.toHaveBeenCalled();
+      expect(texts(tree)).toContain('sign-in failed');
+    });
   });
 });
