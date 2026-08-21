@@ -201,6 +201,25 @@ describe('JernieTab — save nudge', () => {
     expect(tree.root.findAllByProps({ testID: 'save-nudge-card' })).toHaveLength(0);
   });
 
+  // I5: snoozing swaps the rendered CTA card from the nudge (short) to the pre-trip setup
+  // checklist (tall) — the exact identity change the CTA wrapper must re-measure for
+  // instead of reusing a height frozen on the nudge card, or the checklist renders clipped.
+  test('snoozing swaps the card identity from the nudge to the pre-trip checklist (I5)', () => {
+    mockAuthState = {
+      status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple: jest.fn(),
+    };
+    const tree = renderScreen();
+    expect(tree.root.findAllByProps({ testID: 'save-nudge-card' }).length).toBeGreaterThan(0);
+    expect(tree.root.findAllByProps({ testID: 'setup-row-flights' })).toHaveLength(0);
+
+    act(() => { tree.root.findByProps({ testID: 'save-nudge-dismiss' }).props.onPress(); });
+
+    expect(tree.root.findAllByProps({ testID: 'save-nudge-card' })).toHaveLength(0);
+    // The trip fixture's now (Aug 1) is before STOP_A's dates (Aug 10-14), so the phase
+    // router underneath falls through to the pre-trip checklist once the nudge steps aside.
+    expect(tree.root.findAllByProps({ testID: 'setup-row-flights' }).length).toBeGreaterThan(0);
+  });
+
   test('shows an error on the card when Apple sign-in fails, instead of discarding it', async () => {
     const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'error', message: 'network down' });
     mockAuthState = { status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple };

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import {
   View, StyleSheet, ScrollView, RefreshControl,
   Dimensions, NativeSyntheticEvent, NativeScrollEvent,
@@ -22,7 +22,7 @@ import { shouldShowNudge, snoozeMsFor } from '@/src/domain/saveNudge';
 import { readSnooze, writeSnooze } from '@/src/lib/nudgeSnooze';
 import { getDevNow } from '@/src/utils/devTime';
 import { HeroLayer } from '@/src/features/jernie/HeroLayer';
-import { CTACardZone } from '@/src/features/jernie/CTACardZone';
+import { CTACardZone, getCtaCardKind } from '@/src/features/jernie/CTACardZone';
 import { StopsStrip } from '@/src/features/jernie/StopsStrip';
 import { StopSection } from '@/src/features/jernie/StopSection';
 import { EntityDetailSheet } from '@/src/features/jernie/sheets/EntityDetailSheet';
@@ -158,6 +158,24 @@ export default function JernieTab() {
   // The stop the user is looking at — hero, CTA card and add-actions all key off this so
   // they stay in sync while paging, rather than off the date-derived `activeStop`.
   const visibleStop = stops[viewedIdx] ?? activeStop;
+
+  // Which card CTACardZone is about to render — mirrors its own router exactly (same
+  // helper) so this can never drift out of sync with what's actually on screen.
+  const ctaCardKind = getCtaCardKind({ activeStop: visibleStop, now, isDismissed: ctaDismissed, saveNudge });
+  const prevCtaCardKindRef = useRef(ctaCardKind);
+
+  // The wrapper below freezes carouselHeight on first layout so the CTA card can collapse
+  // smoothly on scroll (see ctaFadeStyle) — but a frozen height from a short card (e.g. the
+  // save nudge, ~180pt) clips a taller one swapped in later (e.g. the pre-trip checklist,
+  // ~340pt) until the screen remounts. Re-arm the sentinel whenever the rendered card
+  // actually changes identity, so the next onLayout re-measures instead of reusing a stale
+  // height frozen for a different card.
+  useEffect(() => {
+    if (prevCtaCardKindRef.current !== ctaCardKind) {
+      carouselHeight.value = -1;
+      prevCtaCardKindRef.current = ctaCardKind;
+    }
+  }, [ctaCardKind, carouselHeight]);
 
   const bookingsByStop = useMemo(
     () => Object.fromEntries(

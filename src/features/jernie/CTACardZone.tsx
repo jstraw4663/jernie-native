@@ -246,6 +246,29 @@ function SaveTripCard({
 
 // ─── Main export — phase router ──────────────────────────────────────────────
 
+// Which card variant a given set of inputs renders, without any of the presentation. The
+// caller needs this to detect a swap between differently-sized cards (e.g. the save nudge
+// disappearing back to the pre-trip checklist) so it can re-measure the height it froze on
+// first layout — see the `cardKind` usage in jernie.tsx (I5). Kept in lockstep with the
+// render logic below by construction: both switch on the same `phase`.
+export type CtaCardKind = 'nudge' | 'pre' | 'in' | null;
+
+export function getCtaCardKind({
+  activeStop,
+  now,
+  isDismissed,
+  saveNudge,
+}: Pick<CTACardZoneProps, 'activeStop' | 'now' | 'isDismissed' | 'saveNudge'>): CtaCardKind {
+  if (saveNudge) return 'nudge';
+  const todayIso = now.toISOString().split('T')[0];
+  const phase: 'pre' | 'in' | 'post' =
+    todayIso < activeStop.dates.start ? 'pre' :
+    todayIso <= activeStop.dates.end  ? 'in'  : 'post';
+  if (phase === 'post') return null;
+  if (phase === 'pre' && isDismissed) return null;
+  return phase;
+}
+
 export function CTACardZone({
   trip,
   activeStop,
@@ -258,14 +281,11 @@ export function CTACardZone({
   onLogActivity,
   saveNudge,
 }: CTACardZoneProps) {
-  const todayIso = now.toISOString().split('T')[0];
-  const phase: 'pre' | 'in' | 'post' =
-    todayIso < activeStop.dates.start ? 'pre' :
-    todayIso <= activeStop.dates.end  ? 'in'  : 'post';
+  const kind = getCtaCardKind({ activeStop, now, isDismissed, saveNudge });
 
   // Outranks the phase router deliberately: an unsaved trip needs nudging in every phase,
   // and the router below returns null for 'post' and for a dismissed 'pre'.
-  if (saveNudge) {
+  if (kind === 'nudge' && saveNudge) {
     return (
       <SaveTripCard
         level={saveNudge.level}
@@ -277,12 +297,12 @@ export function CTACardZone({
     );
   }
 
-  if (phase === 'post') return null;
-  if (phase === 'pre' && isDismissed) return null;
+  if (kind === null) return null;
 
-  if (phase === 'pre') {
+  if (kind === 'pre') {
     return <PreTripCard trip={trip} onDismiss={onDismiss} onAddBooking={onAddBooking} />;
   }
+  const todayIso = now.toISOString().split('T')[0];
   return (
     <InTripCard
       activeStop={activeStop}
