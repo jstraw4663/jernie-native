@@ -69,7 +69,7 @@ describe('app/onboarding/step-2', () => {
     expect(tree.root.findByProps({ testID: 'stop-form-submit-button' })).toBeTruthy();
   });
 
-  test('a successfully resolved stop is written into the draft and advances straight to step-4 (no step-3)', async () => {
+  test('a successfully resolved stop is written into the draft and advances to step-3', async () => {
     mockGeocodeCity.mockResolvedValue({ found: true, lat: 40.78, lon: -73.97, city: 'Manhattan', region: 'NY' });
     const tree = renderScreen();
 
@@ -90,7 +90,7 @@ describe('app/onboarding/step-2', () => {
       lon: -73.97,
       dates: { start: '2026-08-10', end: '2026-08-14' },
     });
-    expect(mockPush).toHaveBeenCalledWith('/onboarding/step-4');
+    expect(mockPush).toHaveBeenCalledWith('/onboarding/step-3');
   });
 
   test('StopForm keeps Continue disabled without a geocode, so this screen never navigates prematurely', async () => {

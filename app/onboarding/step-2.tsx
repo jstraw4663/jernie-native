@@ -14,7 +14,7 @@ export default function OnboardingStep2() {
 
   const handleSubmit = (stop: ResolvedStop) => {
     setFirstStop(stop);
-    router.push('/onboarding/step-4');
+    router.push('/onboarding/step-3');
   };
 
   return (

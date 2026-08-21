@@ -15,7 +15,7 @@ const TILES: { key: keyof SetupIntent; label: string; emoji: string }[] = [
   { key: 'restaurants', label: 'Restaurants', emoji: '🍽️' },
 ];
 
-// Steps 3 (auth) and 5 (invite) are deferred — this is the wizard's final screen this round.
+// Step 5 (invite) is deferred — this is the wizard's final screen this round.
 // `inviteToken` still gets generated for free inside createTrip(), it's just not surfaced yet.
 export default function OnboardingStep4() {
   const router = useRouter();
