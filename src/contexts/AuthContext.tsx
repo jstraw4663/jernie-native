@@ -120,9 +120,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!current) throw new Error('Not signed in');
 
     const snap = await database().ref(`users/${current.uid}/trips`).once('value');
-    const tripIds = snap.exists() ? Object.keys(snap.val() as Record<string, true>) : [];
+    const index = (snap.exists() ? snap.val() : {}) as Record<string, { role: string; joinedAt: number }>;
+    // Only the trips this user OWNS get archived here. A joined (traveler) trip's
+    // `deletedAt` is owner-only per database.rules.json, so passing a joined trip's id to
+    // deleteAccountData would throw PERMISSION_DENIED and abort deletion entirely — leaving
+    // users/{uid} unremoved and the auth user never deleted, unrecoverably on retry.
+    const ownedTripIds = Object.entries(index)
+      .filter(([, entry]) => entry.role === 'organizer')
+      .map(([tripId]) => tripId);
 
-    await deleteAccountData(current.uid, tripIds);
+    await deleteAccountData(current.uid, ownedTripIds);
 
     try {
       await current.delete();
@@ -135,7 +142,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (isAppleCancellation(e)) throw new Error('Re-authentication required but was cancelled');
           throw new Error('Re-authentication required but failed');
         }
-        await current.reauthenticateWithCredential(apple.credential);
+        try {
+          await current.reauthenticateWithCredential(apple.credential);
+        } catch {
+          // e.g. auth/user-mismatch when the user picks a different Apple ID at the
+          // re-auth prompt — surface a clean message, not the raw Firebase code, mid-deletion.
+          throw new Error('Re-authentication failed');
+        }
         await auth().currentUser?.delete();
       } else {
         throw err;

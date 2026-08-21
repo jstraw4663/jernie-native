@@ -231,4 +231,45 @@ describe('deleteAccount', () => {
     expect(mockLink).not.toHaveBeenCalled(); // linkWithCredential should NOT be called
     expect(mockSignInAnonymously).toHaveBeenCalled();
   });
+
+  // users/{uid}/trips holds BOTH owned (organizer) and joined (traveler) entries. A joined
+  // trip's deletedAt is owner-only per database.rules.json, so passing it to
+  // deleteAccountData would throw PERMISSION_DENIED and abort deletion for anyone who ever
+  // accepted an invite.
+  it('passes only owned (organizer) trip ids to deleteAccountData, filtering out joined (traveler) trips', async () => {
+    render();
+    const mockDelete = jest.fn().mockResolvedValue(undefined);
+    const user = { uid: 'linked-uid', isAnonymous: false, linkWithCredential: mockLink, delete: mockDelete };
+    emit(user);
+    mockOnceTripSnap.mockResolvedValue({
+      exists: () => true,
+      val: () => ({
+        'trip-owned': { role: 'organizer', joinedAt: 1000 },
+        'trip-joined': { role: 'traveler', joinedAt: 2000 },
+      }),
+    });
+
+    await act(async () => { await captured.deleteAccount(); });
+
+    expect(mockDeleteAccountData).toHaveBeenCalledWith('linked-uid', ['trip-owned']);
+  });
+
+  it('wraps a reauthenticateWithCredential failure instead of surfacing the raw Firebase code', async () => {
+    render();
+    const mockReauth = jest.fn().mockRejectedValue({ code: 'auth/user-mismatch' });
+    const mockDelete = jest.fn().mockRejectedValueOnce({ code: 'auth/requires-recent-login' });
+    const user = { uid: 'linked-uid', isAnonymous: false, linkWithCredential: mockLink, delete: mockDelete, reauthenticateWithCredential: mockReauth };
+    emit(user);
+    mockOnceTripSnap.mockResolvedValue({ exists: () => false });
+    mockRequestApple.mockResolvedValue({ credential: { providerId: 'apple.com' }, displayName: 'Ada', email: 'ada@example.com' });
+
+    let error: unknown;
+    await act(async () => {
+      try { await captured.deleteAccount(); } catch (e) { error = e; }
+    });
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).not.toContain('auth/user-mismatch');
+    expect(mockSignInAnonymously).not.toHaveBeenCalled();
+  });
 });
