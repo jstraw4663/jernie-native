@@ -23,7 +23,12 @@ export default function ProfileTab() {
   const saveDisabled = name.trim().length === 0 || name === trip.name;
 
   const { status, user, signInWithApple, signOut, deleteAccount } = useAuth();
-  const { trips } = useUserTrips();
+  const { trips, status: tripsStatus } = useUserTrips();
+
+  // useUserTrips() reports 'loading'/'error' with an empty trips array, which would
+  // otherwise read as "nothing to lose" and adopt silently — refuse outright until the
+  // count can be trusted, same gate as C3/step-3 and the save nudge.
+  const canTrustTripCount = tripsStatus === 'ready';
 
   // Same four-branch handling as handleShareInvite below: a bare `void signInWithApple()`
   // discarded collision, error and cancellation alike, so an anonymous user tapping this
@@ -32,6 +37,10 @@ export default function ProfileTab() {
     const outcome = await signInWithApple();
     if (outcome.ok) return;
     if (outcome.reason === 'credential-already-in-use') {
+      if (!canTrustTripCount) {
+        setError("Can't verify your trips yet — try again in a moment.");
+        return;
+      }
       const adopt = await confirmAdoptExistingAccount(trips.length);
       if (!adopt) return;
       await outcome.signIn();
@@ -48,6 +57,10 @@ export default function ProfileTab() {
       const outcome = await signInWithApple();
       if (!outcome.ok) {
         if (outcome.reason === 'credential-already-in-use') {
+          if (!canTrustTripCount) {
+            setError("Can't verify your trips yet — try again in a moment.");
+            return;
+          }
           const adopt = await confirmAdoptExistingAccount(trips.length);
           if (!adopt) return;
           await outcome.signIn();

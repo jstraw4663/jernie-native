@@ -17,7 +17,10 @@ jest.mock('@/src/contexts/AuthContext', () => ({ useAuth: () => mockAuthState })
 jest.mock('@/src/lib/collisionPrompt', () => ({
   confirmAdoptExistingAccount: (...a: unknown[]) => mockConfirmAdopt(...a),
 }));
-jest.mock('@/src/hooks/useUserTrips', () => ({ useUserTrips: () => ({ trips: [], status: 'ready' }) }));
+// I4: mutable per-test, not a static { trips: [], status: 'ready' } — that shape hid I4
+// entirely, since it can never report 'loading' or 'error'.
+let mockUserTripsState: { trips: unknown[]; status: 'loading' | 'ready' | 'error' };
+jest.mock('@/src/hooks/useUserTrips', () => ({ useUserTrips: () => mockUserTripsState }));
 
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
@@ -63,6 +66,7 @@ beforeEach(() => {
   mockRefetch.mockClear();
   mockConfirmDelete.mockReset();
   mockConfirmAdopt.mockReset();
+  mockUserTripsState = { trips: [], status: 'ready' };
   mockUpdateTrip.mockReset().mockResolvedValue(undefined);
   mockArchiveTrip.mockReset().mockResolvedValue(undefined);
   mockUseTripAdmin.mockReturnValue({
@@ -365,6 +369,46 @@ describe('app/(trips)/[tripId]/(tabs)/profile', () => {
       const tree = renderScreen();
       await act(async () => { await tree.root.findByProps({ testID: 'profile-signin' }).props.onPress(); });
       expect(signIn).not.toHaveBeenCalled();
+    });
+  });
+
+  // I4: useUserTrips() reports 'loading'/'error' with an empty trips array, which would
+  // otherwise be read as "nothing to lose" and adopt silently with no warning.
+  describe('collision gate refuses to adopt on an untrustworthy trip count (I4)', () => {
+    it('sign-in button: refuses to adopt and shows an error while trips are still loading', async () => {
+      const signIn = jest.fn().mockResolvedValue(undefined);
+      const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+      mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
+      mockUserTripsState = { trips: [], status: 'loading' };
+      const tree = renderScreen();
+      await act(async () => { await tree.root.findByProps({ testID: 'profile-signin' }).props.onPress(); });
+      expect(mockConfirmAdopt).not.toHaveBeenCalled();
+      expect(signIn).not.toHaveBeenCalled();
+      expect(texts(tree)).toContain("Can't verify your trips");
+    });
+
+    it('sign-in button: refuses to adopt when the trip count failed to load', async () => {
+      const signIn = jest.fn().mockResolvedValue(undefined);
+      const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+      mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
+      mockUserTripsState = { trips: [], status: 'error' };
+      const tree = renderScreen();
+      await act(async () => { await tree.root.findByProps({ testID: 'profile-signin' }).props.onPress(); });
+      expect(mockConfirmAdopt).not.toHaveBeenCalled();
+      expect(signIn).not.toHaveBeenCalled();
+      expect(texts(tree)).toContain("Can't verify your trips");
+    });
+
+    it('share-invite button: refuses to adopt while trips are still loading', async () => {
+      const signIn = jest.fn().mockResolvedValue(undefined);
+      const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+      mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
+      mockUserTripsState = { trips: [], status: 'loading' };
+      const tree = renderScreen();
+      await act(async () => { await tree.root.findByProps({ testID: 'share-invite-button' }).props.onPress(); });
+      expect(mockConfirmAdopt).not.toHaveBeenCalled();
+      expect(signIn).not.toHaveBeenCalled();
+      expect(mockShare).not.toHaveBeenCalled();
     });
   });
 });
