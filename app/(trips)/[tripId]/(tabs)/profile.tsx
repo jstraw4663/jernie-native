@@ -7,6 +7,9 @@ import { useTripContext } from '@/src/contexts/TripContext';
 import { useTripAdmin } from '@/src/hooks/useTripAdmin';
 import { confirmDelete } from '@/src/utils/confirmDelete';
 import { auth } from '@/src/lib/firebase';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { useUserTrips } from '@/src/hooks/useUserTrips';
+import { confirmAdoptExistingAccount } from '@/src/lib/collisionPrompt';
 
 export default function ProfileTab() {
   const router = useRouter();
@@ -19,10 +22,38 @@ export default function ProfileTab() {
   const isOwner = trip.ownerUid === auth().currentUser?.uid;
   const saveDisabled = name.trim().length === 0 || name === trip.name;
 
-  const handleShareInvite = () => {
-    Share.share({
+  const { status, user, signInWithApple, signOut, deleteAccount } = useAuth();
+  const { trips } = useUserTrips();
+
+  const handleShareInvite = async () => {
+    // An unlinked organizer who loses their device orphans the trip for every traveller
+    // in it, not just themselves. That is what this gate protects.
+    if (status !== 'authenticated') {
+      const outcome = await signInWithApple();
+      if (!outcome.ok) {
+        if (outcome.reason === 'credential-already-in-use') {
+          const adopt = await confirmAdoptExistingAccount(trips.length);
+          if (!adopt) return;
+          await outcome.signIn();
+        } else {
+          return;
+        }
+      }
+    }
+    await Share.share({
       message: `Join "${trip.name}" on Jernie: ${inviteLink}`,
       url: inviteLink,
+    });
+  };
+
+  const handleDeleteAccount = () => {
+    confirmDelete({
+      title: 'Delete account?',
+      message: "This permanently deletes your account. Trips you own move to Recently Deleted; you won't be able to sign back into this account.",
+      confirmLabel: 'Delete account',
+      onConfirm: () => {
+        deleteAccount().catch(() => setError("Couldn't delete your account. Try again."));
+      },
     });
   };
 
@@ -62,6 +93,29 @@ export default function ProfileTab() {
         <TouchableOpacity testID="share-invite-button" style={styles.inviteButton} onPress={handleShareInvite}>
           <Text style={styles.inviteButtonText}>Share invite link</Text>
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Account</Text>
+        {status === 'authenticated' ? (
+          <>
+            <Text style={styles.accountIdentity}>{user?.email ?? user?.displayName ?? 'Signed in'}</Text>
+            <TouchableOpacity testID="profile-signout" onPress={() => { void signOut(); }}>
+              <Text style={styles.accountAction}>Sign out</Text>
+            </TouchableOpacity>
+            <TouchableOpacity testID="profile-delete-account" onPress={handleDeleteAccount}>
+              <Text style={styles.accountDanger}>Delete account</Text>
+            </TouchableOpacity>
+            {error && <Text style={styles.errorText}>{error}</Text>}
+          </>
+        ) : (
+          <>
+            <Text style={styles.accountIdentity}>This trip lives only on this phone.</Text>
+            <TouchableOpacity testID="profile-signin" onPress={() => { void signInWithApple(); }}>
+              <Text style={styles.accountAction}>Sign in with Apple</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
 
       {isOwner && (
@@ -123,6 +177,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   inviteButtonText: { ...Typography.roles.button, color: Core.textInverse },
+
+  section: {
+    marginTop: Spacing.xxl,
+    width: '100%',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  sectionTitle: { ...Typography.roles.label, color: Core.textMuted },
+  accountIdentity: { ...Typography.roles.body, color: Core.text, textAlign: 'center' },
+  accountAction: { ...Typography.roles.button, color: Core.action },
+  accountDanger: { ...Typography.roles.button, color: Semantic.error },
 
   settingsBlock: {
     marginTop: Spacing.xxl,

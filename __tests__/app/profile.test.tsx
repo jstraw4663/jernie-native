@@ -8,9 +8,20 @@ jest.mock('@/src/hooks/useTripAdmin', () => ({ useTripAdmin: jest.fn() }));
 jest.mock('@/src/utils/confirmDelete', () => ({ confirmDelete: jest.fn() }));
 jest.mock('@/src/lib/firebase', () => ({ auth: jest.fn() }));
 
+// Auth-context state for the Profile account section / invite gate. Named distinctly from
+// `mockAuth` below, which mocks the unrelated `@/src/lib/firebase` auth() getter used for
+// the owner check.
+let mockAuthState: any;
+const mockConfirmAdopt = jest.fn();
+jest.mock('@/src/contexts/AuthContext', () => ({ useAuth: () => mockAuthState }));
+jest.mock('@/src/lib/collisionPrompt', () => ({
+  confirmAdoptExistingAccount: (...a: unknown[]) => mockConfirmAdopt(...a),
+}));
+jest.mock('@/src/hooks/useUserTrips', () => ({ useUserTrips: () => ({ trips: [], status: 'ready' }) }));
+
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { Share } from 'react-native';
+import { Share, Text } from 'react-native';
 import ProfileTab from '@/app/(trips)/[tripId]/(tabs)/profile';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { useTripAdmin } from '@/src/hooks/useTripAdmin';
@@ -23,6 +34,13 @@ const mockUseTripContext = useTripContext as jest.Mock;
 const mockUseTripAdmin = useTripAdmin as jest.Mock;
 const mockConfirmDelete = confirmDelete as jest.Mock;
 const mockAuth = auth as jest.Mock;
+
+function texts(tree: renderer.ReactTestRenderer): string {
+  return tree.root.findAllByType(Text).map(t => {
+    const c = t.props.children;
+    return Array.isArray(c) ? c.join('') : String(c);
+  }).join(' | ');
+}
 
 const mockUpdateTrip = jest.fn();
 const mockArchiveTrip = jest.fn();
@@ -44,6 +62,7 @@ beforeEach(() => {
   mockReplace.mockClear();
   mockRefetch.mockClear();
   mockConfirmDelete.mockReset();
+  mockConfirmAdopt.mockReset();
   mockUpdateTrip.mockReset().mockResolvedValue(undefined);
   mockArchiveTrip.mockReset().mockResolvedValue(undefined);
   mockUseTripAdmin.mockReturnValue({
@@ -53,6 +72,15 @@ beforeEach(() => {
   });
   // Default: current user is the trip owner.
   mockAuth.mockReturnValue({ currentUser: { uid: 'owner-uid' } });
+  // Default: already linked, so the pre-existing (non-account-section) tests exercise the
+  // invite share path synchronously, as they did before this account section existed.
+  mockAuthState = {
+    status: 'authenticated',
+    user: { uid: 'owner-uid' },
+    signInWithApple: jest.fn(),
+    signOut: jest.fn(),
+    deleteAccount: jest.fn(),
+  };
   setTrip();
 });
 
@@ -201,6 +229,54 @@ describe('app/(trips)/[tripId]/(tabs)/profile', () => {
 
       expect(mockReplace).not.toHaveBeenCalled();
       expect(JSON.stringify(tree.toJSON())).toContain("Couldn't delete");
+    });
+  });
+
+  describe('Profile account section', () => {
+    it('offers sign-in to an anonymous user', () => {
+      mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple: jest.fn(), signOut: jest.fn(), deleteAccount: jest.fn() };
+      const tree = renderScreen();
+      expect(tree.root.findAllByProps({ testID: 'profile-signin' }).length).toBeGreaterThan(0);
+      expect(tree.root.findAllByProps({ testID: 'profile-signout' })).toHaveLength(0);
+    });
+
+    it('shows identity and sign-out once linked', () => {
+      mockAuthState = { status: 'authenticated', user: { uid: 'u', email: 'ada@example.com' }, signInWithApple: jest.fn(), signOut: jest.fn(), deleteAccount: jest.fn() };
+      const tree = renderScreen();
+      expect(texts(tree)).toContain('ada@example.com');
+      expect(tree.root.findAllByProps({ testID: 'profile-signout' }).length).toBeGreaterThan(0);
+    });
+
+    // The gate protects everyone in the trip, not just the organizer: if an unlinked
+    // organizer loses their device, the shared trip is orphaned for all travellers.
+    it('blocks the share invite for an anonymous organizer', () => {
+      const signIn = jest.fn().mockResolvedValue({ ok: false, reason: 'cancelled' });
+      mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple: signIn, signOut: jest.fn(), deleteAccount: jest.fn() };
+      const tree = renderScreen();
+      act(() => { tree.root.findByProps({ testID: 'share-invite-button' }).props.onPress(); });
+      expect(mockShare).not.toHaveBeenCalled();
+      expect(signIn).toHaveBeenCalled();
+    });
+
+    it('warns before abandoning trips on a Profile collision', async () => {
+      const signIn = jest.fn().mockResolvedValue(undefined);
+      const signInWithApple = jest.fn().mockResolvedValue({
+        ok: false, reason: 'credential-already-in-use', signIn,
+      });
+      mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
+      mockConfirmAdopt.mockResolvedValue(false);
+      const tree = renderScreen();
+      await act(async () => { await tree.root.findByProps({ testID: 'share-invite-button' }).props.onPress(); });
+      expect(mockConfirmAdopt).toHaveBeenCalled();
+      expect(signIn).not.toHaveBeenCalled();
+      expect(mockShare).not.toHaveBeenCalled();
+    });
+
+    it('shares normally once linked', () => {
+      mockAuthState = { status: 'authenticated', user: { uid: 'u' }, signInWithApple: jest.fn(), signOut: jest.fn(), deleteAccount: jest.fn() };
+      const tree = renderScreen();
+      act(() => { tree.root.findByProps({ testID: 'share-invite-button' }).props.onPress(); });
+      expect(mockShare).toHaveBeenCalled();
     });
   });
 });
