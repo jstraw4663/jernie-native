@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Platform, View, Text, StyleSheet } from 'react-native';
 import { Core, Brand } from '@/src/design/tokens';
+import { AdminUnlockProvider, useAdminUnlock } from '@/src/contexts/AdminUnlockContext';
 
 // Minimal icon placeholders — replaced with SVG icons in Plan 4/5/6
 function TabIcon({ label, focused }: { label: string; focused: boolean }) {
@@ -14,6 +15,17 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
 }
 
 export default function TabsLayout() {
+  // The provider has to sit ABOVE <Tabs> so the Profile screen and the tab bar's own press
+  // listener share one unlock state — the taps land on the bar, which the screen doesn't own.
+  return (
+    <AdminUnlockProvider>
+      <TabsNavigator />
+    </AdminUnlockProvider>
+  );
+}
+
+function TabsNavigator() {
+  const { registerTabPress } = useAdminUnlock();
   return (
     <Tabs
       screenOptions={{
@@ -51,6 +63,7 @@ export default function TabsLayout() {
           title: 'Profile',
           tabBarIcon: ({ focused }) => <TabIcon label="P" focused={focused} />,
         }}
+        listeners={{ tabPress: registerTabPress }}
       />
     </Tabs>
   );
