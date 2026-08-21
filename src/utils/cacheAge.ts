@@ -1,6 +1,8 @@
 // Pure formatter — zero deps, identical in any JS runtime.
-export function formatCacheAge(cachedAt: number): string {
-  const diffMs = Date.now() - cachedAt;
+// `now` is injectable so callers that already have a clock (getCacheStatus) can thread
+// theirs through and stay testable without faking Date.
+export function formatCacheAge(cachedAt: number, now: number = Date.now()): string {
+  const diffMs = now - cachedAt;
   const diffMin = Math.floor(diffMs / 60_000);
   if (diffMin < 1) return 'just now';
   if (diffMin < 60) return `${diffMin}m ago`;
