@@ -4,11 +4,14 @@ jest.mock('expo-linear-gradient', () => {
 });
 // jernie.tsx pulls in nudgeSnooze.ts (createMMKV at module-eval time) even though useAuth
 // is mocked below — same mock shape as __tests__/nudgeSnooze.test.ts.
+// Stateful (not just a no-op stub): the save-nudge snooze tests need a write from onSnooze
+// to actually be observable on the next readSnooze() call.
+const mockMMKVStore: Record<string, string> = {};
 jest.mock('react-native-mmkv', () => ({
   createMMKV: () => ({
-    getString: () => undefined,
-    set: () => {},
-    remove: () => {},
+    getString: (key: string) => mockMMKVStore[key],
+    set: (key: string, value: string) => { mockMMKVStore[key] = value; },
+    remove: (key: string) => { delete mockMMKVStore[key]; },
   }),
 }));
 jest.mock('react-native-safe-area-context', () => ({
@@ -52,10 +55,22 @@ let mockContextValue: Record<string, unknown>;
 jest.mock('@/src/contexts/TripContext', () => ({
   useTripContext: () => mockContextValue,
 }));
-// Authenticated with no anonCreatedAt so shouldShowNudge always returns null here —
-// the save nudge has its own dedicated tests elsewhere.
+// Default: authenticated with no anonCreatedAt so shouldShowNudge returns null — most
+// tests in this file don't care about the save nudge. The "JernieTab — save nudge" describe
+// block below overrides this per test.
+let mockAuthState: Record<string, unknown>;
 jest.mock('@/src/contexts/AuthContext', () => ({
-  useAuth: () => ({ status: 'authenticated', user: { uid: 'u' }, anonCreatedAt: null, signInWithApple: jest.fn() }),
+  useAuth: () => mockAuthState,
+}));
+
+// The save nudge's collision-handling path (same as Profile's and step 3's).
+let mockUserTripsState: { trips: unknown[]; status: 'loading' | 'ready' | 'error' };
+jest.mock('@/src/hooks/useUserTrips', () => ({
+  useUserTrips: () => mockUserTripsState,
+}));
+const mockConfirmAdopt = jest.fn();
+jest.mock('@/src/lib/collisionPrompt', () => ({
+  confirmAdoptExistingAccount: (...a: unknown[]) => mockConfirmAdopt(...a),
 }));
 
 import React from 'react';
@@ -97,6 +112,7 @@ function renderScreen() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  Object.keys(mockMMKVStore).forEach(k => delete mockMMKVStore[k]);
   mockContextValue = {
     trip: TRIP,
     stops: [STOP_A, STOP_B],
@@ -107,6 +123,8 @@ beforeEach(() => {
     status: 'ready',
     refetch: jest.fn(),
   };
+  mockAuthState = { status: 'authenticated', user: { uid: 'u' }, anonCreatedAt: null, signInWithApple: jest.fn() };
+  mockUserTripsState = { trips: [], status: 'ready' };
 });
 
 describe('JernieTab — CTA zone', () => {
@@ -137,6 +155,107 @@ describe('JernieTab — CTA zone', () => {
     expect(tree.root.findAllByProps({ testID: 'cta-dismiss' }).length).toBeGreaterThan(0);
     act(() => { tree.root.findByProps({ testID: 'cta-dismiss' }).props.onPress(); });
     expect(tree.root.findAllByProps({ testID: 'setup-row-flights' })).toHaveLength(0);
+  });
+});
+
+// I2: the nudge card's onSave previously did a bare `void signInWithApple()` — no busy
+// state, no error, no collision handling. This block exercises the real four-branch
+// handleSaveNudge, which the old permanently-authenticated mock made impossible to reach.
+describe('JernieTab — save nudge', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const eightDaysAgo = () => Date.now() - 8 * DAY;
+
+  test('shows the save nudge card, outranking the phase router, when a nudge is due', () => {
+    mockAuthState = {
+      status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple: jest.fn(),
+    };
+    const tree = renderScreen();
+    expect(tree.root.findAllByProps({ testID: 'save-nudge-card' }).length).toBeGreaterThan(0);
+    expect(tree.root.findAllByProps({ testID: 'setup-row-flights' })).toHaveLength(0);
+  });
+
+  test('a successful save is reflected once status flips (the C1 fix) and the card disappears', async () => {
+    const signInWithApple = jest.fn().mockResolvedValue({ ok: true, user: { uid: 'u' } });
+    mockAuthState = { status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple };
+    const tree = renderScreen();
+    expect(tree.root.findAllByProps({ testID: 'save-nudge-card' }).length).toBeGreaterThan(0);
+
+    await act(async () => { await tree.root.findByProps({ testID: 'save-nudge-save' }).props.onPress(); });
+    expect(signInWithApple).toHaveBeenCalled();
+
+    // Simulate the AuthProvider's onUserChanged flip (C1) landing on the next render — the
+    // nudge doesn't hide itself on 'ok'; it disappears because nudgeLevelDue recomputes.
+    mockAuthState = { ...mockAuthState, status: 'authenticated' };
+    act(() => { tree.update(<JernieTab />); });
+    expect(tree.root.findAllByProps({ testID: 'save-nudge-card' })).toHaveLength(0);
+  });
+
+  test('snoozing hides the card via the stateful MMKV mock, without an external re-render', () => {
+    mockAuthState = {
+      status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple: jest.fn(),
+    };
+    const tree = renderScreen();
+    expect(tree.root.findAllByProps({ testID: 'save-nudge-card' }).length).toBeGreaterThan(0);
+
+    act(() => { tree.root.findByProps({ testID: 'save-nudge-dismiss' }).props.onPress(); });
+    expect(tree.root.findAllByProps({ testID: 'save-nudge-card' })).toHaveLength(0);
+  });
+
+  test('shows an error on the card when Apple sign-in fails, instead of discarding it', async () => {
+    const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'error', message: 'network down' });
+    mockAuthState = { status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple };
+    const tree = renderScreen();
+
+    await act(async () => { await tree.root.findByProps({ testID: 'save-nudge-save' }).props.onPress(); });
+    expect(texts(tree)).toContain('network down');
+  });
+
+  test('does nothing extra on cancellation', async () => {
+    const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'cancelled' });
+    mockAuthState = { status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple };
+    const tree = renderScreen();
+
+    await act(async () => { await tree.root.findByProps({ testID: 'save-nudge-save' }).props.onPress(); });
+    expect(tree.root.findAllByProps({ testID: 'save-nudge-card' }).length).toBeGreaterThan(0);
+    expect(texts(tree)).not.toContain('network down');
+  });
+
+  test('warns before adopting on a collision, and signs in only on confirm', async () => {
+    const signIn = jest.fn().mockResolvedValue(undefined);
+    const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+    mockAuthState = { status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple };
+    mockUserTripsState = { trips: [{ tripId: 't1' }], status: 'ready' };
+    mockConfirmAdopt.mockResolvedValue(true);
+    const tree = renderScreen();
+
+    await act(async () => { await tree.root.findByProps({ testID: 'save-nudge-save' }).props.onPress(); });
+    expect(mockConfirmAdopt).toHaveBeenCalledWith(1);
+    expect(signIn).toHaveBeenCalled();
+  });
+
+  test('does not sign in when the user declines the collision warning', async () => {
+    const signIn = jest.fn().mockResolvedValue(undefined);
+    const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+    mockAuthState = { status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple };
+    mockUserTripsState = { trips: [{ tripId: 't1' }], status: 'ready' };
+    mockConfirmAdopt.mockResolvedValue(false);
+    const tree = renderScreen();
+
+    await act(async () => { await tree.root.findByProps({ testID: 'save-nudge-save' }).props.onPress(); });
+    expect(signIn).not.toHaveBeenCalled();
+  });
+
+  test('refuses to adopt while the owned-trip count is not ready, rather than trusting an empty array', async () => {
+    const signIn = jest.fn().mockResolvedValue(undefined);
+    const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+    mockAuthState = { status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple };
+    mockUserTripsState = { trips: [], status: 'loading' };
+    const tree = renderScreen();
+
+    await act(async () => { await tree.root.findByProps({ testID: 'save-nudge-save' }).props.onPress(); });
+    expect(mockConfirmAdopt).not.toHaveBeenCalled();
+    expect(signIn).not.toHaveBeenCalled();
+    expect(texts(tree)).toContain("Can't verify your trips");
   });
 });
 

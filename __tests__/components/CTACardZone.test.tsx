@@ -147,6 +147,24 @@ describe('CTACardZone save nudge', () => {
     const firm = textsOf(renderPreTrip({ saveNudge: { ...nudge, level: 'firm' } }));
     expect(firm).not.toBe(gentle);
   });
+
+  // I2: the nudge previously had no busy state and no error surface at all.
+  test('disables the sign-in button and shows a spinner while busy', () => {
+    const tree = renderPreTrip({ saveNudge: { ...nudge, busy: true } });
+    const button = tree.root.findByProps({ testID: 'save-nudge-save' });
+    expect(button.props.disabled).toBe(true);
+    expect(tree.root.findAllByProps({ testID: 'save-nudge-error' })).toHaveLength(0);
+  });
+
+  test('renders an error message on the card when one is set', () => {
+    const tree = renderPreTrip({ saveNudge: { ...nudge, error: 'network down' } });
+    expect(textsOf(tree)).toContain('network down');
+  });
+
+  test('shows no error text when none is set', () => {
+    const tree = renderPreTrip({ saveNudge: nudge });
+    expect(tree.root.findAllByProps({ testID: 'save-nudge-error' })).toHaveLength(0);
+  });
 });
 
 describe('CTACardZone — pre-trip setup rows', () => {

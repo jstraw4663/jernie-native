@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import type { Trip, StopWithColor, Booking, ItineraryDay, BookingType } from '@/src/types';
 import { Core, Semantic, Typography, Radius, Shadow, Spacing } from '@/src/design/tokens';
 import { hexWithAlpha } from '@/src/utils/colors';
@@ -19,7 +19,13 @@ interface CTACardZoneProps {
   /** In-trip only: opens the custom itinerary-item flow. */
   onLogActivity?: () => void;
   /** When a nudge is due, outranks the phase router entirely — see CTACardZone below. */
-  saveNudge?: { level: DueNudgeLevel; onSave: () => void; onSnooze: () => void } | null;
+  saveNudge?: {
+    level: DueNudgeLevel;
+    busy?: boolean;
+    error?: string | null;
+    onSave: () => void;
+    onSnooze: () => void;
+  } | null;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -206,7 +212,9 @@ function QuickActionButton({ testID, emoji, label, color, onPress }: {
 
 // ─── Save nudge card — an unsaved trip needs saving in every phase ──────────
 
-function SaveTripCard({ level, onSave, onSnooze }: { level: DueNudgeLevel; onSave: () => void; onSnooze: () => void }) {
+function SaveTripCard({
+  level, busy, error, onSave, onSnooze,
+}: { level: DueNudgeLevel; busy?: boolean; error?: string | null; onSave: () => void; onSnooze: () => void }) {
   const firm = level === 'firm';
   return (
     <View testID="save-nudge-card" style={[styles.card, Shadow.cardResting]}>
@@ -218,10 +226,18 @@ function SaveTripCard({ level, onSave, onSnooze }: { level: DueNudgeLevel; onSav
           ? "If you lose this phone, this trip goes with it. There's no way to recover it."
           : 'Sign in and your trip follows you to any phone.'}
       </Text>
-      <TouchableOpacity testID="save-nudge-save" style={styles.primaryButton} onPress={onSave}>
-        <Text style={styles.primaryButtonText}>Sign in with Apple</Text>
+      {error && <Text testID="save-nudge-error" style={styles.nudgeErrorText}>{error}</Text>}
+      <TouchableOpacity
+        testID="save-nudge-save"
+        style={[styles.primaryButton, busy && styles.primaryButtonDisabled]}
+        onPress={onSave}
+        disabled={busy}
+      >
+        {busy
+          ? <ActivityIndicator color={Core.textInverse} />
+          : <Text style={styles.primaryButtonText}>Sign in with Apple</Text>}
       </TouchableOpacity>
-      <TouchableOpacity testID="save-nudge-dismiss" onPress={onSnooze}>
+      <TouchableOpacity testID="save-nudge-dismiss" onPress={onSnooze} disabled={busy}>
         <Text style={styles.dismissText}>Not now</Text>
       </TouchableOpacity>
     </View>
@@ -250,7 +266,15 @@ export function CTACardZone({
   // Outranks the phase router deliberately: an unsaved trip needs nudging in every phase,
   // and the router below returns null for 'post' and for a dismissed 'pre'.
   if (saveNudge) {
-    return <SaveTripCard level={saveNudge.level} onSave={saveNudge.onSave} onSnooze={saveNudge.onSnooze} />;
+    return (
+      <SaveTripCard
+        level={saveNudge.level}
+        busy={saveNudge.busy}
+        error={saveNudge.error}
+        onSave={saveNudge.onSave}
+        onSnooze={saveNudge.onSnooze}
+      />
+    );
   }
 
   if (phase === 'post') return null;
@@ -405,7 +429,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
   },
+  primaryButtonDisabled: { opacity: 0.5 },
   primaryButtonText: { ...Typography.roles.button, color: Core.textInverse },
+  nudgeErrorText: {
+    ...Typography.roles.meta,
+    color: Semantic.error,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.base,
+    paddingBottom: Spacing.xs,
+  },
   dismissText: {
     ...Typography.roles.label,
     color: Core.textFaint,

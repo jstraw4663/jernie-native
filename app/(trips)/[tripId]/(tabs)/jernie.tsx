@@ -13,6 +13,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useUserTrips } from '@/src/hooks/useUserTrips';
+import { confirmAdoptExistingAccount } from '@/src/lib/collisionPrompt';
 import { getActiveStopId, getAutoExpandDayIndex } from '@/src/domain/trip';
 import { bookingBelongsToStop } from '@/src/domain/bookings';
 import { getPlaceEnrichment } from '@/src/domain/placeEnrichment';
@@ -39,6 +41,7 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 export default function JernieTab() {
   const { trip, stops, bookings, itinerary, places, enrichment, status, refetch } = useTripContext();
   const { status: authStatus, user, anonCreatedAt, signInWithApple } = useAuth();
+  const { trips: userTrips, status: userTripsStatus } = useUserTrips();
 
   const now = getDevNow();
   const activeStopId = getActiveStopId(stops, now);
@@ -63,10 +66,50 @@ export default function JernieTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authStatus, user, anonCreatedAt, snoozeTick]);
 
+  const [nudgeBusy, setNudgeBusy] = useState(false);
+  const [nudgeError, setNudgeError] = useState<string | null>(null);
+
+  // Same four-branch handling as Profile's and step 3's Apple sign-in: a bare
+  // `void signInWithApple()` here discarded collision, error and cancellation alike, aimed
+  // at the user with the most to lose (the nudge only shows once a trip is genuinely at
+  // risk). A successful link isn't handled explicitly — status flips reactively via the C1
+  // fix, which recomputes nudgeLevelDue to null and the card disappears on its own.
+  const handleSaveNudge = async () => {
+    if (nudgeBusy || !user) return;
+    setNudgeBusy(true);
+    setNudgeError(null);
+    const outcome = await signInWithApple();
+    if (outcome.ok) { setNudgeBusy(false); return; }
+    if (outcome.reason === 'cancelled') { setNudgeBusy(false); return; }
+    if (outcome.reason === 'credential-already-in-use') {
+      // Refuse to adopt until the owned-trip count can be trusted — 'loading'/'error' both
+      // report an empty array, which would otherwise silently adopt with no warning even
+      // when this uid's trips are actually at risk (same gate as I4/C3).
+      if (userTripsStatus !== 'ready') {
+        setNudgeBusy(false);
+        setNudgeError("Can't verify your trips yet — try again in a moment.");
+        return;
+      }
+      const adopt = await confirmAdoptExistingAccount(userTrips.length);
+      if (!adopt) { setNudgeBusy(false); return; }
+      try {
+        await outcome.signIn();
+      } catch (e) {
+        setNudgeError(e instanceof Error ? e.message : 'Sign in failed');
+      }
+      setNudgeBusy(false);
+      return;
+    }
+    setNudgeBusy(false);
+    setNudgeError(outcome.message);
+  };
+
   const saveNudge = nudgeLevelDue && user
     ? {
         level: nudgeLevelDue,
-        onSave: () => { void signInWithApple(); },
+        busy: nudgeBusy,
+        error: nudgeError,
+        onSave: () => { void handleSaveNudge(); },
         onSnooze: () => {
           writeSnooze(user.uid, Date.now() + snoozeMsFor(nudgeLevelDue));
           setSnoozeTick(t => t + 1);
