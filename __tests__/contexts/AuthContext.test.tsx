@@ -1,4 +1,5 @@
 const mockListeners: Array<(u: unknown) => void> = [];
+const mockUserChangedListeners: Array<(u: unknown) => void> = [];
 let mockCurrentUser: Record<string, unknown> | null = null;
 const mockLink = jest.fn();
 const mockSignInWithCredential = jest.fn();
@@ -16,6 +17,7 @@ jest.mock('@react-native-firebase/auth', () => ({
   default: () => ({
     get currentUser() { return mockCurrentUser; },
     onAuthStateChanged: (cb: (u: unknown) => void) => { mockListeners.push(cb); return jest.fn(); },
+    onUserChanged: (cb: (u: unknown) => void) => { mockUserChangedListeners.push(cb); return jest.fn(); },
     signInAnonymously: (...a: unknown[]) => mockSignInAnonymously(...a),
     signInWithCredential: (...a: unknown[]) => mockSignInWithCredential(...a),
     signOut: jest.fn().mockResolvedValue(undefined),
@@ -62,9 +64,17 @@ function emit(u: Record<string, unknown> | null) {
   act(() => { mockListeners.forEach(cb => cb(u)); });
 }
 
+// Simulates linkWithCredential (and unlink/profile-update): RNFB reports these only through
+// onUserChanged, never onAuthStateChanged, because the uid itself does not change.
+function emitUserChanged(u: Record<string, unknown> | null) {
+  mockCurrentUser = u;
+  act(() => { mockUserChangedListeners.forEach(cb => cb(u)); });
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockListeners.length = 0;
+  mockUserChangedListeners.length = 0;
   mockCurrentUser = null;
   mockLink.mockReset();
 });
@@ -92,6 +102,18 @@ describe('AuthContext status', () => {
     emit({ uid: 'anon-uid', isAnonymous: true, linkWithCredential: mockLink });
     await act(async () => {});
     expect(mockEnsureAnon).toHaveBeenCalledWith('anon-uid', expect.any(Number));
+  });
+
+  // linkWithCredential preserves the uid, so RNFB reports it only via onUserChanged —
+  // onAuthStateChanged stays silent. Without a subscription to onUserChanged, status would
+  // be stuck on 'anonymous' for the rest of the session after a successful link.
+  it('flips to authenticated on a user-changed emission, even though onAuthStateChanged never fires', () => {
+    render();
+    emit({ uid: 'anon-uid', isAnonymous: true, linkWithCredential: mockLink });
+    expect(captured.status).toBe('anonymous');
+
+    emitUserChanged({ uid: 'anon-uid', isAnonymous: false, linkWithCredential: mockLink });
+    expect(captured.status).toBe('authenticated');
   });
 });
 

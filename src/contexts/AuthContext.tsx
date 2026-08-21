@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     initAuth().catch(() => { /* the listener below reports whatever state we end up in */ });
-    const unsubscribe = auth().onAuthStateChanged((u) => {
+    const handleUser = (u: FirebaseAuthTypes.User | null) => {
       setUser(u);
       if (!u) { setStatus('loading'); setAnonCreatedAt(null); return; }
       setStatus(u.isAnonymous ? 'anonymous' : 'authenticated');
@@ -48,8 +48,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setAnonCreatedAt(null);
       }
-    });
-    return unsubscribe;
+    };
+    // onAuthStateChanged only fires when the uid itself changes (sign-in, sign-out) — it is
+    // silent on linkWithCredential, which deliberately preserves the anonymous uid.
+    // linkWithCredential (and unlink, and a profile update) instead emit onUserChanged, so
+    // both must be observed or the app never learns a link succeeded.
+    const unsubscribeAuthState = auth().onAuthStateChanged(handleUser);
+    const unsubscribeUserChanged = auth().onUserChanged(handleUser);
+    return () => {
+      unsubscribeAuthState();
+      unsubscribeUserChanged();
+    };
   }, []);
 
   const signInWithApple = useCallback(async (): Promise<LinkOutcome> => {
@@ -92,7 +101,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           signIn: async () => { await auth().signInWithCredential(apple.credential); },
         };
       }
-      if (isAppleCancellation(err)) return { ok: false, reason: 'cancelled' };
+      // Firebase errors from linkWithCredential carry auth/* codes, never
+      // ERR_REQUEST_CANCELED — that code only comes from the Apple sheet itself, handled in
+      // the requestAppleCredential() catch above.
       return { ok: false, reason: 'error', message: err instanceof Error ? err.message : 'Sign in failed' };
     }
   }, []);
