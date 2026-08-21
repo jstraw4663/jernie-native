@@ -2,6 +2,15 @@ jest.mock('expo-linear-gradient', () => {
   const { View } = require('react-native');
   return { LinearGradient: View };
 });
+// jernie.tsx pulls in nudgeSnooze.ts (createMMKV at module-eval time) even though useAuth
+// is mocked below — same mock shape as __tests__/nudgeSnooze.test.ts.
+jest.mock('react-native-mmkv', () => ({
+  createMMKV: () => ({
+    getString: () => undefined,
+    set: () => {},
+    remove: () => {},
+  }),
+}));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
@@ -42,6 +51,11 @@ jest.mock('@/src/utils/devTime', () => ({
 let mockContextValue: Record<string, unknown>;
 jest.mock('@/src/contexts/TripContext', () => ({
   useTripContext: () => mockContextValue,
+}));
+// Authenticated with no anonCreatedAt so shouldShowNudge always returns null here —
+// the save nudge has its own dedicated tests elsewhere.
+jest.mock('@/src/contexts/AuthContext', () => ({
+  useAuth: () => ({ status: 'authenticated', user: { uid: 'u' }, anonCreatedAt: null, signInWithApple: jest.fn() }),
 }));
 
 import React from 'react';

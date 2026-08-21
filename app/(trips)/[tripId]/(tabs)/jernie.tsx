@@ -12,9 +12,12 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useTripContext } from '@/src/contexts/TripContext';
+import { useAuth } from '@/src/contexts/AuthContext';
 import { getActiveStopId, getAutoExpandDayIndex } from '@/src/domain/trip';
 import { bookingBelongsToStop } from '@/src/domain/bookings';
 import { getPlaceEnrichment } from '@/src/domain/placeEnrichment';
+import { shouldShowNudge, snoozeMsFor } from '@/src/domain/saveNudge';
+import { readSnooze, writeSnooze } from '@/src/lib/nudgeSnooze';
 import { getDevNow } from '@/src/utils/devTime';
 import { HeroLayer } from '@/src/features/jernie/HeroLayer';
 import { CTACardZone } from '@/src/features/jernie/CTACardZone';
@@ -35,6 +38,7 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function JernieTab() {
   const { trip, stops, bookings, itinerary, places, enrichment, status, refetch } = useTripContext();
+  const { status: authStatus, user, anonCreatedAt, signInWithApple } = useAuth();
 
   const now = getDevNow();
   const activeStopId = getActiveStopId(stops, now);
@@ -44,6 +48,31 @@ export default function JernieTab() {
   const [viewedIdx, setViewedIdx] = useState(initialIdx);
   const [editingStop, setEditingStop] = useState<StopWithColor | null>(null);
   const [ctaDismissed, setCtaDismissed] = useState(false);
+  const [snoozeTick, setSnoozeTick] = useState(0);
+
+  // The save nudge outranks CTACardZone's phase router entirely — an unsaved trip needs
+  // nudging in every phase, most of all post-trip when it's a memory worth keeping.
+  const nudgeLevelDue = useMemo(() => {
+    if (!user) return null;
+    return shouldShowNudge({
+      status: authStatus,
+      anonCreatedAt,
+      snoozedUntil: readSnooze(user.uid),
+      now: Date.now(),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStatus, user, anonCreatedAt, snoozeTick]);
+
+  const saveNudge = nudgeLevelDue && user
+    ? {
+        level: nudgeLevelDue,
+        onSave: () => { void signInWithApple(); },
+        onSnooze: () => {
+          writeSnooze(user.uid, Date.now() + snoozeMsFor(nudgeLevelDue));
+          setSnoozeTick(t => t + 1);
+        },
+      }
+    : null;
 
   const pagerRef      = useRef<ScrollView>(null);
   const lastPageRef   = useRef(initialIdx);
@@ -278,6 +307,7 @@ export default function JernieTab() {
           onDismiss={() => setCtaDismissed(true)}
           onAddBooking={type => handleAddBooking(visibleStop.id, type)}
           onLogActivity={() => customItemSheetRef.current?.present({ stopId: visibleStop.id })}
+          saveNudge={saveNudge}
         />
       </Animated.View>
 
