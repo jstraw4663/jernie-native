@@ -14,7 +14,7 @@ const SEED_KEY = 'seeded_v3_dev_trip_001';
 const SEED_OWNER_KEY = 'seed_owner_uid';
 
 /**
- * The uid that wrote the dev seed, or null if nothing has been seeded on this device.
+ * The uid the dev trip is reachable by, or null if nothing has been seeded on this device.
  *
  * RTDB rules scope dev-trip-001 to its members, and the seed runs once per device — so after
  * a sign-out or account deletion the new anonymous uid cannot read it. app/index.tsx uses
@@ -29,6 +29,18 @@ export async function maybeSeedDevData(): Promise<void> {
   if (seedStorage.getBoolean(SEED_KEY)) return;
 
   const user = await getAuthedUser();
+
+  // Every write below is create-only under database.rules.json, so a device seeded before
+  // SEED_OWNER_KEY existed re-enters here after the key bump and fails permission-denied at
+  // both steps — leaving the flags unset and retrying on every launch. The uid's own trip
+  // index is the honest predicate: if it already lists the dev trip, the seed has effectively
+  // run for this uid and only the bookkeeping is missing.
+  const alreadyIndexed = await database().ref(`users/${user.uid}/trips/dev-trip-001`).once('value');
+  if (alreadyIndexed.exists()) {
+    seedStorage.set(SEED_KEY, true);
+    seedStorage.set(SEED_OWNER_KEY, user.uid);
+    return;
+  }
 
   const stops = {
     'stop-portland': {

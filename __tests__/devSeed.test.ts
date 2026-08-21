@@ -14,7 +14,7 @@ jest.mock('@/src/lib/firebase', () => ({
   database: require('@react-native-firebase/database').default,
 }));
 
-import { mockSet, mockUpdate } from '@react-native-firebase/database';
+import { mockSet, mockUpdate, mockOnce } from '@react-native-firebase/database';
 import { maybeSeedDevData, getSeedOwnerUid } from '@/src/lib/devSeed';
 
 describe('maybeSeedDevData', () => {
@@ -22,6 +22,18 @@ describe('maybeSeedDevData', () => {
     Object.keys(_mmkvStore).forEach(k => delete _mmkvStore[k]);
     (mockSet as jest.Mock).mockReset().mockResolvedValue(undefined);
     (mockUpdate as jest.Mock).mockReset().mockResolvedValue(undefined);
+    (mockOnce as jest.Mock).mockReset().mockResolvedValue({ exists: () => false });
+  });
+
+  test('a uid that already has the dev trip indexed stamps the flags without rewriting anything', async () => {
+    (mockOnce as jest.Mock).mockResolvedValue({ exists: () => true });
+
+    await maybeSeedDevData();
+
+    expect(mockSet).not.toHaveBeenCalled();
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(_mmkvStore['seeded_v3_dev_trip_001']).toBe(true);
+    expect(getSeedOwnerUid()).toBe('owner-uid');
   });
 
   test('fresh device: step 1 set() succeeds, step 2 update() runs, seed flag gets set', async () => {
