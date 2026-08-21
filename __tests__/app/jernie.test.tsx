@@ -163,7 +163,27 @@ describe('JernieTab — CTA zone', () => {
 // handleSaveNudge, which the old permanently-authenticated mock made impossible to reach.
 describe('JernieTab — save nudge', () => {
   const DAY = 24 * 60 * 60 * 1000;
-  const eightDaysAgo = () => Date.now() - 8 * DAY;
+  // Anchored to the mocked getDevNow() (2026-08-01T12:00:00, same fixture used for the
+  // phase/itinerary tests below), not real Date.now() — the nudge's `now` is getDevNow()
+  // (T-minor: it used to be Date.now(), independently of this same screen's own dev
+  // time-travel), so an anonCreatedAt anchored to the real wall clock would drift out of
+  // sync with it and the "due" math would go negative whenever this suite runs on a date
+  // after the fixture.
+  const MOCK_NOW = new Date('2026-08-01T12:00:00').getTime();
+  const eightDaysAgo = () => MOCK_NOW - 8 * DAY;
+
+  // T-minor: the nudge's `now` used to be Date.now() instead of this same screen's own
+  // getDevNow() — real Date.now() during a test run is today's actual wall-clock date,
+  // which is well past the 21-day 'firm' threshold for an 8-day-old anonCreatedAt anchored
+  // to the mocked Aug 1 fixture, so the bug would show 'firm' copy where 'gentle' is due.
+  test('nudge level is computed against getDevNow(), not the real wall clock', () => {
+    mockAuthState = {
+      status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple: jest.fn(),
+    };
+    const tree = renderScreen();
+    expect(texts(tree)).toContain('Save your trip'); // gentle copy
+    expect(texts(tree)).not.toContain('This trip only exists on this phone'); // firm copy
+  });
 
   test('shows the save nudge card, outranking the phase router, when a nudge is due', () => {
     mockAuthState = {

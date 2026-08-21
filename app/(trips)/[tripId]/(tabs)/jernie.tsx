@@ -61,7 +61,10 @@ export default function JernieTab() {
       status: authStatus,
       anonCreatedAt,
       snoozedUntil: readSnooze(user.uid),
-      now: Date.now(),
+      // `now`, not Date.now() — this screen's own dev time-travel (getDevNow(), used just
+      // above for the hero/itinerary) otherwise can't exercise the 7/21-day nudge branches
+      // on device; the only way to see the card would be to wait a real week.
+      now: now.getTime(),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authStatus, user, anonCreatedAt, snoozeTick]);
