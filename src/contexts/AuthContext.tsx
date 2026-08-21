@@ -94,11 +94,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       const code = (err as { code?: string })?.code;
       if (code === 'auth/credential-already-in-use') {
+        // `apple.credential` is spent — an Apple identity token is single-use, and the failed
+        // link consumed it. Replaying it here fails auth/invalid-credential ("already expired
+        // when calling link, or used invalid token(s)"), which is what made "Sign in anyway"
+        // dead on device while every test passed. Firebase attaches a usable replacement to
+        // the error for exactly this recovery; RNFB's iOS module reads
+        // FIRAuthErrorUserInfoUpdatedCredentialKey and surfaces it as userInfo.authCredential.
+        const replacement =
+          (err as { userInfo?: { authCredential?: FirebaseAuthTypes.AuthCredential | null } })
+            ?.userInfo?.authCredential ?? null;
         return {
           ok: false,
           reason: 'credential-already-in-use',
           // Abandons the anonymous uid. Callers warn first when it owns trips.
-          signIn: async () => { await auth().signInWithCredential(apple.credential); },
+          signIn: async () => {
+            // Android does not reliably populate the updated-credential key. With nothing to
+            // replay, a fresh authorization is the only way through — a second Face ID prompt
+            // beats an unrecoverable dead end.
+            const credential = replacement ?? (await requestAppleCredential()).credential;
+            await auth().signInWithCredential(credential);
+          },
         };
       }
       // Firebase errors from linkWithCredential carry auth/* codes, never

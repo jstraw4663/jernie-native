@@ -171,6 +171,63 @@ describe('signInWithApple', () => {
     }
   });
 
+  // An Apple identity token is single-use: linkWithCredential consumes it, so replaying the
+  // same credential fails auth/invalid-credential. Firebase attaches a usable replacement to
+  // the error for exactly this recovery — RNFB's iOS module reads
+  // FIRAuthErrorUserInfoUpdatedCredentialKey and surfaces it as userInfo.authCredential
+  // (RNFBAuthModule.m), and signInWithCredential resolves the token hash back to the live
+  // native credential.
+  it('signs in with the replacement credential Firebase attaches to the collision error', async () => {
+    render();
+    emit({ uid: 'anon-uid', isAnonymous: true, linkWithCredential: mockLink });
+    mockLink.mockRejectedValue({
+      code: 'auth/credential-already-in-use',
+      userInfo: { authCredential: { providerId: 'apple.com', token: 'replacement' } },
+    });
+
+    let outcome!: Awaited<ReturnType<typeof captured.signInWithApple>>;
+    await act(async () => { outcome = await captured.signInWithApple(); });
+
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok && outcome.reason === 'credential-already-in-use') {
+      mockRequestApple.mockClear();
+      await act(async () => { await outcome.signIn(); });
+      expect(mockSignInWithCredential).toHaveBeenCalledWith({
+        providerId: 'apple.com', token: 'replacement',
+      });
+      // The replacement is usable as-is; a second trip to the Apple sheet would be a
+      // gratuitous second Face ID prompt.
+      expect(mockRequestApple).not.toHaveBeenCalled();
+    }
+  });
+
+  // Android does not always populate the updated-credential key. Without a replacement the
+  // only way through is a fresh authorization — the spent one cannot be retried.
+  it('requests a fresh Apple credential when the collision error carries no replacement', async () => {
+    render();
+    emit({ uid: 'anon-uid', isAnonymous: true, linkWithCredential: mockLink });
+    mockLink.mockRejectedValue({
+      code: 'auth/credential-already-in-use',
+      userInfo: { authCredential: null },
+    });
+
+    let outcome!: Awaited<ReturnType<typeof captured.signInWithApple>>;
+    await act(async () => { outcome = await captured.signInWithApple(); });
+
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok && outcome.reason === 'credential-already-in-use') {
+      mockRequestApple.mockClear();
+      mockRequestApple.mockResolvedValue({
+        credential: { providerId: 'apple.com', token: 'fresh' }, displayName: null, email: null,
+      });
+      await act(async () => { await outcome.signIn(); });
+      expect(mockRequestApple).toHaveBeenCalled();
+      expect(mockSignInWithCredential).toHaveBeenCalledWith({
+        providerId: 'apple.com', token: 'fresh',
+      });
+    }
+  });
+
   it('reports cancellation without treating it as an error', async () => {
     render();
     emit({ uid: 'anon-uid', isAnonymous: true, linkWithCredential: mockLink });
