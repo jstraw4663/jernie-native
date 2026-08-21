@@ -6,6 +6,7 @@ import {
   useOnboardingDraft,
   type OnboardingDraftContextValue,
 } from '@/src/contexts/OnboardingDraftContext';
+import { TRIP_COLOR_PACKS } from '@/src/design/tripPacks';
 
 function Capture({ onCapture }: { onCapture: (ctx: OnboardingDraftContextValue) => void }) {
   onCapture(useOnboardingDraft());
@@ -28,16 +29,65 @@ function renderDraft(): { holder: { current: OnboardingDraftContextValue }; tree
   return { holder, tree };
 }
 
+// The draft's initial colorPack is chosen randomly on mount from TRIP_COLOR_PACKS, so tests
+// can't assert an exact value — only that it's a faithful, unmutated copy of one of the six
+// defined packs (id/stopColors/heroGradient only, matching the source pack's values).
+function expectValidColorPack(colorPack: { id: string; stopColors: string[]; heroGradient: [string, string] }) {
+  expect(Object.keys(colorPack).sort()).toEqual(['heroGradient', 'id', 'stopColors']);
+  const sourcePack = TRIP_COLOR_PACKS.find(p => p.id === colorPack.id);
+  expect(sourcePack).toBeDefined();
+  expect(colorPack.stopColors).toEqual(sourcePack!.stopColors);
+  expect(colorPack.heroGradient).toEqual(sourcePack!.heroGradient);
+}
+
 describe('OnboardingDraftContext', () => {
   test('starts empty, with firstStop null and all four setup-intent booleans true', () => {
     const { holder } = renderDraft();
-    expect(holder.current.draft).toEqual({
+    const { colorPack, ...rest } = holder.current.draft;
+    expect(rest).toEqual({
       name: '',
       organizerHandle: '',
       pills: [],
       firstStop: null,
       setupIntent: { flights: true, stays: true, car: true, restaurants: true },
     });
+    expectValidColorPack(colorPack);
+  });
+
+  test('colorPack is chosen once on mount and stays stable across re-renders and step-to-step navigation, not recomputed on every render', () => {
+    let captured!: OnboardingDraftContextValue;
+    let tree!: renderer.ReactTestRenderer;
+    renderer.act(() => {
+      tree = renderer.create(
+        <OnboardingDraftProvider>
+          <Capture onCapture={ctx => { captured = ctx; }} />
+        </OnboardingDraftProvider>,
+      );
+    });
+    const initialPack = captured.draft.colorPack;
+
+    // Force several re-renders via unrelated setter calls, and a step swap (unmount/remount of
+    // the consumer under the same provider instance) — the pack must not change under any of
+    // these, or the preview shown earlier in the wizard would go stale.
+    renderer.act(() => { captured.setName('NYC Summer'); });
+    renderer.act(() => { captured.setPills(['🏖️ Beach']); });
+    expect(captured.draft.colorPack).toEqual(initialPack);
+
+    renderer.act(() => {
+      tree.update(
+        <OnboardingDraftProvider>
+          <Text>step-2 placeholder</Text>
+        </OnboardingDraftProvider>,
+      );
+    });
+    renderer.act(() => {
+      tree.update(
+        <OnboardingDraftProvider>
+          <Capture onCapture={ctx => { captured = ctx; }} />
+        </OnboardingDraftProvider>,
+      );
+    });
+    expect(captured.draft.colorPack).toEqual(initialPack);
   });
 
   test('useOnboardingDraft throws when called outside the provider', () => {
@@ -80,13 +130,15 @@ describe('OnboardingDraftContext', () => {
     expect(holder.current.draft.setupIntent).toEqual({ flights: false, stays: true, car: false, restaurants: true });
 
     // Everything set earlier is still intact after all five setters have fired.
-    expect(holder.current.draft).toEqual({
+    const { colorPack, ...rest } = holder.current.draft;
+    expect(rest).toEqual({
       name: 'NYC Summer',
       organizerHandle: 'Jeremy',
       pills: ['🏖️ Beach', '🍷 Wine'],
       firstStop: stop,
       setupIntent: { flights: false, stays: true, car: false, restaurants: true },
     });
+    expectValidColorPack(colorPack);
   });
 
   test('draft state persists across a consumer swap under the same provider instance, simulating step-to-step navigation', () => {

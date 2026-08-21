@@ -11,6 +11,15 @@ import type { SetupIntent } from '@/src/types';
 
 const setupIntent: SetupIntent = { flights: true, stays: true, car: false, restaurants: true };
 
+// A fixed, valid pack (copied down to just id/stopColors/heroGradient, same as
+// OnboardingDraftContext does) — used by every call in this file that isn't specifically
+// exercising colorPack pass-through behavior.
+const testColorPack = {
+  id: TRIP_COLOR_PACKS[0].id,
+  stopColors: TRIP_COLOR_PACKS[0].stopColors,
+  heroGradient: TRIP_COLOR_PACKS[0].heroGradient,
+};
+
 const baseInput = {
   name: 'NYC Summer',
   organizerHandle: 'Jeremy',
@@ -23,6 +32,7 @@ const baseInput = {
     dates: { start: '2026-08-10', end: '2026-08-14' },
   },
   setupIntent,
+  colorPack: testColorPack,
 };
 
 beforeEach(() => {
@@ -168,7 +178,24 @@ describe('createTrip', () => {
     expect(mockUpdate).toHaveBeenCalledTimes(1);
   });
 
-  test('picks a colorPack from the 6 defined packs, copying only id/stopColors/heroGradient', async () => {
+  test('uses the colour pack supplied by the caller rather than picking one', async () => {
+    const pack = { id: 'chosen-pack', stopColors: ['#111111'], heroGradient: ['#000000', '#222222'] };
+    await createTrip({
+      name: 'Maine', organizerHandle: 'ada', pills: [],
+      firstStop: { city: 'Portland', region: 'ME', lat: 43.6, lon: -70.2, dates: { start: '2026-08-10', end: '2026-08-14' } },
+      setupIntent: { flights: true, stays: true, car: true, restaurants: true },
+      colorPack: pack,
+    });
+    const written = mockSet.mock.calls[0][0];
+    expect(written.colorPack).toEqual(pack);
+  });
+
+  // Random pack selection no longer happens inside createTrip() — it moved up to
+  // OnboardingDraftContext so step 3 can preview the choice. This test now covers the
+  // complementary half of that move: whatever pack the caller supplies (from the same
+  // TRIP_COLOR_PACKS list the draft picks from) is written back to RTDB unchanged, verified
+  // across many distinct picks rather than just one.
+  test('writes back whichever colorPack the caller supplies, unchanged, across many distinct picks from the 6 defined packs', async () => {
     const seenIds = new Set<string>();
     const validIds = new Set(TRIP_COLOR_PACKS.map(p => p.id));
 
@@ -177,21 +204,26 @@ describe('createTrip', () => {
       (mockSet as jest.Mock).mockResolvedValue(undefined);
       (mockUpdate as jest.Mock).mockResolvedValue(undefined);
 
-      await createTrip(baseInput);
+      const sourcePack = TRIP_COLOR_PACKS[Math.floor(Math.random() * TRIP_COLOR_PACKS.length)];
+      const colorPack = {
+        id: sourcePack.id,
+        stopColors: sourcePack.stopColors,
+        heroGradient: sourcePack.heroGradient,
+      };
+
+      await createTrip({ ...baseInput, colorPack });
       const tripArg = (mockSet as jest.Mock).mock.calls[0][0];
-      const colorPack = tripArg.colorPack;
+      const writtenPack = tripArg.colorPack;
 
-      expect(validIds.has(colorPack.id)).toBe(true);
-      expect(Object.keys(colorPack).sort()).toEqual(['heroGradient', 'id', 'stopColors']);
+      expect(validIds.has(writtenPack.id)).toBe(true);
+      expect(Object.keys(writtenPack).sort()).toEqual(['heroGradient', 'id', 'stopColors']);
+      expect(writtenPack).toEqual(colorPack);
 
-      const sourcePack = TRIP_COLOR_PACKS.find(p => p.id === colorPack.id)!;
-      expect(colorPack.stopColors).toEqual(sourcePack.stopColors);
-      expect(colorPack.heroGradient).toEqual(sourcePack.heroGradient);
-
-      seenIds.add(colorPack.id);
+      seenIds.add(writtenPack.id);
     }
 
-    // Over 40 runs, a genuinely random selection should land on more than one pack.
+    // Sanity-check on the test's own sampling, not on createTrip: confirms the loop above
+    // actually exercised more than one pack across 40 runs.
     expect(seenIds.size).toBeGreaterThan(1);
   });
 });

@@ -16,12 +16,14 @@ const baseFirstStop = {
   lon: -73.97,
   dates: { start: '2026-08-10', end: '2026-08-14' },
 };
+const baseColorPack = { id: 'coastal', stopColors: ['#2C5880'], heroGradient: ['#0D2B3E', '#2C5880'] };
 let mockDraft: {
   name: string;
   organizerHandle: string;
   pills: string[];
   firstStop: typeof baseFirstStop | null;
   setupIntent: { flights: boolean; stays: boolean; car: boolean; restaurants: boolean };
+  colorPack: typeof baseColorPack;
 };
 jest.mock('@/src/contexts/OnboardingDraftContext', () => ({
   useOnboardingDraft: () => ({
@@ -56,6 +58,7 @@ beforeEach(() => {
     pills: ['🏖️ Beach'],
     firstStop: { ...baseFirstStop },
     setupIntent: { flights: true, stays: true, car: true, restaurants: true },
+    colorPack: { ...baseColorPack },
   };
 });
 
@@ -85,6 +88,7 @@ describe('app/onboarding/step-4', () => {
       pills: ['🏖️ Beach'],
       firstStop: baseFirstStop,
       setupIntent: { flights: true, stays: true, car: true, restaurants: true },
+      colorPack: baseColorPack,
     });
   });
 
@@ -144,6 +148,7 @@ describe('app/onboarding/step-4', () => {
       pills: ['🏖️ Beach'],
       firstStop: baseFirstStop,
       setupIntent: { flights: true, stays: true, car: true, restaurants: true },
+      colorPack: baseColorPack,
     });
     expect(mockReplace).toHaveBeenCalledWith('/(trips)/trip-456/(tabs)/jernie');
   });

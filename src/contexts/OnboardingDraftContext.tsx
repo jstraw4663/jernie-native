@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, type ReactNode } from 'react';
 import type { ResolvedStop } from '@/src/features/jernie/StopForm';
-import type { SetupIntent } from '@/src/types';
+import type { SetupIntent, TripColorPackRef } from '@/src/types';
+import { TRIP_COLOR_PACKS } from '@/src/design/tripPacks';
 
 // All four booking types default to "on" — Step 4's tiles start selected, matching the design
 // doc's "assume the traveler wants a checklist for everything, let them opt out" intent.
@@ -12,6 +13,7 @@ export interface OnboardingDraft {
   pills: string[];
   firstStop: ResolvedStop | null;
   setupIntent: SetupIntent;
+  colorPack: TripColorPackRef;
 }
 
 export interface OnboardingDraftContextValue {
@@ -45,9 +47,16 @@ export function OnboardingDraftProvider({ children }: { children: ReactNode }) {
   const [pills, setPills] = useState<string[]>([]);
   const [firstStop, setFirstStop] = useState<ResolvedStop | null>(null);
   const [setupIntent, setSetupIntent] = useState<SetupIntent>(DEFAULT_SETUP_INTENT);
+  // Chosen once, lazily, on mount — NOT computed in the render body — so it stays stable across
+  // re-renders and step-to-step navigation. Step 3 previews this value, so it must never change
+  // out from under the user mid-wizard.
+  const [colorPack] = useState<TripColorPackRef>(() => {
+    const pack = TRIP_COLOR_PACKS[Math.floor(Math.random() * TRIP_COLOR_PACKS.length)];
+    return { id: pack.id, stopColors: pack.stopColors, heroGradient: pack.heroGradient };
+  });
 
   const value: OnboardingDraftContextValue = {
-    draft: { name, organizerHandle, pills, firstStop, setupIntent },
+    draft: { name, organizerHandle, pills, firstStop, setupIntent, colorPack },
     setName,
     setOrganizerHandle,
     setPills,

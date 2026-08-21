@@ -1,7 +1,6 @@
 import { database, getAuthedUser } from '@/src/lib/firebase';
 import { writeTripOnce } from '@/src/lib/atomicTripWrite';
 import { generateId } from '@/src/utils/id';
-import { TRIP_COLOR_PACKS } from '@/src/design/tripPacks';
 import type { Trip, Stop, SetupIntent, TripColorPackRef } from '@/src/types';
 
 export interface CreateTripInput {
@@ -19,6 +18,7 @@ export interface CreateTripInput {
     dates: { start: string; end: string };
   };
   setupIntent: SetupIntent;
+  colorPack: TripColorPackRef;
 }
 
 // Creating a trip is a strictly sequential two-step write, never a single bundled update() —
@@ -39,13 +39,8 @@ export async function createTrip(input: CreateTripInput): Promise<string> {
   const inviteToken = generateId();
   const firstStopId = generateId();
 
-  // No UI for pack selection this round — a simple random pick from the 6 defined packs.
-  const randomPack = TRIP_COLOR_PACKS[Math.floor(Math.random() * TRIP_COLOR_PACKS.length)];
-  const colorPack: TripColorPackRef = {
-    id: randomPack.id,
-    stopColors: randomPack.stopColors,
-    heroGradient: randomPack.heroGradient,
-  };
+  // Chosen in OnboardingDraftContext at wizard start so step 3 can preview it.
+  const colorPack: TripColorPackRef = input.colorPack;
 
   const createdAt = Date.now();
 

@@ -40,6 +40,7 @@ export default function OnboardingStep4() {
         pills: draft.pills,
         firstStop: draft.firstStop,
         setupIntent: draft.setupIntent,
+        colorPack: draft.colorPack,
       });
       router.replace(`/(trips)/${tripId}/(tabs)/jernie` as never);
     } catch (err) {
