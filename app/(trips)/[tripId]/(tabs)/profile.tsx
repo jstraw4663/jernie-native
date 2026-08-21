@@ -62,13 +62,24 @@ export default function ProfileTab() {
     });
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    // A fresh anonymous uid can't read this trip (database.rules.json:18) — leaving the
+    // user mounted here would keep rendering the stale trip name and invite link until the
+    // next refetch throws. `/` re-derives where a uid with no trips belongs (onboarding),
+    // rather than assuming My Trips like the trip-deletion path below.
+    router.replace('/');
+  };
+
   const handleDeleteAccount = () => {
     confirmDelete({
       title: 'Delete account?',
       message: "This permanently deletes your account. Trips you own move to Recently Deleted; you won't be able to sign back into this account.",
       confirmLabel: 'Delete account',
       onConfirm: () => {
-        deleteAccount().catch(() => setError("Couldn't delete your account. Try again."));
+        deleteAccount()
+          .then(() => router.replace('/'))
+          .catch(() => setError("Couldn't delete your account. Try again."));
       },
     });
   };
@@ -116,7 +127,7 @@ export default function ProfileTab() {
         {status === 'authenticated' ? (
           <>
             <Text style={styles.accountIdentity}>{user?.email ?? user?.displayName ?? 'Signed in'}</Text>
-            <TouchableOpacity testID="profile-signout" onPress={() => { void signOut(); }}>
+            <TouchableOpacity testID="profile-signout" onPress={() => { void handleSignOut(); }}>
               <Text style={styles.accountAction}>Sign out</Text>
             </TouchableOpacity>
             <TouchableOpacity testID="profile-delete-account" onPress={handleDeleteAccount}>

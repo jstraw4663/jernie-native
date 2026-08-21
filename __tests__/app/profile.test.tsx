@@ -280,6 +280,49 @@ describe('app/(trips)/[tripId]/(tabs)/profile', () => {
     });
   });
 
+  // I3: previously nothing navigated after sign-out or account deletion, leaving the user
+  // mounted on this trip under a uid that can no longer read it.
+  describe('navigation after sign-out / account deletion (I3)', () => {
+    it('navigates to / after signing out', async () => {
+      const signOut = jest.fn().mockResolvedValue(undefined);
+      mockAuthState = { status: 'authenticated', user: { uid: 'u' }, signInWithApple: jest.fn(), signOut, deleteAccount: jest.fn() };
+      const tree = renderScreen();
+      await act(async () => { await tree.root.findByProps({ testID: 'profile-signout' }).props.onPress(); });
+      expect(signOut).toHaveBeenCalled();
+      expect(mockReplace).toHaveBeenCalledWith('/');
+    });
+
+    it('navigates to / after a successful account deletion', async () => {
+      const deleteAccount = jest.fn().mockResolvedValue(undefined);
+      mockAuthState = { status: 'authenticated', user: { uid: 'u' }, signInWithApple: jest.fn(), signOut: jest.fn(), deleteAccount };
+      const tree = renderScreen();
+      act(() => { tree.root.findByProps({ testID: 'profile-delete-account' }).props.onPress(); });
+      const { onConfirm } = mockConfirmDelete.mock.calls[0][0];
+      await act(async () => {
+        onConfirm();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(deleteAccount).toHaveBeenCalled();
+      expect(mockReplace).toHaveBeenCalledWith('/');
+    });
+
+    it('does not navigate when account deletion fails, and shows an error', async () => {
+      const deleteAccount = jest.fn().mockRejectedValue(new Error('boom'));
+      mockAuthState = { status: 'authenticated', user: { uid: 'u' }, signInWithApple: jest.fn(), signOut: jest.fn(), deleteAccount };
+      const tree = renderScreen();
+      act(() => { tree.root.findByProps({ testID: 'profile-delete-account' }).props.onPress(); });
+      const { onConfirm } = mockConfirmDelete.mock.calls[0][0];
+      await act(async () => {
+        onConfirm();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(mockReplace).not.toHaveBeenCalled();
+      expect(texts(tree)).toContain("Couldn't delete your account");
+    });
+  });
+
   // The "Sign in with Apple" button previously did `void signInWithApple()`, discarding
   // collision, error and cancellation alike — an anonymous user could never see why nothing
   // happened, and the error state was only rendered inside the authenticated branch.
