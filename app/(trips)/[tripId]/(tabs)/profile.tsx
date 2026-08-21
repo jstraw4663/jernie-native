@@ -15,7 +15,11 @@ export default function ProfileTab() {
   const { trip, refetch } = useTripContext();
   const { updateTrip, archiveTrip } = useTripAdmin();
   const [name, setName] = useState(trip.name);
-  const [error, setError] = useState<string | null>(null);
+  // Two independent error slots. A single shared one rendered in both the Account block and
+  // the owner-only trip-settings block, so one failed sign-in printed the same message twice
+  // on screen — under Account and again under Save.
+  const [accountError, setAccountError] = useState<string | null>(null);
+  const [tripError, setTripError] = useState<string | null>(null);
   const inviteLink = `jernie://join/${trip.inviteToken}`;
 
   const saveDisabled = name.trim().length === 0 || name === trip.name;
@@ -41,7 +45,7 @@ export default function ProfileTab() {
     if (outcome.ok) return;
     if (outcome.reason === 'credential-already-in-use') {
       if (!canTrustTripCount) {
-        setError("Can't verify your trips yet — try again in a moment.");
+        setAccountError("Can't verify your trips yet — try again in a moment.");
         return;
       }
       const adopt = await confirmAdoptExistingAccount(trips.length);
@@ -51,12 +55,12 @@ export default function ProfileTab() {
       try {
         await outcome.signIn();
       } catch {
-        setError("Couldn't sign in. Try again.");
+        setAccountError("Couldn't sign in. Try again.");
       }
       return;
     }
     if (outcome.reason === 'cancelled') return;
-    setError(outcome.message);
+    setAccountError(outcome.message);
   };
 
   const handleShareInvite = async () => {
@@ -67,7 +71,7 @@ export default function ProfileTab() {
       if (!outcome.ok) {
         if (outcome.reason === 'credential-already-in-use') {
           if (!canTrustTripCount) {
-            setError("Can't verify your trips yet — try again in a moment.");
+            setAccountError("Can't verify your trips yet — try again in a moment.");
             return;
           }
           const adopt = await confirmAdoptExistingAccount(trips.length);
@@ -75,7 +79,7 @@ export default function ProfileTab() {
           try {
             await outcome.signIn();
           } catch {
-            setError("Couldn't sign in. Try again.");
+            setAccountError("Couldn't sign in. Try again.");
           }
           // Adopting an existing account abandons the uid that owns *this* trip — whether
           // the adopt succeeded or failed, sharing this trip's invite under whatever
@@ -109,7 +113,7 @@ export default function ProfileTab() {
       onConfirm: () => {
         deleteAccount()
           .then(() => router.replace('/'))
-          .catch(() => setError("Couldn't delete your account. Try again."));
+          .catch(() => setAccountError("Couldn't delete your account. Try again."));
       },
     });
   };
@@ -118,10 +122,10 @@ export default function ProfileTab() {
     if (saveDisabled) return;
     try {
       await updateTrip(trip.id, { name });
-      setError(null);
+      setTripError(null);
       refetch();
     } catch {
-      setError("Couldn't save the trip name. Try again.");
+      setTripError("Couldn't save the trip name. Try again.");
     }
   };
 
@@ -133,7 +137,7 @@ export default function ProfileTab() {
       onConfirm: () => {
         archiveTrip(trip.id)
           .then(() => router.replace('/(home)' as never))
-          .catch(() => setError("Couldn't delete this trip. Try again."));
+          .catch(() => setTripError("Couldn't delete this trip. Try again."));
       },
     });
   };
@@ -163,7 +167,7 @@ export default function ProfileTab() {
             <TouchableOpacity testID="profile-delete-account" onPress={handleDeleteAccount}>
               <Text style={styles.accountDanger}>Delete account</Text>
             </TouchableOpacity>
-            {error && <Text style={styles.errorText}>{error}</Text>}
+            {accountError && <Text style={styles.errorText}>{accountError}</Text>}
           </>
         ) : (
           <>
@@ -171,7 +175,7 @@ export default function ProfileTab() {
             <TouchableOpacity testID="profile-signin" onPress={() => { void handleSignIn(); }}>
               <Text style={styles.accountAction}>Sign in with Apple</Text>
             </TouchableOpacity>
-            {error && <Text style={styles.errorText}>{error}</Text>}
+            {accountError && <Text style={styles.errorText}>{accountError}</Text>}
           </>
         )}
       </View>
@@ -194,7 +198,7 @@ export default function ProfileTab() {
             <Text style={styles.saveButtonText}>Save</Text>
           </TouchableOpacity>
 
-          {error && <Text style={styles.errorText}>{error}</Text>}
+          {tripError && <Text style={styles.errorText}>{tripError}</Text>}
 
           <TouchableOpacity testID="delete-trip-button" style={styles.deleteButton} onPress={handleDelete}>
             <Text style={styles.deleteButtonText}>Delete trip</Text>

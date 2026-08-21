@@ -340,6 +340,28 @@ describe('app/(trips)/[tripId]/(tabs)/profile', () => {
   // collision, error and cancellation alike — an anonymous user could never see why nothing
   // happened, and the error state was only rendered inside the authenticated branch.
   describe('Profile sign-in button (all four LinkOutcome branches)', () => {
+    // One shared `error` state fed both the Account block and the trip-settings block, so a
+    // failed sign-in printed "Couldn't sign in. Try again." twice on screen — once under
+    // Account and again under Save.
+    it('renders a sign-in failure exactly once, not also under the trip-settings block', async () => {
+      // uid matches baseTrip.ownerUid so the owner-only trip-settings block renders too —
+      // that is the block the error was leaking into.
+      mockAuthState = {
+        status: 'anonymous',
+        user: { uid: 'owner-uid' },
+        signInWithApple: jest.fn().mockResolvedValue({ ok: false, reason: 'error', message: 'Apple is down' }),
+        signOut: jest.fn(),
+        deleteAccount: jest.fn(),
+      };
+      const tree = renderScreen();
+      expect(tree.root.findAllByProps({ testID: 'save-trip-button' }).length).toBeGreaterThan(0);
+      await act(async () => { await tree.root.findByProps({ testID: 'profile-signin' }).props.onPress(); });
+
+      const occurrences = tree.root.findAllByType(Text)
+        .filter((t: { props: { children: unknown } }) => String(t.props.children) === 'Apple is down');
+      expect(occurrences).toHaveLength(1);
+    });
+
     it('renders an error for an anonymous user when Sign in with Apple fails', async () => {
       const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'error', message: 'network down' });
       mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
