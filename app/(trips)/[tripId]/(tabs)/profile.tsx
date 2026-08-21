@@ -25,6 +25,22 @@ export default function ProfileTab() {
   const { status, user, signInWithApple, signOut, deleteAccount } = useAuth();
   const { trips } = useUserTrips();
 
+  // Same four-branch handling as handleShareInvite below: a bare `void signInWithApple()`
+  // discarded collision, error and cancellation alike, so an anonymous user tapping this
+  // button could never see why nothing happened.
+  const handleSignIn = async () => {
+    const outcome = await signInWithApple();
+    if (outcome.ok) return;
+    if (outcome.reason === 'credential-already-in-use') {
+      const adopt = await confirmAdoptExistingAccount(trips.length);
+      if (!adopt) return;
+      await outcome.signIn();
+      return;
+    }
+    if (outcome.reason === 'cancelled') return;
+    setError(outcome.message);
+  };
+
   const handleShareInvite = async () => {
     // An unlinked organizer who loses their device orphans the trip for every traveller
     // in it, not just themselves. That is what this gate protects.
@@ -111,9 +127,10 @@ export default function ProfileTab() {
         ) : (
           <>
             <Text style={styles.accountIdentity}>This trip lives only on this phone.</Text>
-            <TouchableOpacity testID="profile-signin" onPress={() => { void signInWithApple(); }}>
+            <TouchableOpacity testID="profile-signin" onPress={() => { void handleSignIn(); }}>
               <Text style={styles.accountAction}>Sign in with Apple</Text>
             </TouchableOpacity>
+            {error && <Text style={styles.errorText}>{error}</Text>}
           </>
         )}
       </View>

@@ -279,4 +279,49 @@ describe('app/(trips)/[tripId]/(tabs)/profile', () => {
       expect(mockShare).toHaveBeenCalled();
     });
   });
+
+  // The "Sign in with Apple" button previously did `void signInWithApple()`, discarding
+  // collision, error and cancellation alike — an anonymous user could never see why nothing
+  // happened, and the error state was only rendered inside the authenticated branch.
+  describe('Profile sign-in button (all four LinkOutcome branches)', () => {
+    it('renders an error for an anonymous user when Sign in with Apple fails', async () => {
+      const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'error', message: 'network down' });
+      mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
+      const tree = renderScreen();
+      await act(async () => { await tree.root.findByProps({ testID: 'profile-signin' }).props.onPress(); });
+      expect(texts(tree)).toContain('network down');
+    });
+
+    it('does nothing and shows no error when the user cancels Sign in with Apple', async () => {
+      const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'cancelled' });
+      mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
+      const tree = renderScreen();
+      await act(async () => { await tree.root.findByProps({ testID: 'profile-signin' }).props.onPress(); });
+      // Still anonymous (no status flip) and no failure message rendered.
+      expect(tree.root.findAllByProps({ testID: 'profile-signout' })).toHaveLength(0);
+      expect(texts(tree)).not.toContain('network down');
+    });
+
+    it('warns before adopting on a collision from the sign-in button, and signs in on confirm', async () => {
+      const signIn = jest.fn().mockResolvedValue(undefined);
+      const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+      mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
+      mockConfirmAdopt.mockResolvedValue(true);
+      const tree = renderScreen();
+      await act(async () => { await tree.root.findByProps({ testID: 'profile-signin' }).props.onPress(); });
+      expect(mockConfirmAdopt).toHaveBeenCalled();
+      expect(signIn).toHaveBeenCalled();
+      expect(mockShare).not.toHaveBeenCalled();
+    });
+
+    it('does not sign in when the user declines the collision warning from the sign-in button', async () => {
+      const signIn = jest.fn().mockResolvedValue(undefined);
+      const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+      mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
+      mockConfirmAdopt.mockResolvedValue(false);
+      const tree = renderScreen();
+      await act(async () => { await tree.root.findByProps({ testID: 'profile-signin' }).props.onPress(); });
+      expect(signIn).not.toHaveBeenCalled();
+    });
+  });
 });
