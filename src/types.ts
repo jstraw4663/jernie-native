@@ -237,9 +237,14 @@ export interface BugReport {
   title: string;
   body?: string;
   priority: BugPriority;
-  author: string;
+  author: string;   // uid — database.rules.json binds this to auth.uid
   createdAt: number;
-  order: number;
+  /**
+   * Inherited from the PWA's Bugs tab, which sorted reports in-app. Nothing reads
+   * bug_reports in-app now (.read is false), so nothing writes this — optional rather than
+   * removed, in case an admin surface ever wants it back.
+   */
+  order?: number;
 }
 
 // ── Enrichment (Firestore, read-only from client) ────────────────────────────

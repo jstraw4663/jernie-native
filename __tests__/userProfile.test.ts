@@ -5,7 +5,7 @@ jest.mock('@/src/lib/firebase', () => ({
 }));
 
 import { mockRef, mockUpdate, mockOnce } from '@react-native-firebase/database';
-import { ensureAnonProfile, writeLinkedProfile, readAnonCreatedAt } from '@/src/lib/userProfile';
+import { ensureAnonProfile, writeLinkedProfile, readAnonCreatedAt, updateDisplayName } from '@/src/lib/userProfile';
 
 beforeEach(() => { jest.clearAllMocks(); });
 
@@ -60,5 +60,28 @@ describe('readAnonCreatedAt', () => {
   it('returns null when absent', async () => {
     mockOnce.mockResolvedValueOnce({ exists: () => false, val: () => null });
     await expect(readAnonCreatedAt('uid-1')).resolves.toBeNull();
+  });
+});
+
+describe('updateDisplayName', () => {
+  it('writes the trimmed name to the user record', async () => {
+    await updateDisplayName('uid-1', '  Ada Lovelace  ');
+    expect(mockRef).toHaveBeenCalledWith('users/uid-1');
+    expect(mockUpdate).toHaveBeenCalledWith({ displayName: 'Ada Lovelace' });
+  });
+
+  it('patches only displayName, leaving plan, linkedAt and email untouched', async () => {
+    // update(), not set() — the same node holds the anonymous lifecycle marker that drives
+    // the save nudge schedule, and a set() here would silently wipe it.
+    await updateDisplayName('uid-1', 'Ada');
+    expect(mockUpdate.mock.calls[0][0]).toEqual({ displayName: 'Ada' });
+  });
+
+  it('rejects an empty or whitespace-only name without writing', async () => {
+    // A blank name would render as an empty avatar and an empty row with no way back to a
+    // real one, since the edit field would then also be empty.
+    await expect(updateDisplayName('uid-1', '   ')).rejects.toThrow();
+    await expect(updateDisplayName('uid-1', '')).rejects.toThrow();
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 });
