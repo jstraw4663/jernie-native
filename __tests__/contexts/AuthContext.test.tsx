@@ -8,6 +8,7 @@ const mockRequestApple = jest.fn();
 const mockEnsureAnon = jest.fn().mockResolvedValue(undefined);
 const mockWriteLinked = jest.fn();
 const mockDeleteAccountData = jest.fn();
+const mockMigrateStaged = jest.fn().mockResolvedValue({ created: [], failed: 0 });
 const mockOnceTripSnap = jest.fn();
 const mockDatabaseRef = jest.fn(() => ({ once: mockOnceTripSnap }));
 const mockDatabaseFn = jest.fn(() => ({ ref: mockDatabaseRef }));
@@ -40,6 +41,9 @@ jest.mock('@/src/lib/userProfile', () => ({
 }));
 jest.mock('@/src/lib/deleteAccount', () => ({
   deleteAccountData: (...a: unknown[]) => mockDeleteAccountData(...a),
+}));
+jest.mock('@/src/lib/tripMigration', () => ({
+  migrateStagedTrips: (...a: unknown[]) => mockMigrateStaged(...a),
 }));
 
 import React from 'react';
@@ -247,6 +251,48 @@ describe('signInWithApple', () => {
     let outcome!: Awaited<ReturnType<typeof captured.signInWithApple>>;
     await act(async () => { outcome = await captured.signInWithApple(); });
     expect(outcome).toEqual({ ok: false, reason: 'error', message: 'network down' });
+  });
+});
+
+// A collision sign-in stages the anonymous uid's trips before abandoning it, and that
+// payload is the only remaining copy. Retrying the moment a real account appears means an
+// interrupted copy lands without the user having to do anything.
+describe('staged trip migration', () => {
+  it('resumes a staged copy as soon as a non-anonymous user appears', () => {
+    render();
+    emit({ uid: 'account-uid', isAnonymous: false, linkWithCredential: mockLink });
+    expect(mockMigrateStaged).toHaveBeenCalled();
+  });
+
+  it('does not attempt a resume for an anonymous user', () => {
+    render();
+    emit({ uid: 'anon-uid', isAnonymous: true, linkWithCredential: mockLink });
+    expect(mockMigrateStaged).not.toHaveBeenCalled();
+  });
+
+  // Both listeners fire for the same uid, and onUserChanged fires again on every profile
+  // write — running the copy twice would duplicate the trip.
+  it('runs at most once per uid across repeated emissions from both listeners', () => {
+    render();
+    const user = { uid: 'account-uid', isAnonymous: false, linkWithCredential: mockLink };
+    emit(user);
+    emitUserChanged(user);
+    emit(user);
+    expect(mockMigrateStaged).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs again for a different account', () => {
+    render();
+    emit({ uid: 'account-a', isAnonymous: false, linkWithCredential: mockLink });
+    emit({ uid: 'account-b', isAnonymous: false, linkWithCredential: mockLink });
+    expect(mockMigrateStaged).toHaveBeenCalledTimes(2);
+  });
+
+  it('swallows a resume failure rather than breaking auth state', () => {
+    mockMigrateStaged.mockRejectedValueOnce(new Error('offline'));
+    render();
+    emit({ uid: 'account-uid', isAnonymous: false, linkWithCredential: mockLink });
+    expect(captured.status).toBe('authenticated');
   });
 });
 

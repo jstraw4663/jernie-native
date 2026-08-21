@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { initAuth, database } from '@/src/lib/firebase';
 import { requestAppleCredential, isAppleCancellation } from '@/src/lib/appleAuth';
 import { ensureAnonProfile, writeLinkedProfile, readAnonCreatedAt } from '@/src/lib/userProfile';
 import { deleteAccountData } from '@/src/lib/deleteAccount';
+import { migrateStagedTrips } from '@/src/lib/tripMigration';
 
 export type LinkOutcome =
   | { ok: true; user: FirebaseAuthTypes.User }
@@ -34,6 +35,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [anonCreatedAt, setAnonCreatedAt] = useState<number | null>(null);
+  // Both listeners below fire repeatedly for the same uid; the resume must not run twice
+  // concurrently for one of them and write the same trip in duplicate.
+  const resumedFor = useRef<string | null>(null);
 
   useEffect(() => {
     initAuth().catch(() => { /* the listener below reports whatever state we end up in */ });
@@ -47,6 +51,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         readAnonCreatedAt(u.uid).then(setAnonCreatedAt).catch(() => {});
       } else {
         setAnonCreatedAt(null);
+        // A collision sign-in stages the anonymous uid's trips before abandoning it, and
+        // that payload is the only remaining copy — the uid it came from can never be read
+        // again. Retrying here means an interrupted copy finishes as soon as a real account
+        // is present, rather than waiting for the user to hit the collision path again.
+        if (resumedFor.current !== u.uid) {
+          resumedFor.current = u.uid;
+          migrateStagedTrips().catch(() => {
+            // Stays staged; the next launch tries again.
+          });
+        }
       }
     };
     // onAuthStateChanged only fires when the uid itself changes (sign-in, sign-out) — it is

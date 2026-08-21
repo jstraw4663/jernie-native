@@ -7,8 +7,7 @@ import { useTripContext } from '@/src/contexts/TripContext';
 import { useTripAdmin } from '@/src/hooks/useTripAdmin';
 import { confirmDelete } from '@/src/utils/confirmDelete';
 import { useAuth } from '@/src/contexts/AuthContext';
-import { useUserTrips } from '@/src/hooks/useUserTrips';
-import { confirmAdoptExistingAccount } from '@/src/lib/collisionPrompt';
+import { useCollisionSignIn } from '@/src/hooks/useCollisionSignIn';
 
 export default function ProfileTab() {
   const router = useRouter();
@@ -25,17 +24,12 @@ export default function ProfileTab() {
   const saveDisabled = name.trim().length === 0 || name === trip.name;
 
   const { status, user, signInWithApple, signOut, deleteAccount } = useAuth();
-  const { trips, status: tripsStatus } = useUserTrips();
+  const adoptOnCollision = useCollisionSignIn();
 
   // `user` from useAuth(), not auth().currentUser read directly — the latter is
   // non-reactive (no re-render on change) and reads stale/false during the brief window a
   // delete or sign-out is in flight and the uid has already moved on underneath it.
   const isOwner = trip.ownerUid === user?.uid;
-
-  // useUserTrips() reports 'loading'/'error' with an empty trips array, which would
-  // otherwise read as "nothing to lose" and adopt silently — refuse outright until the
-  // count can be trusted, same gate as C3/step-3 and the save nudge.
-  const canTrustTripCount = tripsStatus === 'ready';
 
   // Same four-branch handling as handleShareInvite below: a bare `void signInWithApple()`
   // discarded collision, error and cancellation alike, so an anonymous user tapping this
@@ -44,18 +38,13 @@ export default function ProfileTab() {
     const outcome = await signInWithApple();
     if (outcome.ok) return;
     if (outcome.reason === 'credential-already-in-use') {
-      if (!canTrustTripCount) {
+      const result = await adoptOnCollision(outcome.signIn);
+      if (result.status === 'untrusted') {
         setAccountError("Can't verify your trips yet — try again in a moment.");
-        return;
-      }
-      const adopt = await confirmAdoptExistingAccount(trips.length);
-      if (!adopt) return;
-      // Unguarded before: a rejection here (the abandon-and-adopt sign-in itself failing
-      // partway) escaped this async onPress entirely instead of surfacing anything.
-      try {
-        await outcome.signIn();
-      } catch {
+      } else if (result.status === 'failed') {
         setAccountError("Couldn't sign in. Try again.");
+      } else if (result.status === 'signed-in' && result.failed > 0) {
+        setAccountError('Signed in. Your trip is still copying across — it will appear shortly.');
       }
       return;
     }
@@ -70,21 +59,16 @@ export default function ProfileTab() {
       const outcome = await signInWithApple();
       if (!outcome.ok) {
         if (outcome.reason === 'credential-already-in-use') {
-          if (!canTrustTripCount) {
+          const result = await adoptOnCollision(outcome.signIn);
+          if (result.status === 'untrusted') {
             setAccountError("Can't verify your trips yet — try again in a moment.");
-            return;
-          }
-          const adopt = await confirmAdoptExistingAccount(trips.length);
-          if (!adopt) return;
-          try {
-            await outcome.signIn();
-          } catch {
+          } else if (result.status === 'failed') {
             setAccountError("Couldn't sign in. Try again.");
           }
-          // Adopting an existing account abandons the uid that owns *this* trip — whether
-          // the adopt succeeded or failed, sharing this trip's invite under whatever
-          // account is now current no longer makes sense. Previously this fell through to
-          // Share.share below regardless.
+          // Signing into another account abandons the uid that owns *this* trip. Even when
+          // the trip is copied across, the copy has a different id and a different invite
+          // token, so this screen's link is stale either way — never fall through to
+          // Share.share, which is what happened before.
           return;
         }
         return;

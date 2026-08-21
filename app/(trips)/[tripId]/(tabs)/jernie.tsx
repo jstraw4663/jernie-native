@@ -13,8 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { useAuth } from '@/src/contexts/AuthContext';
-import { useUserTrips } from '@/src/hooks/useUserTrips';
-import { confirmAdoptExistingAccount } from '@/src/lib/collisionPrompt';
+import { useCollisionSignIn } from '@/src/hooks/useCollisionSignIn';
 import { getActiveStopId, getAutoExpandDayIndex } from '@/src/domain/trip';
 import { bookingBelongsToStop } from '@/src/domain/bookings';
 import { getPlaceEnrichment } from '@/src/domain/placeEnrichment';
@@ -41,7 +40,7 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 export default function JernieTab() {
   const { trip, stops, bookings, itinerary, places, enrichment, status, refetch } = useTripContext();
   const { status: authStatus, user, anonCreatedAt, signInWithApple } = useAuth();
-  const { trips: userTrips, status: userTripsStatus } = useUserTrips();
+  const adoptOnCollision = useCollisionSignIn();
 
   const now = getDevNow();
   const activeStopId = getActiveStopId(stops, now);
@@ -85,22 +84,17 @@ export default function JernieTab() {
     if (outcome.ok) { setNudgeBusy(false); return; }
     if (outcome.reason === 'cancelled') { setNudgeBusy(false); return; }
     if (outcome.reason === 'credential-already-in-use') {
-      // Refuse to adopt until the owned-trip count can be trusted — 'loading'/'error' both
-      // report an empty array, which would otherwise silently adopt with no warning even
-      // when this uid's trips are actually at risk (same gate as I4/C3).
-      if (userTripsStatus !== 'ready') {
-        setNudgeBusy(false);
-        setNudgeError("Can't verify your trips yet — try again in a moment.");
-        return;
-      }
-      const adopt = await confirmAdoptExistingAccount(userTrips.length);
-      if (!adopt) { setNudgeBusy(false); return; }
-      try {
-        await outcome.signIn();
-      } catch (e) {
-        setNudgeError(e instanceof Error ? e.message : 'Sign in failed');
-      }
+      // The nudge only fires for a uid with something genuinely at risk, so this is the one
+      // entry point where "bring my trip with me" is almost certainly the intent.
+      const result = await adoptOnCollision(outcome.signIn);
       setNudgeBusy(false);
+      if (result.status === 'untrusted') {
+        setNudgeError("Can't verify your trips yet — try again in a moment.");
+      } else if (result.status === 'failed') {
+        setNudgeError("Couldn't sign in. Try again.");
+      } else if (result.status === 'signed-in' && result.failed > 0) {
+        setNudgeError('Signed in. Your trip is still copying across — it will appear shortly.');
+      }
       return;
     }
     setNudgeBusy(false);

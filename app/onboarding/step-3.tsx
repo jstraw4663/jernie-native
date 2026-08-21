@@ -4,14 +4,13 @@ import { useRouter } from 'expo-router';
 import { Brand, Core, Typography, Radius, Spacing } from '@/src/design/tokens';
 import { useOnboardingDraft } from '@/src/contexts/OnboardingDraftContext';
 import { useAuth } from '@/src/contexts/AuthContext';
-import { useUserTrips } from '@/src/hooks/useUserTrips';
-import { confirmAdoptExistingAccount } from '@/src/lib/collisionPrompt';
+import { useCollisionSignIn } from '@/src/hooks/useCollisionSignIn';
 
 export default function OnboardingStep3() {
   const router = useRouter();
   const { draft } = useOnboardingDraft();
   const { status, user, signInWithApple } = useAuth();
-  const { trips, status: tripsStatus } = useUserTrips();
+  const adoptOnCollision = useCollisionSignIn();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,19 +27,16 @@ export default function OnboardingStep3() {
     if (outcome.reason === 'credential-already-in-use') {
       // "Create New Trip" from My Trips routes here too (app/(home)/index.tsx), so this
       // screen can't assume nothing is at risk the way the original spec did — a user who
-      // already owns trips must be warned before their anonymous uid is abandoned, same as
-      // Profile's collision handling. useUserTrips() reports 'loading'/'error' with an empty
-      // trips array, which would otherwise read as "nothing to lose" and adopt silently —
-      // refuse outright until the count can be trusted.
-      if (tripsStatus !== 'ready') {
-        setBusy(false);
+      // already owns trips must be given the choice before their anonymous uid is abandoned.
+      const result = await adoptOnCollision(outcome.signIn);
+      setBusy(false);
+      if (result.status === 'untrusted') {
         setError("Can't verify your trips yet — try again in a moment.");
-        return;
+      } else if (result.status === 'failed') {
+        setError("Couldn't sign in. Try again.");
+      } else if (result.status === 'signed-in') {
+        advance();
       }
-      const adopt = await confirmAdoptExistingAccount(trips.length);
-      if (!adopt) { setBusy(false); return; }
-      try { await outcome.signIn(); setBusy(false); advance(); }
-      catch (e) { setBusy(false); setError(e instanceof Error ? e.message : 'Sign in failed'); }
       return;
     }
     setBusy(false);

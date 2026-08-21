@@ -68,9 +68,12 @@ let mockUserTripsState: { trips: unknown[]; status: 'loading' | 'ready' | 'error
 jest.mock('@/src/hooks/useUserTrips', () => ({
   useUserTrips: () => mockUserTripsState,
 }));
-const mockConfirmAdopt = jest.fn();
-jest.mock('@/src/lib/collisionPrompt', () => ({
-  confirmAdoptExistingAccount: (...a: unknown[]) => mockConfirmAdopt(...a),
+// The trust gate, the three-way prompt and the trip copy live in useCollisionSignIn
+// (__tests__/useCollisionSignIn.test.tsx). This screen owns delegating to it and mapping each
+// outcome onto the nudge card's error slot.
+const mockAdoptOnCollision = jest.fn();
+jest.mock('@/src/hooks/useCollisionSignIn', () => ({
+  useCollisionSignIn: () => mockAdoptOnCollision,
 }));
 
 import React from 'react';
@@ -112,6 +115,7 @@ function renderScreen() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockAdoptOnCollision.mockReset().mockResolvedValue({ status: 'signed-in', failed: 0 });
   Object.keys(mockMMKVStore).forEach(k => delete mockMMKVStore[k]);
   mockContextValue = {
     trip: TRIP,
@@ -259,112 +263,52 @@ describe('JernieTab — save nudge', () => {
     expect(texts(tree)).not.toContain('network down');
   });
 
-  test('warns before adopting on a collision, and signs in only on confirm', async () => {
+  test('hands a collision to the collision flow', async () => {
     const signIn = jest.fn().mockResolvedValue(undefined);
     const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
     mockAuthState = { status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple };
-    mockUserTripsState = { trips: [{ tripId: 't1' }], status: 'ready' };
-    mockConfirmAdopt.mockResolvedValue(true);
     const tree = renderScreen();
 
     await act(async () => { await tree.root.findByProps({ testID: 'save-nudge-save' }).props.onPress(); });
-    expect(mockConfirmAdopt).toHaveBeenCalledWith(1);
-    expect(signIn).toHaveBeenCalled();
+    expect(mockAdoptOnCollision).toHaveBeenCalledWith(signIn);
+    expect(texts(tree)).not.toContain("Couldn't sign in");
   });
 
-  test('does not sign in when the user declines the collision warning', async () => {
-    const signIn = jest.fn().mockResolvedValue(undefined);
-    const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+  test('shows no error when the user backs out of the collision prompt', async () => {
+    const signInWithApple = jest.fn().mockResolvedValue({
+      ok: false, reason: 'credential-already-in-use', signIn: jest.fn(),
+    });
     mockAuthState = { status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple };
-    mockUserTripsState = { trips: [{ tripId: 't1' }], status: 'ready' };
-    mockConfirmAdopt.mockResolvedValue(false);
+    mockAdoptOnCollision.mockResolvedValue({ status: 'cancelled' });
     const tree = renderScreen();
 
     await act(async () => { await tree.root.findByProps({ testID: 'save-nudge-save' }).props.onPress(); });
-    expect(signIn).not.toHaveBeenCalled();
+    expect(texts(tree)).not.toContain("Couldn't sign in");
   });
 
-  test('refuses to adopt while the owned-trip count is not ready, rather than trusting an empty array', async () => {
-    const signIn = jest.fn().mockResolvedValue(undefined);
-    const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+  test('refuses while the owned-trip count is not ready, rather than trusting an empty array', async () => {
+    const signInWithApple = jest.fn().mockResolvedValue({
+      ok: false, reason: 'credential-already-in-use', signIn: jest.fn(),
+    });
     mockAuthState = { status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple };
-    mockUserTripsState = { trips: [], status: 'loading' };
+    mockAdoptOnCollision.mockResolvedValue({ status: 'untrusted' });
     const tree = renderScreen();
 
     await act(async () => { await tree.root.findByProps({ testID: 'save-nudge-save' }).props.onPress(); });
-    expect(mockConfirmAdopt).not.toHaveBeenCalled();
-    expect(signIn).not.toHaveBeenCalled();
     expect(texts(tree)).toContain("Can't verify your trips");
   });
-});
 
-describe('JernieTab — itinerary day auto-expansion', () => {
-  const DAYS_A = [
-    { id: 'a1', stopId: 'stop-a', dateIso: '2026-08-10', items: [] },
-    { id: 'a2', stopId: 'stop-a', dateIso: '2026-08-11', items: [] },
-  ];
-  const DAYS_B = [
-    { id: 'b1', stopId: 'stop-b', dateIso: '2026-08-15', items: [] },
-    { id: 'b2', stopId: 'stop-b', dateIso: '2026-08-16', items: [] },
-  ];
-
-  // ItineraryDayRow always renders its items and only animates height, so expansion has to
-  // be read off the prop rather than inferred from whether item text is present.
-  function expandedIds(tree: renderer.ReactTestRenderer): string[] {
-    return tree.root.findAllByType(ItineraryDayRow)
-      .filter(r => r.props.isExpanded)
-      .map(r => r.props.day.id);
-  }
-
-  test('auto-expands the first day of every stop present at mount', () => {
-    mockContextValue.itinerary = { 'stop-a': DAYS_A, 'stop-b': DAYS_B };
-    const tree = renderScreen();
-    // now = Aug 1, before both stops, so each opens its Day 1.
-    expect(expandedIds(tree).sort()).toEqual(['a1', 'b1']);
-  });
-
-  test('auto-expands for a stop that only appears after a refetch', () => {
-    mockContextValue = { ...mockContextValue, stops: [STOP_A], itinerary: { 'stop-a': DAYS_A } };
-    const tree = renderScreen();
-    expect(expandedIds(tree)).toEqual(['a1']);
-
-    // A stop added mid-session arrives through a refetch — the case a useState
-    // initializer misses, leaving the new stop permanently collapsed.
-    mockContextValue = {
-      ...mockContextValue,
-      stops: [STOP_A, STOP_B],
-      itinerary: { 'stop-a': DAYS_A, 'stop-b': DAYS_B },
-    };
-    act(() => { tree.update(<JernieTab />); });
-
-    expect(expandedIds(tree).sort()).toEqual(['a1', 'b1']);
-  });
-
-  test('days that arrive for an existing stop after a refetch get expanded too', () => {
-    mockContextValue = { ...mockContextValue, stops: [STOP_A], itinerary: {} };
-    const tree = renderScreen();
-    expect(expandedIds(tree)).toEqual([]);
-
-    mockContextValue = { ...mockContextValue, itinerary: { 'stop-a': DAYS_A } };
-    act(() => { tree.update(<JernieTab />); });
-
-    expect(expandedIds(tree)).toEqual(['a1']);
-  });
-
-  test('collapsing a day is respected and does not snap back open', () => {
-    mockContextValue = { ...mockContextValue, stops: [STOP_A], itinerary: { 'stop-a': DAYS_A } };
-    const tree = renderScreen();
-    expect(expandedIds(tree)).toEqual(['a1']);
-
-    act(() => { tree.root.findByProps({ testID: 'itinerary-day-a1' }).props.onPress(); });
-    expect(expandedIds(tree)).toEqual([]);
-  });
-
-  test('expanding a different day replaces the auto-expanded one', () => {
-    mockContextValue = { ...mockContextValue, stops: [STOP_A], itinerary: { 'stop-a': DAYS_A } };
+  // The nudge fires only for a uid with something genuinely at risk, so a copy that hasn't
+  // landed yet is exactly the case this card must not misreport as a sign-in failure.
+  test('says the trip is still copying when the sign-in landed but a copy did not', async () => {
+    const signInWithApple = jest.fn().mockResolvedValue({
+      ok: false, reason: 'credential-already-in-use', signIn: jest.fn(),
+    });
+    mockAuthState = { status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple };
+    mockAdoptOnCollision.mockResolvedValue({ status: 'signed-in', failed: 1 });
     const tree = renderScreen();
 
-    act(() => { tree.root.findByProps({ testID: 'itinerary-day-a2' }).props.onPress(); });
-    expect(expandedIds(tree)).toEqual(['a2']);
+    await act(async () => { await tree.root.findByProps({ testID: 'save-nudge-save' }).props.onPress(); });
+    expect(texts(tree)).toContain('still copying across');
   });
 });

@@ -4,8 +4,7 @@ import { useRouter } from 'expo-router';
 import { Brand, Core, Typography, Radius, Spacing } from '@/src/design/tokens';
 import { useOnboardingDraft } from '@/src/contexts/OnboardingDraftContext';
 import { useAuth } from '@/src/contexts/AuthContext';
-import { useUserTrips } from '@/src/hooks/useUserTrips';
-import { confirmAdoptExistingAccount } from '@/src/lib/collisionPrompt';
+import { useCollisionSignIn } from '@/src/hooks/useCollisionSignIn';
 
 // A handful of hardcoded suggestions, per the design doc — freeform, not an exhaustive preset
 // list. Tapping toggles membership in `pills`; there's no text-entry path for custom pills in
@@ -45,7 +44,7 @@ export default function OnboardingStep1() {
   // trip already existed — so restoring an account meant creating a throwaway trip first and
   // then walking through the collision warning to abandon it.
   const { status, signInWithApple } = useAuth();
-  const { trips, status: tripsStatus } = useUserTrips();
+  const adoptOnCollision = useCollisionSignIn();
   const [signingIn, setSigningIn] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
 
@@ -61,19 +60,17 @@ export default function OnboardingStep1() {
     if (outcome.ok) { setSigningIn(false); router.replace('/'); return; }
     if (outcome.reason === 'cancelled') { setSigningIn(false); return; }
     if (outcome.reason === 'credential-already-in-use') {
-      // useUserTrips() reports 'loading'/'error' with an empty trips array, which would read
-      // as "nothing to lose" and adopt silently — same gate as Profile and step 3.
-      if (tripsStatus !== 'ready') {
-        setSigningIn(false);
+      // On the flow this screen exists for — a fresh install with nothing at stake — the
+      // prompt is skipped entirely and this reads as an ordinary sign-in.
+      const result = await adoptOnCollision(outcome.signIn);
+      setSigningIn(false);
+      if (result.status === 'untrusted') {
         setSignInError("Can't verify your trips yet — try again in a moment.");
-        return;
+      } else if (result.status === 'failed') {
+        setSignInError("Couldn't sign in. Try again.");
+      } else if (result.status === 'signed-in') {
+        router.replace('/');
       }
-      // On the flow this screen exists for — a fresh install with no trips — this resolves
-      // true without prompting, so the collision never surfaces to the user at all.
-      const adopt = await confirmAdoptExistingAccount(trips.length);
-      if (!adopt) { setSigningIn(false); return; }
-      try { setSigningIn(false); await outcome.signIn(); router.replace('/'); }
-      catch { setSigningIn(false); setSignInError("Couldn't sign in. Try again."); }
       return;
     }
     setSigningIn(false);

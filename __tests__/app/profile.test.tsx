@@ -11,10 +11,13 @@ jest.mock('@/src/utils/confirmDelete', () => ({ confirmDelete: jest.fn() }));
 // check — profile.tsx used to read auth().currentUser?.uid directly for isOwner, which was
 // non-reactive; it now reads the same `user` from useAuth() as everything else on screen.
 let mockAuthState: any;
-const mockConfirmAdopt = jest.fn();
 jest.mock('@/src/contexts/AuthContext', () => ({ useAuth: () => mockAuthState }));
-jest.mock('@/src/lib/collisionPrompt', () => ({
-  confirmAdoptExistingAccount: (...a: unknown[]) => mockConfirmAdopt(...a),
+// The trust gate, the three-way prompt and the trip copy all live in useCollisionSignIn and
+// are covered by __tests__/useCollisionSignIn.test.tsx. What this screen owns is delegating
+// to it and mapping each outcome onto the right UI.
+const mockAdoptOnCollision = jest.fn();
+jest.mock('@/src/hooks/useCollisionSignIn', () => ({
+  useCollisionSignIn: () => mockAdoptOnCollision,
 }));
 // I4: mutable per-test, not a static { trips: [], status: 'ready' } — that shape hid I4
 // entirely, since it can never report 'loading' or 'error'.
@@ -62,7 +65,7 @@ beforeEach(() => {
   mockReplace.mockClear();
   mockRefetch.mockClear();
   mockConfirmDelete.mockReset();
-  mockConfirmAdopt.mockReset();
+  mockAdoptOnCollision.mockReset().mockResolvedValue({ status: 'signed-in', failed: 0 });
   mockUserTripsState = { trips: [], status: 'ready' };
   mockUpdateTrip.mockReset().mockResolvedValue(undefined);
   mockArchiveTrip.mockReset().mockResolvedValue(undefined);
@@ -271,17 +274,16 @@ describe('app/(trips)/[tripId]/(tabs)/profile', () => {
       expect(signIn).toHaveBeenCalled();
     });
 
-    it('warns before abandoning trips on a Profile collision', async () => {
+    it('hands a share-invite collision to the collision flow rather than sharing', async () => {
       const signIn = jest.fn().mockResolvedValue(undefined);
       const signInWithApple = jest.fn().mockResolvedValue({
         ok: false, reason: 'credential-already-in-use', signIn,
       });
       mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
-      mockConfirmAdopt.mockResolvedValue(false);
+      mockAdoptOnCollision.mockResolvedValue({ status: 'cancelled' });
       const tree = renderScreen();
       await act(async () => { await tree.root.findByProps({ testID: 'share-invite-button' }).props.onPress(); });
-      expect(mockConfirmAdopt).toHaveBeenCalled();
-      expect(signIn).not.toHaveBeenCalled();
+      expect(mockAdoptOnCollision).toHaveBeenCalledWith(signIn);
       expect(mockShare).not.toHaveBeenCalled();
     });
 
@@ -380,26 +382,27 @@ describe('app/(trips)/[tripId]/(tabs)/profile', () => {
       expect(texts(tree)).not.toContain('network down');
     });
 
-    it('warns before adopting on a collision from the sign-in button, and signs in on confirm', async () => {
+    it('routes a sign-in-button collision through the collision flow', async () => {
       const signIn = jest.fn().mockResolvedValue(undefined);
       const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
       mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
-      mockConfirmAdopt.mockResolvedValue(true);
       const tree = renderScreen();
       await act(async () => { await tree.root.findByProps({ testID: 'profile-signin' }).props.onPress(); });
-      expect(mockConfirmAdopt).toHaveBeenCalled();
-      expect(signIn).toHaveBeenCalled();
+      expect(mockAdoptOnCollision).toHaveBeenCalledWith(signIn);
       expect(mockShare).not.toHaveBeenCalled();
     });
 
-    it('does not sign in when the user declines the collision warning from the sign-in button', async () => {
-      const signIn = jest.fn().mockResolvedValue(undefined);
-      const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+    // The sign-in landed; only the copy is outstanding, so this must not read as a failure.
+    it('says the trip is still copying when the sign-in succeeded but a copy did not', async () => {
+      const signInWithApple = jest.fn().mockResolvedValue({
+        ok: false, reason: 'credential-already-in-use', signIn: jest.fn(),
+      });
       mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
-      mockConfirmAdopt.mockResolvedValue(false);
+      mockAdoptOnCollision.mockResolvedValue({ status: 'signed-in', failed: 1 });
       const tree = renderScreen();
       await act(async () => { await tree.root.findByProps({ testID: 'profile-signin' }).props.onPress(); });
-      expect(signIn).not.toHaveBeenCalled();
+      expect(texts(tree)).toContain('still copying across');
+      expect(texts(tree)).not.toContain("Couldn't sign in");
     });
   });
 
@@ -410,10 +413,9 @@ describe('app/(trips)/[tripId]/(tabs)/profile', () => {
       const signIn = jest.fn().mockResolvedValue(undefined);
       const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
       mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
-      mockUserTripsState = { trips: [], status: 'loading' };
+      mockAdoptOnCollision.mockResolvedValue({ status: 'untrusted' });
       const tree = renderScreen();
       await act(async () => { await tree.root.findByProps({ testID: 'profile-signin' }).props.onPress(); });
-      expect(mockConfirmAdopt).not.toHaveBeenCalled();
       expect(signIn).not.toHaveBeenCalled();
       expect(texts(tree)).toContain("Can't verify your trips");
     });
@@ -422,10 +424,9 @@ describe('app/(trips)/[tripId]/(tabs)/profile', () => {
       const signIn = jest.fn().mockResolvedValue(undefined);
       const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
       mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
-      mockUserTripsState = { trips: [], status: 'error' };
+      mockAdoptOnCollision.mockResolvedValue({ status: 'untrusted' });
       const tree = renderScreen();
       await act(async () => { await tree.root.findByProps({ testID: 'profile-signin' }).props.onPress(); });
-      expect(mockConfirmAdopt).not.toHaveBeenCalled();
       expect(signIn).not.toHaveBeenCalled();
       expect(texts(tree)).toContain("Can't verify your trips");
     });
@@ -434,11 +435,11 @@ describe('app/(trips)/[tripId]/(tabs)/profile', () => {
       const signIn = jest.fn().mockResolvedValue(undefined);
       const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
       mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
-      mockUserTripsState = { trips: [], status: 'loading' };
+      mockAdoptOnCollision.mockResolvedValue({ status: 'untrusted' });
       const tree = renderScreen();
       await act(async () => { await tree.root.findByProps({ testID: 'share-invite-button' }).props.onPress(); });
-      expect(mockConfirmAdopt).not.toHaveBeenCalled();
       expect(signIn).not.toHaveBeenCalled();
+      expect(texts(tree)).toContain("Can't verify your trips");
       expect(mockShare).not.toHaveBeenCalled();
     });
   });
@@ -448,34 +449,38 @@ describe('app/(trips)/[tripId]/(tabs)/profile', () => {
   // adopted uid no longer owns.
   describe('collision-adopt sign-in is guarded and never falls through to Share.share', () => {
     it('sign-in button: a rejected adopt sign-in surfaces an error instead of an unhandled rejection', async () => {
-      const signIn = jest.fn().mockRejectedValue(new Error('boom'));
-      const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+      const signInWithApple = jest.fn().mockResolvedValue({
+        ok: false, reason: 'credential-already-in-use', signIn: jest.fn(),
+      });
       mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
-      mockConfirmAdopt.mockResolvedValue(true);
+      mockAdoptOnCollision.mockResolvedValue({ status: 'failed' });
       const tree = renderScreen();
       await act(async () => { await tree.root.findByProps({ testID: 'profile-signin' }).props.onPress(); });
       expect(texts(tree)).toContain("Couldn't sign in");
     });
 
     it('share-invite button: a rejected adopt sign-in surfaces an error and never shares', async () => {
-      const signIn = jest.fn().mockRejectedValue(new Error('boom'));
-      const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+      const signInWithApple = jest.fn().mockResolvedValue({
+        ok: false, reason: 'credential-already-in-use', signIn: jest.fn(),
+      });
       mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
-      mockConfirmAdopt.mockResolvedValue(true);
+      mockAdoptOnCollision.mockResolvedValue({ status: 'failed' });
       const tree = renderScreen();
       await act(async () => { await tree.root.findByProps({ testID: 'share-invite-button' }).props.onPress(); });
       expect(texts(tree)).toContain("Couldn't sign in");
       expect(mockShare).not.toHaveBeenCalled();
     });
 
-    it('share-invite button: a successful adopt sign-in does not fall through to sharing this trip', async () => {
+    // Even when the trip is carried across, the copy has a new id and a new invite token, so
+    // the link rendered on this screen is stale either way.
+    it('share-invite button: a successful collision sign-in never falls through to sharing this trip', async () => {
       const signIn = jest.fn().mockResolvedValue(undefined);
       const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
       mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
-      mockConfirmAdopt.mockResolvedValue(true);
+      mockAdoptOnCollision.mockResolvedValue({ status: 'signed-in', failed: 0 });
       const tree = renderScreen();
       await act(async () => { await tree.root.findByProps({ testID: 'share-invite-button' }).props.onPress(); });
-      expect(signIn).toHaveBeenCalled();
+      expect(mockAdoptOnCollision).toHaveBeenCalledWith(signIn);
       expect(mockShare).not.toHaveBeenCalled();
     });
   });
