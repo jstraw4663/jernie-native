@@ -259,6 +259,26 @@ export async function maybeSeedDevData(): Promise<void> {
   // pre-write existence read.
   await writeTripOnce('dev-trip-001', tripData, 'continue');
 
+  // writeTripOnce('continue') swallows the already-exists denial, which is right for a
+  // partial prior run by this same uid but wrong after a sign-out: the fresh anonymous uid
+  // also finds the trip present, then fails step 2 because members/ is create-only and scoped
+  // to the trip's owner. Reading ownerUid separates the two — a non-member cannot read it at
+  // all, so a denied read is itself the answer.
+  let ownerUid: string | null = null;
+  try {
+    const ownerSnap = await database().ref('trips/dev-trip-001/ownerUid').once('value');
+    ownerUid = ownerSnap.exists() ? ownerSnap.val() : null;
+  } catch {
+    // Read denied — not a member of this trip, so certainly not its owner.
+  }
+  if (ownerUid !== user.uid) {
+    // dev-trip-001 belongs to someone else. There is nothing to seed and nothing this uid may
+    // join, so returning quietly is the whole job — and leaving the flags unset keeps
+    // getSeedOwnerUid() honest, so app/index.tsx sends this user to onboarding rather than to
+    // a trip it cannot read.
+    return;
+  }
+
   // Step 2: only after step 1 resolves, bundle the owner's membership record,
   // the denormalized users/{uid}/trips read index, and the invite token lookup
   // into a single update(). This is safe to bundle because none of these three

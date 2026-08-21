@@ -22,11 +22,16 @@ describe('maybeSeedDevData', () => {
     Object.keys(_mmkvStore).forEach(k => delete _mmkvStore[k]);
     (mockSet as jest.Mock).mockReset().mockResolvedValue(undefined);
     (mockUpdate as jest.Mock).mockReset().mockResolvedValue(undefined);
-    (mockOnce as jest.Mock).mockReset().mockResolvedValue({ exists: () => false });
+    // Call 1 is the users-index early-out; call 2 is the ownerUid check between the two
+    // write steps. The default is a device where this uid has no index entry yet but does
+    // own the trip once step 1 has run — i.e. the ordinary seeding path.
+    (mockOnce as jest.Mock).mockReset()
+      .mockResolvedValueOnce({ exists: () => false })
+      .mockResolvedValue({ exists: () => true, val: () => 'owner-uid' });
   });
 
   test('a uid that already has the dev trip indexed stamps the flags without rewriting anything', async () => {
-    (mockOnce as jest.Mock).mockResolvedValue({ exists: () => true });
+    (mockOnce as jest.Mock).mockReset().mockResolvedValue({ exists: () => true });
 
     await maybeSeedDevData();
 
@@ -72,6 +77,41 @@ describe('maybeSeedDevData', () => {
       Object.assign(new Error('network unavailable'), { code: 'database/network-error' }),
     );
     await expect(maybeSeedDevData()).rejects.toThrow('network unavailable');
+    expect(getSeedOwnerUid()).toBeNull();
+  });
+
+  // After a sign-out the fresh anonymous uid re-enters here, finds dev-trip-001 already
+  // present, and cannot write members/ — which is create-only and scoped to the trip's owner.
+  // That surfaced as a permission-denied thrown on every single launch.
+  test('a uid that does not own the existing dev trip returns quietly instead of throwing', async () => {
+    (mockSet as jest.Mock).mockRejectedValue(
+      Object.assign(new Error('permission denied'), { code: 'database/permission-denied' }),
+    );
+    (mockOnce as jest.Mock).mockReset()
+      .mockResolvedValueOnce({ exists: () => false })
+      .mockResolvedValue({ exists: () => true, val: () => 'somebody-else' });
+
+    await expect(maybeSeedDevData()).resolves.toBeUndefined();
+
+    expect(mockUpdate).not.toHaveBeenCalled();
+    // Claiming ownership here would send this uid straight back to a trip it cannot read.
+    expect(getSeedOwnerUid()).toBeNull();
+    expect(_mmkvStore['seeded_v3_dev_trip_001']).toBeUndefined();
+  });
+
+  test('a denied ownerUid read is treated as not-the-owner, not as a failure', async () => {
+    (mockSet as jest.Mock).mockRejectedValue(
+      Object.assign(new Error('permission denied'), { code: 'database/permission-denied' }),
+    );
+    (mockOnce as jest.Mock).mockReset()
+      .mockResolvedValueOnce({ exists: () => false })
+      .mockRejectedValue(
+        Object.assign(new Error('permission denied'), { code: 'database/permission-denied' }),
+      );
+
+    await expect(maybeSeedDevData()).resolves.toBeUndefined();
+
+    expect(mockUpdate).not.toHaveBeenCalled();
     expect(getSeedOwnerUid()).toBeNull();
   });
 
