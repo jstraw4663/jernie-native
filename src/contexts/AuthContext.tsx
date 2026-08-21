@@ -117,15 +117,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await current.delete();
     } catch (err) {
       if ((err as { code?: string })?.code === 'auth/requires-recent-login') {
-        const outcome = await signInWithApple();
-        if (!outcome.ok) throw new Error('Please sign in again to confirm deletion');
+        let apple: Awaited<ReturnType<typeof requestAppleCredential>>;
+        try {
+          apple = await requestAppleCredential();
+        } catch (e) {
+          if (isAppleCancellation(e)) throw new Error('Re-authentication required but was cancelled');
+          throw new Error('Re-authentication required but failed');
+        }
+        await current.reauthenticateWithCredential(apple.credential);
         await auth().currentUser?.delete();
       } else {
         throw err;
       }
     }
     await auth().signInAnonymously();
-  }, [signInWithApple]);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, status, anonCreatedAt, signInWithApple, signOut, deleteAccount }}>

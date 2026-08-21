@@ -6,6 +6,10 @@ const mockSignInAnonymously = jest.fn();
 const mockRequestApple = jest.fn();
 const mockEnsureAnon = jest.fn().mockResolvedValue(undefined);
 const mockWriteLinked = jest.fn();
+const mockDeleteAccountData = jest.fn();
+const mockOnceTripSnap = jest.fn();
+const mockDatabaseRef = jest.fn(() => ({ once: mockOnceTripSnap }));
+const mockDatabaseFn = jest.fn(() => ({ ref: mockDatabaseRef }));
 
 jest.mock('@react-native-firebase/auth', () => ({
   __esModule: true,
@@ -21,7 +25,7 @@ jest.mock('@/src/lib/firebase', () => ({
   initAuth: jest.fn().mockResolvedValue({ uid: 'anon-uid', isAnonymous: true }),
   getAuthedUser: () => Promise.resolve(mockCurrentUser),
   auth: require('@react-native-firebase/auth').default,
-  database: jest.fn(),
+  database: () => mockDatabaseFn(),
 }));
 jest.mock('@/src/lib/appleAuth', () => ({
   requestAppleCredential: (...a: unknown[]) => mockRequestApple(...a),
@@ -31,6 +35,9 @@ jest.mock('@/src/lib/userProfile', () => ({
   ensureAnonProfile: (...a: unknown[]) => mockEnsureAnon(...a),
   writeLinkedProfile: (...a: unknown[]) => mockWriteLinked(...a),
   readAnonCreatedAt: jest.fn().mockResolvedValue(null),
+}));
+jest.mock('@/src/lib/deleteAccount', () => ({
+  deleteAccountData: (...a: unknown[]) => mockDeleteAccountData(...a),
 }));
 
 import React from 'react';
@@ -170,6 +177,36 @@ describe('signOut', () => {
     render();
     emit({ uid: 'linked-uid', isAnonymous: false, linkWithCredential: mockLink });
     await act(async () => { await captured.signOut(); });
+    expect(mockSignInAnonymously).toHaveBeenCalled();
+  });
+});
+
+describe('deleteAccount', () => {
+  beforeEach(() => {
+    mockDeleteAccountData.mockResolvedValue(undefined);
+    mockDatabaseRef.mockClear();
+    mockOnceTripSnap.mockClear();
+    mockRequestApple.mockClear();
+    mockSignInAnonymously.mockClear();
+  });
+
+  it('re-authenticates an already-linked user when delete() requires recent login', async () => {
+    render();
+    const mockReauth = jest.fn().mockResolvedValue(undefined);
+    const mockDelete = jest.fn()
+      .mockRejectedValueOnce({ code: 'auth/requires-recent-login' })
+      .mockResolvedValueOnce(undefined);
+    const user = { uid: 'linked-uid', isAnonymous: false, linkWithCredential: mockLink, delete: mockDelete, reauthenticateWithCredential: mockReauth };
+    emit(user);
+    mockOnceTripSnap.mockResolvedValue({ exists: () => false });
+    mockRequestApple.mockResolvedValue({ credential: { providerId: 'apple.com' }, displayName: 'Ada', email: 'ada@example.com' });
+
+    await act(async () => { await captured.deleteAccount(); });
+
+    expect(mockDeleteAccountData).toHaveBeenCalledWith('linked-uid', []);
+    expect(mockDelete).toHaveBeenCalledTimes(2);
+    expect(mockReauth).toHaveBeenCalledWith({ providerId: 'apple.com' });
+    expect(mockLink).not.toHaveBeenCalled(); // linkWithCredential should NOT be called
     expect(mockSignInAnonymously).toHaveBeenCalled();
   });
 });
