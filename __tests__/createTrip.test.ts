@@ -189,41 +189,4 @@ describe('createTrip', () => {
     const written = mockSet.mock.calls[0][0];
     expect(written.colorPack).toEqual(pack);
   });
-
-  // Random pack selection no longer happens inside createTrip() — it moved up to
-  // OnboardingDraftContext so step 3 can preview the choice. This test now covers the
-  // complementary half of that move: whatever pack the caller supplies (from the same
-  // TRIP_COLOR_PACKS list the draft picks from) is written back to RTDB unchanged, verified
-  // across many distinct picks rather than just one.
-  test('writes back whichever colorPack the caller supplies, unchanged, across many distinct picks from the 6 defined packs', async () => {
-    const seenIds = new Set<string>();
-    const validIds = new Set(TRIP_COLOR_PACKS.map(p => p.id));
-
-    for (let i = 0; i < 40; i++) {
-      jest.clearAllMocks();
-      (mockSet as jest.Mock).mockResolvedValue(undefined);
-      (mockUpdate as jest.Mock).mockResolvedValue(undefined);
-
-      const sourcePack = TRIP_COLOR_PACKS[Math.floor(Math.random() * TRIP_COLOR_PACKS.length)];
-      const colorPack = {
-        id: sourcePack.id,
-        stopColors: sourcePack.stopColors,
-        heroGradient: sourcePack.heroGradient,
-      };
-
-      await createTrip({ ...baseInput, colorPack });
-      const tripArg = (mockSet as jest.Mock).mock.calls[0][0];
-      const writtenPack = tripArg.colorPack;
-
-      expect(validIds.has(writtenPack.id)).toBe(true);
-      expect(Object.keys(writtenPack).sort()).toEqual(['heroGradient', 'id', 'stopColors']);
-      expect(writtenPack).toEqual(colorPack);
-
-      seenIds.add(writtenPack.id);
-    }
-
-    // Sanity-check on the test's own sampling, not on createTrip: confirms the loop above
-    // actually exercised more than one pack across 40 runs.
-    expect(seenIds.size).toBeGreaterThan(1);
-  });
 });

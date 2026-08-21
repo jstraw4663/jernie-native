@@ -71,7 +71,7 @@ describe('OnboardingDraftContext', () => {
     // these, or the preview shown earlier in the wizard would go stale.
     renderer.act(() => { captured.setName('NYC Summer'); });
     renderer.act(() => { captured.setPills(['🏖️ Beach']); });
-    expect(captured.draft.colorPack).toEqual(initialPack);
+    expect(captured.draft.colorPack).toBe(initialPack);
 
     renderer.act(() => {
       tree.update(
@@ -87,7 +87,7 @@ describe('OnboardingDraftContext', () => {
         </OnboardingDraftProvider>,
       );
     });
-    expect(captured.draft.colorPack).toEqual(initialPack);
+    expect(captured.draft.colorPack).toBe(initialPack);
   });
 
   test('useOnboardingDraft throws when called outside the provider', () => {
