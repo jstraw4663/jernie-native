@@ -4,8 +4,11 @@ const mockSignInWithApple = jest.fn();
 const mockConfirmAdopt = jest.fn();
 
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush, replace: mockReplace }) }));
+// I6: mutable per-test, not a static { status: 'anonymous', ... } — that shape made it
+// impossible for a test to ever exercise the authenticated branch.
+let mockAuthState: { status: string; user: { uid: string; email?: string; displayName?: string } | null; signInWithApple: jest.Mock };
 jest.mock('@/src/contexts/AuthContext', () => ({
-  useAuth: () => ({ status: 'anonymous', signInWithApple: mockSignInWithApple }),
+  useAuth: () => mockAuthState,
 }));
 jest.mock('@/src/contexts/OnboardingDraftContext', () => ({
   useOnboardingDraft: () => ({
@@ -46,6 +49,7 @@ function texts(tree: renderer.ReactTestRenderer): string {
 beforeEach(() => {
   jest.clearAllMocks();
   mockUserTripsState = { trips: [], status: 'ready' };
+  mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple: mockSignInWithApple };
 });
 
 describe('Onboarding step 3', () => {
@@ -150,6 +154,39 @@ describe('Onboarding step 3', () => {
       await act(async () => { await tree.root.findByProps({ testID: 'step3-apple-button' }).props.onPress(); });
       expect(mockPush).not.toHaveBeenCalled();
       expect(texts(tree)).toContain('sign-in failed');
+    });
+  });
+
+  // I6: an already-linked user reaching this screen (via "Create New Trip" from My Trips)
+  // previously still saw "Sign in with Apple" — tapping it hit
+  // auth/provider-already-linked and rendered the raw Firebase message.
+  describe('already-authenticated branch (I6)', () => {
+    beforeEach(() => {
+      mockAuthState = { status: 'authenticated', user: { uid: 'u', email: 'ada@example.com' }, signInWithApple: mockSignInWithApple };
+    });
+
+    it('shows the signed-in identity and a Continue action instead of the Apple button', () => {
+      const tree = render();
+      expect(texts(tree)).toContain('ada@example.com');
+      expect(tree.root.findAllByProps({ testID: 'step3-apple-button' })).toHaveLength(0);
+      expect(tree.root.findAllByProps({ testID: 'step3-continue' }).length).toBeGreaterThan(0);
+    });
+
+    it('Continue advances to step 4 without ever calling signInWithApple', () => {
+      const tree = render();
+      act(() => { tree.root.findByProps({ testID: 'step3-continue' }).props.onPress(); });
+      expect(mockPush).toHaveBeenCalledWith('/onboarding/step-4');
+      expect(mockSignInWithApple).not.toHaveBeenCalled();
+    });
+
+    it('falls back to displayName, then a generic label, when email is absent', () => {
+      mockAuthState = { status: 'authenticated', user: { uid: 'u', displayName: 'Ada Lovelace' }, signInWithApple: mockSignInWithApple };
+      const tree = render();
+      expect(texts(tree)).toContain('Ada Lovelace');
+
+      mockAuthState = { status: 'authenticated', user: { uid: 'u' }, signInWithApple: mockSignInWithApple };
+      const tree2 = render();
+      expect(texts(tree2)).toContain('your Apple ID');
     });
   });
 });

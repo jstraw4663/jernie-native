@@ -10,7 +10,7 @@ import { confirmAdoptExistingAccount } from '@/src/lib/collisionPrompt';
 export default function OnboardingStep3() {
   const router = useRouter();
   const { draft } = useOnboardingDraft();
-  const { signInWithApple } = useAuth();
+  const { status, user, signInWithApple } = useAuth();
   const { trips, status: tripsStatus } = useUserTrips();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +46,32 @@ export default function OnboardingStep3() {
     setBusy(false);
     setError(outcome.message);
   };
+
+  // "Create New Trip" from My Trips (app/(home)/index.tsx) routes here too, so a user who
+  // is already linked (creating a second, third, ... trip) can land on this screen. Before
+  // this branch, that user was shown the same "Sign in with Apple" button as a genuine
+  // first-run user — tapping it hit auth/provider-already-linked and rendered the raw
+  // Firebase message, since linking twice with the same account isn't a real flow.
+  if (status === 'authenticated') {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.eyebrow}>Keep it safe</Text>
+        <Text style={styles.title}>Save your trip</Text>
+        <Text style={styles.sub}>
+          You're signed in as {user?.email ?? user?.displayName ?? 'your Apple ID'} — this trip is saved to your account.
+        </Text>
+
+        <View style={[styles.previewCard, { borderColor: draft.colorPack.stopColors[0] }]}>
+          <View style={[styles.swatch, { backgroundColor: draft.colorPack.stopColors[0] }]} />
+          <Text style={styles.previewName}>{draft.name}</Text>
+        </View>
+
+        <TouchableOpacity testID="step3-continue" style={styles.appleButton} onPress={advance}>
+          <Text style={styles.appleButtonText}>Continue</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
