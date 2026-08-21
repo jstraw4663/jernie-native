@@ -6,7 +6,6 @@ import { getBuildLabel } from '@/src/version';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { useTripAdmin } from '@/src/hooks/useTripAdmin';
 import { confirmDelete } from '@/src/utils/confirmDelete';
-import { auth } from '@/src/lib/firebase';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useUserTrips } from '@/src/hooks/useUserTrips';
 import { confirmAdoptExistingAccount } from '@/src/lib/collisionPrompt';
@@ -19,11 +18,15 @@ export default function ProfileTab() {
   const [error, setError] = useState<string | null>(null);
   const inviteLink = `jernie://join/${trip.inviteToken}`;
 
-  const isOwner = trip.ownerUid === auth().currentUser?.uid;
   const saveDisabled = name.trim().length === 0 || name === trip.name;
 
   const { status, user, signInWithApple, signOut, deleteAccount } = useAuth();
   const { trips, status: tripsStatus } = useUserTrips();
+
+  // `user` from useAuth(), not auth().currentUser read directly — the latter is
+  // non-reactive (no re-render on change) and reads stale/false during the brief window a
+  // delete or sign-out is in flight and the uid has already moved on underneath it.
+  const isOwner = trip.ownerUid === user?.uid;
 
   // useUserTrips() reports 'loading'/'error' with an empty trips array, which would
   // otherwise read as "nothing to lose" and adopt silently — refuse outright until the
@@ -43,7 +46,13 @@ export default function ProfileTab() {
       }
       const adopt = await confirmAdoptExistingAccount(trips.length);
       if (!adopt) return;
-      await outcome.signIn();
+      // Unguarded before: a rejection here (the abandon-and-adopt sign-in itself failing
+      // partway) escaped this async onPress entirely instead of surfacing anything.
+      try {
+        await outcome.signIn();
+      } catch {
+        setError("Couldn't sign in. Try again.");
+      }
       return;
     }
     if (outcome.reason === 'cancelled') return;
@@ -63,10 +72,18 @@ export default function ProfileTab() {
           }
           const adopt = await confirmAdoptExistingAccount(trips.length);
           if (!adopt) return;
-          await outcome.signIn();
-        } else {
+          try {
+            await outcome.signIn();
+          } catch {
+            setError("Couldn't sign in. Try again.");
+          }
+          // Adopting an existing account abandons the uid that owns *this* trip — whether
+          // the adopt succeeded or failed, sharing this trip's invite under whatever
+          // account is now current no longer makes sense. Previously this fell through to
+          // Share.share below regardless.
           return;
         }
+        return;
       }
     }
     await Share.share({

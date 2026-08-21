@@ -6,11 +6,10 @@ jest.mock('expo-router', () => ({
 jest.mock('@/src/contexts/TripContext', () => ({ useTripContext: jest.fn() }));
 jest.mock('@/src/hooks/useTripAdmin', () => ({ useTripAdmin: jest.fn() }));
 jest.mock('@/src/utils/confirmDelete', () => ({ confirmDelete: jest.fn() }));
-jest.mock('@/src/lib/firebase', () => ({ auth: jest.fn() }));
 
-// Auth-context state for the Profile account section / invite gate. Named distinctly from
-// `mockAuth` below, which mocks the unrelated `@/src/lib/firebase` auth() getter used for
-// the owner check.
+// Auth-context state for the Profile account section, invite gate, and (T-minor) the owner
+// check — profile.tsx used to read auth().currentUser?.uid directly for isOwner, which was
+// non-reactive; it now reads the same `user` from useAuth() as everything else on screen.
 let mockAuthState: any;
 const mockConfirmAdopt = jest.fn();
 jest.mock('@/src/contexts/AuthContext', () => ({ useAuth: () => mockAuthState }));
@@ -29,14 +28,12 @@ import ProfileTab from '@/app/(trips)/[tripId]/(tabs)/profile';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { useTripAdmin } from '@/src/hooks/useTripAdmin';
 import { confirmDelete } from '@/src/utils/confirmDelete';
-import { auth } from '@/src/lib/firebase';
 
 const mockShare = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' } as never);
 
 const mockUseTripContext = useTripContext as jest.Mock;
 const mockUseTripAdmin = useTripAdmin as jest.Mock;
 const mockConfirmDelete = confirmDelete as jest.Mock;
-const mockAuth = auth as jest.Mock;
 
 function texts(tree: renderer.ReactTestRenderer): string {
   return tree.root.findAllByType(Text).map(t => {
@@ -74,10 +71,9 @@ beforeEach(() => {
     archiveTrip: mockArchiveTrip,
     restoreTrip: jest.fn(),
   });
-  // Default: current user is the trip owner.
-  mockAuth.mockReturnValue({ currentUser: { uid: 'owner-uid' } });
-  // Default: already linked, so the pre-existing (non-account-section) tests exercise the
-  // invite share path synchronously, as they did before this account section existed.
+  // Default: already linked and the current user is the trip owner, so the pre-existing
+  // (non-account-section) tests exercise the invite share path synchronously, as they did
+  // before this account section existed.
   mockAuthState = {
     status: 'authenticated',
     user: { uid: 'owner-uid' },
@@ -176,12 +172,25 @@ describe('app/(trips)/[tripId]/(tabs)/profile', () => {
     });
 
     test('non-owner: neither the trip-name input nor the Delete trip button renders', () => {
-      mockAuth.mockReturnValue({ currentUser: { uid: 'someone-else-uid' } });
+      mockAuthState = { ...mockAuthState, user: { uid: 'someone-else-uid' } };
       const tree = renderScreen();
 
       expect(tree.root.findAllByProps({ testID: 'trip-name-input' })).toHaveLength(0);
       expect(tree.root.findAllByProps({ testID: 'save-trip-button' })).toHaveLength(0);
       expect(tree.root.findAllByProps({ testID: 'delete-trip-button' })).toHaveLength(0);
+    });
+
+    // T-minor: isOwner used to read auth().currentUser?.uid directly instead of the `user`
+    // already available from useAuth() on this screen — a non-reactive read that could show
+    // stale owner controls (or hide real ones) independently of everything else the screen
+    // renders off auth state. Sourcing it from the same `user` means it updates in lockstep.
+    test('owner-only controls react immediately to the uid changing underneath, without a remount', () => {
+      const tree = renderScreen();
+      expect(tree.root.findAllByProps({ testID: 'trip-name-input' }).length).toBeGreaterThan(0);
+
+      mockAuthState = { ...mockAuthState, user: { uid: 'someone-else-uid' } };
+      act(() => { tree.update(<ProfileTab />); });
+      expect(tree.root.findAllByProps({ testID: 'trip-name-input' })).toHaveLength(0);
     });
 
     test('pressing "Delete trip" calls confirmDelete but does not call archiveTrip until the confirm callback runs', () => {
@@ -408,6 +417,43 @@ describe('app/(trips)/[tripId]/(tabs)/profile', () => {
       await act(async () => { await tree.root.findByProps({ testID: 'share-invite-button' }).props.onPress(); });
       expect(mockConfirmAdopt).not.toHaveBeenCalled();
       expect(signIn).not.toHaveBeenCalled();
+      expect(mockShare).not.toHaveBeenCalled();
+    });
+  });
+
+  // T-minor: `await outcome.signIn()` was unguarded (a rejection escaped the async
+  // onPress), and on success execution fell through to Share.share for a trip the newly
+  // adopted uid no longer owns.
+  describe('collision-adopt sign-in is guarded and never falls through to Share.share', () => {
+    it('sign-in button: a rejected adopt sign-in surfaces an error instead of an unhandled rejection', async () => {
+      const signIn = jest.fn().mockRejectedValue(new Error('boom'));
+      const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+      mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
+      mockConfirmAdopt.mockResolvedValue(true);
+      const tree = renderScreen();
+      await act(async () => { await tree.root.findByProps({ testID: 'profile-signin' }).props.onPress(); });
+      expect(texts(tree)).toContain("Couldn't sign in");
+    });
+
+    it('share-invite button: a rejected adopt sign-in surfaces an error and never shares', async () => {
+      const signIn = jest.fn().mockRejectedValue(new Error('boom'));
+      const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+      mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
+      mockConfirmAdopt.mockResolvedValue(true);
+      const tree = renderScreen();
+      await act(async () => { await tree.root.findByProps({ testID: 'share-invite-button' }).props.onPress(); });
+      expect(texts(tree)).toContain("Couldn't sign in");
+      expect(mockShare).not.toHaveBeenCalled();
+    });
+
+    it('share-invite button: a successful adopt sign-in does not fall through to sharing this trip', async () => {
+      const signIn = jest.fn().mockResolvedValue(undefined);
+      const signInWithApple = jest.fn().mockResolvedValue({ ok: false, reason: 'credential-already-in-use', signIn });
+      mockAuthState = { status: 'anonymous', user: { uid: 'u' }, signInWithApple, signOut: jest.fn(), deleteAccount: jest.fn() };
+      mockConfirmAdopt.mockResolvedValue(true);
+      const tree = renderScreen();
+      await act(async () => { await tree.root.findByProps({ testID: 'share-invite-button' }).props.onPress(); });
+      expect(signIn).toHaveBeenCalled();
       expect(mockShare).not.toHaveBeenCalled();
     });
   });
