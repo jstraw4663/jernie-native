@@ -21,6 +21,13 @@ function randomNonce(length = 32): string {
  * an opaque credential error — hence the dedicated test.
  */
 export async function requestAppleCredential(): Promise<AppleCredentialResult> {
+  // Guards a simulator or an unsupported OS version with a clear message — without this,
+  // signInAsync() below fails with an opaque, unhelpful generic error string.
+  const available = await AppleAuthentication.isAvailableAsync();
+  if (!available) {
+    throw new Error('Sign in with Apple is not available on this device.');
+  }
+
   const rawNonce = randomNonce();
   const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
 

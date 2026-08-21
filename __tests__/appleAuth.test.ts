@@ -1,9 +1,11 @@
 const mockSignInAsync = jest.fn();
+const mockIsAvailableAsync = jest.fn();
 const mockDigest = jest.fn();
 const mockAppleCredential = jest.fn();
 
 jest.mock('expo-apple-authentication', () => ({
   signInAsync: (...a: unknown[]) => mockSignInAsync(...a),
+  isAvailableAsync: (...a: unknown[]) => mockIsAvailableAsync(...a),
   AppleAuthenticationScope: { FULL_NAME: 'FULL_NAME', EMAIL: 'EMAIL' },
 }));
 jest.mock('expo-crypto', () => ({
@@ -22,6 +24,7 @@ import { requestAppleCredential, isAppleCancellation } from '@/src/lib/appleAuth
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockIsAvailableAsync.mockResolvedValue(true);
   mockDigest.mockResolvedValue('HASHED_NONCE');
   mockAppleCredential.mockReturnValue({ providerId: 'apple.com' });
   mockSignInAsync.mockResolvedValue({
@@ -71,6 +74,14 @@ describe('requestAppleCredential', () => {
   it('throws when Apple returns no identity token', async () => {
     mockSignInAsync.mockResolvedValueOnce({ identityToken: null, email: null, fullName: null });
     await expect(requestAppleCredential()).rejects.toThrow('identity token');
+  });
+
+  // T-minor: an unsupported device/OS or a simulator previously fell straight into
+  // signInAsync() and failed with an opaque, generic error string.
+  it('gives a clear message instead of calling signInAsync when the device is unsupported', async () => {
+    mockIsAvailableAsync.mockResolvedValueOnce(false);
+    await expect(requestAppleCredential()).rejects.toThrow('not available on this device');
+    expect(mockSignInAsync).not.toHaveBeenCalled();
   });
 });
 
