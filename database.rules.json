@@ -50,6 +50,14 @@
         "setupIntent":      { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" },
         "deletedAt":        { ".write": "auth != null && root.child('trips/' + $tripId + '/ownerUid').val() === auth.uid" }
       }
+    },
+
+    "bug_reports": {
+      ".read": false,
+      "$reportId": {
+        ".write": "auth != null && !data.exists() && newData.child('author').val() === auth.uid",
+        ".validate": "newData.hasChildren(['id', 'tripId', 'title', 'priority', 'author', 'createdAt']) && newData.child('id').val() === $reportId && newData.child('author').val() === auth.uid && newData.child('title').isString() && newData.child('title').val().length > 0 && newData.child('title').val().length <= 200 && (newData.child('priority').val() === 'high' || newData.child('priority').val() === 'medium' || newData.child('priority').val() === 'low') && newData.child('createdAt').isNumber() && (!newData.hasChild('body') || (newData.child('body').isString() && newData.child('body').val().length <= 4000))"
+      }
     }
   }
 }
