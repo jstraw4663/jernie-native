@@ -11,14 +11,18 @@ import { maybeSeedDevData } from '@/src/lib/devSeed';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  // Six static faces — every weight the design specifies, and nothing else. Static, not
+  // variable: React Native cannot drive a variable font's `wght` axis, so each weight needs
+  // its own file and its own family name. `fontWeight` in tokens.ts is advisory; the family
+  // name is what selects the weight. The design uses no italic and no bold serif, so no
+  // italic or Fraunces-Bold face is bundled.
   const [fontsLoaded, fontError] = useFonts({
-    Fraunces: require('../assets/fonts/Fraunces.ttf'),
-    'Fraunces-Italic': require('../assets/fonts/Fraunces-Italic.ttf'),
-    DMSans: require('../assets/fonts/DMSans.ttf'),
-    'DMSans-Italic': require('../assets/fonts/DMSans-Italic.ttf'),
+    Fraunces: require('../assets/fonts/Fraunces-Regular.ttf'),
+    DMSans: require('../assets/fonts/DMSans-Regular.ttf'),
+    'DMSans-SemiBold': require('../assets/fonts/DMSans-SemiBold.ttf'),
+    'DMSans-Bold': require('../assets/fonts/DMSans-Bold.ttf'),
     DMMono: require('../assets/fonts/DMMono-Regular.ttf'),
     'DMMono-Medium': require('../assets/fonts/DMMono-Medium.ttf'),
-    'DMMono-Italic': require('../assets/fonts/DMMono-Italic.ttf'),
   });
 
   useEffect(() => {

@@ -1,7 +1,13 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Share, TextInput, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Core, Semantic, Typography, Spacing, Radius } from '@/src/design/tokens';
+import { EnvelopeSimpleIcon } from 'phosphor-react-native/src/icons/EnvelopeSimple';
+import { LockSimpleIcon } from 'phosphor-react-native/src/icons/LockSimple';
+import { SignOutIcon } from 'phosphor-react-native/src/icons/SignOut';
+import { TrashIcon } from 'phosphor-react-native/src/icons/Trash';
+import { UserCircleIcon } from 'phosphor-react-native/src/icons/UserCircle';
+import { WarningIcon } from 'phosphor-react-native/src/icons/Warning';
+import { Core, Radius, Semantic, Spacing, Typography } from '@/src/design/tokens';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { useConnectivityState } from '@/src/contexts/ConnectivityContext';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -226,14 +232,14 @@ export default function ProfileTab() {
         >
           {status === 'authenticated' ? (
             <SettingsRow
-              icon="👤"
+              Glyph={UserCircleIcon}
               label={user?.email ?? profile.email ?? displayName ?? 'Signed in'}
               sublabel="Your trips are saved to this account"
               testID="profile-account-row"
             />
           ) : (
             <SettingsRow
-              icon="🔒"
+              Glyph={LockSimpleIcon}
               label="Sign in with Apple"
               sublabel="This trip lives only on this phone"
               onPress={() => { void handleSignIn(); }}
@@ -242,7 +248,7 @@ export default function ProfileTab() {
           )}
 
           <SettingsRow
-            icon="✉️"
+            Glyph={EnvelopeSimpleIcon}
             label="Invite travellers"
             sublabel={status === 'authenticated' ? inviteLink : 'Sign in first — an invite outlives your phone'}
             onPress={() => { void handleShareInvite(); }}
@@ -251,7 +257,7 @@ export default function ProfileTab() {
 
           {status === 'authenticated' ? (
             <SettingsRow
-              icon="🚪"
+              Glyph={SignOutIcon}
               label="Sign out"
               onPress={() => { void handleSignOut(); }}
               testID="profile-signout"
@@ -260,7 +266,7 @@ export default function ProfileTab() {
 
           {status === 'authenticated' ? (
             <SettingsRow
-              icon="⚠️"
+              Glyph={WarningIcon}
               label="Delete account"
               destructive
               onPress={handleDeleteAccount}
@@ -295,7 +301,7 @@ export default function ProfileTab() {
               </TouchableOpacity>
             </View>
             <SettingsRow
-              icon="🗑️"
+              Glyph={TrashIcon}
               label="Delete trip"
               sublabel="Moves to Recently Deleted"
               destructive
@@ -326,24 +332,24 @@ export default function ProfileTab() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Core.bg },
+  container: { flex: 1, backgroundColor: Core.surface },
   scroll: { paddingHorizontal: Spacing.base, paddingBottom: Spacing.xxxl, gap: Spacing.lg },
-  errorText: { ...Typography.roles.meta, color: Semantic.error },
+  errorText: { ...Typography.roles.sub, color: Semantic.error },
 
   tripNameBlock: { padding: Spacing.base, gap: Spacing.sm },
-  settingsLabel: { ...Typography.roles.label, color: Core.textMuted },
+  settingsLabel: { ...Typography.roles.chip, color: Core.textMuted },
   nameInput: {
     ...Typography.roles.body,
     color: Core.text,
     backgroundColor: Core.surfaceMuted,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
   },
   saveButton: {
     alignSelf: 'flex-start',
     backgroundColor: Core.action,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.lg,
   },

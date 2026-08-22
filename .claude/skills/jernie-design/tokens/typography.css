@@ -1,0 +1,25 @@
+/* Type roles. Three families, one job each:
+   Fraunces for the name of a thing, DM Sans for the interface,
+   DM Mono for anything that lines up in a column (dates, times, counts). */
+
+:root {
+  --text-hero: 400 34px/1.02 var(--font-display);
+  --text-display: 400 31px/1.06 var(--font-display);
+  --text-title: 400 24px/1.05 var(--font-display);
+
+  --text-screen: 700 25px/1.05 var(--font-ui);
+  --text-section: 700 15px/1.1 var(--font-ui);
+  --text-row: 700 13.5px/17px var(--font-ui);
+  --text-body: 400 13px/1.65 var(--font-ui);
+  --text-sub: 400 11px/14px var(--font-ui);
+  --text-button: 600 15px/1 var(--font-ui);
+  --text-chip: 600 12.5px/1 var(--font-ui);
+  --text-caps: 700 10px/1 var(--font-ui);
+  --text-data: 500 11px/1 var(--font-data);
+  --text-data-sm: 500 10.5px/1 var(--font-data);
+
+  --tracking-hero: -0.015em;
+  --tracking-screen: -0.7px;
+  --tracking-row: -0.3px;
+  --tracking-caps: 0.13em;
+}

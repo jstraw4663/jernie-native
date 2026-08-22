@@ -1,3 +1,5 @@
+import type { Icon } from 'phosphor-react-native';
+import { XIcon } from 'phosphor-react-native/src/icons/X';
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import Animated, {
@@ -8,13 +10,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Core, Brand, Spacing, Radius } from '@/src/design/tokens';
+import { Core, Radius, Scrim, Spacing } from '@/src/design/tokens';
 import { stopHeroGradient, hexWithAlpha } from '@/src/utils/colors';
 
 type PlaceMode = {
   mode: 'place';
   photoUri?: string;  // absent → gradient background (most real places have no photo)
-  emoji: string;
+  Glyph: Icon;
   categoryLabel: string;
   stopLabel: string;
   stopColor: string;
@@ -55,27 +57,27 @@ export function SheetHero(props: SheetHeroProps) {
         />
       ) : (
         <LinearGradient
-          colors={[Brand.navy, gradientColors[1]]}
+          colors={[Scrim.mid, Scrim.bottom]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
       )}
 
       <LinearGradient
-        colors={[hexWithAlpha(Brand.navy, 0.12), hexWithAlpha(Brand.navy, 0.40), hexWithAlpha(Brand.navy, 0.84)]}
+        colors={[Scrim.top, Scrim.mid, Scrim.bottom]}
         locations={[0, 0.4, 1]}
         style={StyleSheet.absoluteFill}
       />
 
       <TouchableOpacity style={s.closeBtn} onPress={props.onClose} activeOpacity={0.8}>
-        <Text style={s.closeTxt}>✕</Text>
+        <XIcon size={14} color={Core.white} weight="bold" />
       </TouchableOpacity>
 
       <Animated.View style={[StyleSheet.absoluteFill, contentStyle]} pointerEvents="none">
         {props.mode === 'place' ? (
           <View style={s.heroBottom}>
             <View style={s.heroEmoji}>
-              <Text style={s.heroEmojiTxt}>{props.emoji}</Text>
+              <props.Glyph size={17} color={Core.white} weight="fill" />
             </View>
             <View style={s.heroChips}>
               <View style={s.catChip}>
@@ -95,8 +97,8 @@ export function SheetHero(props: SheetHeroProps) {
 }
 
 const s = StyleSheet.create({
-  hero:        { overflow: 'hidden', backgroundColor: Brand.navy },
-  closeBtn:    { position: 'absolute', top: 14, right: 14, width: Spacing.xxl, height: Spacing.xxl, borderRadius: Radius.xl, backgroundColor: hexWithAlpha(Brand.navy, 0.32), borderWidth: 1, borderColor: hexWithAlpha(Core.white, 0.12), alignItems: 'center', justifyContent: 'center', zIndex: 3 },
+  hero:        { overflow: 'hidden', backgroundColor: Core.text },
+  closeBtn:    { position: 'absolute', top: 14, right: 14, width: Spacing.xxl, height: Spacing.xxl, borderRadius: Radius.row, backgroundColor: Core.onPhotoChip, borderWidth: 1, borderColor: hexWithAlpha(Core.white, 0.12), alignItems: 'center', justifyContent: 'center', zIndex: 3 },
   closeTxt:    { fontSize: 14, fontWeight: '600' as const, color: Core.white, fontFamily: 'DMSans' },
   heroBottom:  { position: 'absolute', left: Spacing.base, right: Spacing.base, bottom: Spacing.base, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', zIndex: 2 },
   heroEmoji:   { width: 52, height: 52, borderRadius: Radius.card, backgroundColor: hexWithAlpha(Core.white, 0.15), borderWidth: 1, borderColor: hexWithAlpha(Core.white, 0.2), alignItems: 'center', justifyContent: 'center' },

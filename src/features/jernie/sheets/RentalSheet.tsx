@@ -4,7 +4,7 @@ import { useSharedValue } from 'react-native-reanimated';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { SheetHero } from './SheetHero';
 import { InfoSection } from './SheetParts';
-import { Brand, Core, Typography, Spacing, Radius } from '@/src/design/tokens';
+import { Core, Radius, Spacing, Typography } from '@/src/design/tokens';
 import { hexWithAlpha } from '@/src/utils/colors';
 import type { RentalBooking } from '@/src/types';
 
@@ -51,7 +51,7 @@ export function RentalSheet({ booking, stopColor, stopLabel, onEdit, onClose }: 
   return (
     <View style={s.root}>
       <SheetHero mode="travel" stopColor={stopColor} onClose={onClose} scrollY={scrollY}>
-        <View style={[s.badge, { backgroundColor: hexWithAlpha(Brand.navySoft, 0.32), borderColor: hexWithAlpha(Brand.navySoft, 0.4) }]}>
+        <View style={[s.badge, { backgroundColor: Core.onPhotoChip, borderColor: Core.onPhoto2 }]}>
           <Text style={[s.badgeTxt, { color: hexWithAlpha(Core.white, 0.80) }]}>Rental car</Text>
         </View>
         <Text style={s.heroTitle}>{shortDate(booking.pickupDate)} → {shortDate(booking.dropoffDate)}</Text>
@@ -91,7 +91,7 @@ const s = StyleSheet.create({
   titleRow:      { padding: Spacing.base, paddingBottom: Spacing.sm, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   titleLeft:     { flex: 1 },
   name:          { fontFamily: 'Fraunces', fontSize: 26, color: Core.text, marginBottom: 3, lineHeight: 30 },
-  subtitle:      { ...Typography.roles.meta, color: Core.textMuted, lineHeight: 18 },
+  subtitle:      { ...Typography.roles.sub, color: Core.textMuted, lineHeight: 18 },
   editButton:    { borderWidth: 1, borderColor: Core.border, borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 6, flexShrink: 0 },
   editText:      { ...Typography.roles.button },
   bottomPad:     { height: 32 },

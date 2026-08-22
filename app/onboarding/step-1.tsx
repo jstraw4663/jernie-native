@@ -1,7 +1,20 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Brand, Core, Typography, Radius, Spacing } from '@/src/design/tokens';
+import type { Icon } from 'phosphor-react-native';
+import { BuildingsIcon } from 'phosphor-react-native/src/icons/Buildings';
+import { CarProfileIcon } from 'phosphor-react-native/src/icons/CarProfile';
+import { FishIcon } from 'phosphor-react-native/src/icons/Fish';
+import { FlowerLotusIcon } from 'phosphor-react-native/src/icons/FlowerLotus';
+import { HeartIcon } from 'phosphor-react-native/src/icons/Heart';
+import { MusicNotesIcon } from 'phosphor-react-native/src/icons/MusicNotes';
+import { PersonSimpleHikeIcon } from 'phosphor-react-native/src/icons/PersonSimpleHike';
+import { PersonSimpleSkiIcon } from 'phosphor-react-native/src/icons/PersonSimpleSki';
+import { TentIcon } from 'phosphor-react-native/src/icons/Tent';
+import { TreePalmIcon } from 'phosphor-react-native/src/icons/TreePalm';
+import { UsersThreeIcon } from 'phosphor-react-native/src/icons/UsersThree';
+import { WineIcon } from 'phosphor-react-native/src/icons/Wine';
+import { Core, Radius, Spacing, Typography } from '@/src/design/tokens';
 import { useOnboardingDraft } from '@/src/contexts/OnboardingDraftContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useCollisionSignIn } from '@/src/hooks/useCollisionSignIn';
@@ -13,19 +26,22 @@ import { useCollisionSignIn } from '@/src/hooks/useCollisionSignIn';
 // suggestions rather than reordering the first four. Spans a range of trip archetypes (not
 // just food/activity tags) so groups planning something other than a food-and-hike trip still
 // find something that fits.
-const VIBE_SUGGESTIONS = [
-  '🦞 Seafood',
-  '🏔️ Hiking',
-  '🏖️ Beach',
-  '🍷 Wine',
-  '🏙️ City',
-  '👨‍👩‍👧 Family',
-  '💑 Romantic',
-  '🎉 Nightlife',
-  '🚐 Road Trip',
-  '⛷️ Ski',
-  '🏕️ Camping',
-  '🧘 Relax',
+// The label is what gets stored on the trip, so it carries no glyph — the icon is a
+// rendering choice, not data. Trips created before this change keep their emoji labels;
+// they are display-only strings and need no migration.
+const VIBE_SUGGESTIONS: { label: string; Glyph: Icon }[] = [
+  { label: 'Seafood',    Glyph: FishIcon },
+  { label: 'Hiking',     Glyph: PersonSimpleHikeIcon },
+  { label: 'Beach',      Glyph: TreePalmIcon },
+  { label: 'Wine',       Glyph: WineIcon },
+  { label: 'City',       Glyph: BuildingsIcon },
+  { label: 'Family',     Glyph: UsersThreeIcon },
+  { label: 'Romantic',   Glyph: HeartIcon },
+  { label: 'Nightlife',  Glyph: MusicNotesIcon },
+  { label: 'Road Trip',  Glyph: CarProfileIcon },
+  { label: 'Ski',        Glyph: PersonSimpleSkiIcon },
+  { label: 'Camping',    Glyph: TentIcon },
+  { label: 'Relax',      Glyph: FlowerLotusIcon },
 ];
 
 export default function OnboardingStep1() {
@@ -102,7 +118,7 @@ export default function OnboardingStep1() {
         testID="step1-trip-name"
         style={styles.input}
         placeholder="e.g. NYC Summer"
-        placeholderTextColor="rgba(255,255,255,0.4)"
+        placeholderTextColor={Core.textFaint}
         value={name}
         onChangeText={setNameLocal}
         autoFocus
@@ -114,7 +130,7 @@ export default function OnboardingStep1() {
         testID="step1-organizer-handle"
         style={styles.input}
         placeholder="e.g. Jeremy"
-        placeholderTextColor="rgba(255,255,255,0.4)"
+        placeholderTextColor={Core.textFaint}
         value={organizerHandle}
         onChangeText={setOrganizerHandleLocal}
         returnKeyType="done"
@@ -123,16 +139,17 @@ export default function OnboardingStep1() {
 
       <Text style={styles.label}>Vibe (optional)</Text>
       <View style={styles.chipRow}>
-        {VIBE_SUGGESTIONS.map((pill, i) => {
-          const selected = selectedPills.includes(pill);
+        {VIBE_SUGGESTIONS.map(({ label, Glyph }, i) => {
+          const selected = selectedPills.includes(label);
           return (
             <TouchableOpacity
-              key={pill}
+              key={label}
               testID={`step1-pill-${i}`}
               style={[styles.chip, selected && styles.chipSelected]}
-              onPress={() => togglePill(pill)}
+              onPress={() => togglePill(label)}
             >
-              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{pill}</Text>
+              <Glyph size={13} color={selected ? Core.textInverse : Core.textMuted} weight={selected ? 'fill' : 'regular'} />
+              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
             </TouchableOpacity>
           );
         })}
@@ -168,31 +185,31 @@ export default function OnboardingStep1() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Brand.navy,
+    backgroundColor: Core.surface,
     justifyContent: 'center',
     paddingHorizontal: Spacing.xl,
   },
   eyebrow: {
-    ...Typography.roles.labelCaps,
-    color: Brand.gold,
+    ...Typography.roles.caps,
+    color: Core.action,
     marginBottom: Spacing.sm,
   },
   title: {
-    ...Typography.roles.h1,
-    color: Core.white,
+    ...Typography.roles.display,
+    color: Core.text,
     marginBottom: Spacing.xl,
   },
   label: {
-    ...Typography.roles.label,
-    color: 'rgba(255,255,255,0.65)',
+    ...Typography.roles.chip,
+    color: Core.textMuted,
     marginBottom: Spacing.sm,
   },
   input: {
     ...Typography.roles.body,
-    color: Core.white,
+    color: Core.text,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-    borderRadius: Radius.md,
+    borderColor: Core.border,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.md,
     marginBottom: Spacing.base,
@@ -204,26 +221,29 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: Core.border,
     borderRadius: Radius.full,
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.sm,
   },
   chipSelected: {
-    backgroundColor: Brand.gold,
-    borderColor: Brand.gold,
+    backgroundColor: Core.action,
+    borderColor: Core.action,
   },
   chipText: {
     ...Typography.roles.button,
-    color: 'rgba(255,255,255,0.85)',
+    color: Core.text,
   },
   chipTextSelected: {
-    color: Brand.navy,
+    color: Core.textInverse,
   },
   continueButton: {
-    backgroundColor: Brand.gold,
-    borderRadius: Radius.md,
+    backgroundColor: Core.action,
+    borderRadius: Radius.icon,
     paddingVertical: Spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -233,7 +253,7 @@ const styles = StyleSheet.create({
   },
   continueButtonText: {
     ...Typography.roles.button,
-    color: Brand.navy,
+    color: Core.textInverse,
   },
   signIn: {
     alignItems: 'center',
@@ -242,11 +262,11 @@ const styles = StyleSheet.create({
   },
   signInText: {
     ...Typography.roles.body,
-    color: 'rgba(255,255,255,0.55)',
+    color: Core.textFaint,
     textDecorationLine: 'underline',
   },
   signInError: {
-    ...Typography.roles.meta,
+    ...Typography.roles.sub,
     color: '#F5A9B8',
     marginTop: Spacing.base,
     textAlign: 'center',

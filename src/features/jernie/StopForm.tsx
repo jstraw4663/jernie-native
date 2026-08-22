@@ -4,7 +4,7 @@ import { Calendar } from 'react-native-calendars';
 import type { DateData } from 'react-native-calendars';
 import { geocodeCity } from '@/src/lib/geocodeClient';
 import { formatDateRange } from '@/src/utils/dates';
-import { Core, Semantic, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { Core, Radius, Semantic, Spacing, Typography } from '@/src/design/tokens';
 
 // react-native-calendars' bundled types omit `markingType` from CalendarProps even though
 // the runtime Day component reads it directly (calendar/day/index.js) — widen the type here
@@ -235,7 +235,7 @@ export function StopForm({ onSubmit, onCancel, submitLabel = 'Continue', initial
       )}
       {hasFreshGeocode && resolved && (
         <Text style={s.successText}>
-          📍 {resolved.city}{resolved.region ? `, ${resolved.region}` : ''}
+          {resolved.city}{resolved.region ? `, ${resolved.region}` : ''}
         </Text>
       )}
 
@@ -296,7 +296,7 @@ const s = StyleSheet.create({
     padding: Spacing.lg,
   },
   label: {
-    ...Typography.roles.label,
+    ...Typography.roles.chip,
     color: Core.textMuted,
     marginBottom: Spacing.sm,
   },
@@ -312,7 +312,7 @@ const s = StyleSheet.create({
     ...Typography.roles.body,
     color: Core.text,
     backgroundColor: Core.surfaceMuted,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.sm,
   },
@@ -320,16 +320,16 @@ const s = StyleSheet.create({
     flex: 1,
   },
   mutedText: {
-    ...Typography.roles.meta,
+    ...Typography.roles.sub,
     color: Core.textMuted,
     marginBottom: Spacing.sm,
   },
   calendar: {
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
   },
   findButton: {
     backgroundColor: Core.action,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.sm,
     minWidth: 72,
@@ -344,13 +344,13 @@ const s = StyleSheet.create({
     color: Core.white,
   },
   errorText: {
-    ...Typography.roles.meta,
+    ...Typography.roles.sub,
     color: Semantic.error,
     marginTop: Spacing.sm,
   },
   successText: {
-    ...Typography.roles.meta,
-    color: Semantic.success,
+    ...Typography.roles.sub,
+    color: Core.action,
     marginTop: Spacing.sm,
   },
   actions: {
@@ -367,7 +367,7 @@ const s = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: Core.action,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.md,
     minWidth: 120,

@@ -53,11 +53,41 @@ be installed under `$HOME` — `LD_LIBRARY_PATH` does not apply to absolute path
 ## Key API notes
 
 - **MMKV v4:** Use `createMMKV({ id: 'name' })` — NOT `new MMKV()`. The constructor was removed in v4.
-- **Fraunces font filenames:** Google Fonts uses 4 axes — actual files are `Fraunces[SOFT,WONK,opsz,wght].ttf` and `Fraunces-Italic[SOFT,WONK,opsz,wght].ttf` (not `[opsz,wght]` as originally spec'd). Use these in `useFonts()` in `app/_layout.tsx`.
   ```typescript
   import { createMMKV } from 'react-native-mmkv';
   const storage = createMMKV({ id: 'jernie-write-queue' });
   ```
+- **Fonts are static, never variable.** React Native cannot drive a variable font's `wght`
+  axis, and iOS synthesises no weight at all. `assets/fonts/` holds six static TTFs, each
+  registered under its own family name in `app/_layout.tsx`: Fraunces 400, DM Sans
+  400/600/700, DM Mono 400/500. That is every weight the design specifies — it uses no
+  italic and no bold serif, so neither is bundled.
+  **Weight is selected by family name.** `fontFamily: 'DMSans', fontWeight: '700'` renders
+  Regular; you want `fontFamily: 'DMSans-Bold'`. A token role must resolve to a bundled
+  face — if you add a role, add the face or pick an existing one.
+  The variable Google Fonts downloads (`Fraunces[SOFT,WONK,opsz,wght].ttf`,
+  `DMSans[opsz,wght].ttf` and their short-named duplicates) were deleted; Fraunces's default
+  instance was Black, which is why every serif heading rendered heavy. The static faces come
+  from the `@expo-google-fonts/{fraunces,dm-sans}` tarballs and are vendored, not depended
+  on. Check them on device at `jernie://dev/fonts`.
+- **`eas build` builds the committed git state, not your working tree.** It warns about
+  uncommitted changes and offers to continue; continuing uploads `HEAD` regardless. **Commit
+  before every build that adds a native dependency**, or the client comes back without it.
+  The symptom is a salmon-tinted box showing a single letter where an icon should be — that
+  is RN's `Unimplemented component: <RNSVGSvgView>` label crushed into a 16px square, not a
+  rendering bug. Confirm with `git show HEAD:package.json | grep <the-dep>`.
+- **Native deps need a dev build.** `react-native-svg` (Phosphor icons) and `expo-image` ship
+  native code, so `eas build --profile development --platform ios` after adding them.
+- **Phosphor icons import per-icon, never from the barrel.** Metro does not tree-shake
+  barrels and the index is over 500KB: `import Star from 'phosphor-react-native/src/icons/Star'`.
+  The package declares that subpath in its `exports`.
+- **Design tokens: `src/design/tokens.ts`.** Regenerated from
+  `.claude/skills/jernie-design/tokens/*.css`. The navy / gold / cream palette is deleted, not
+  deprecated — `Brand` no longer exists. Colours come from `Core` / `Semantic` / `TypeColors`
+  / `Scrim`, type from `Typography.roles`, and there is exactly one accent (`Core.action`,
+  teal) meaning *secured*; amber `Semantic.warning` means *unfinished*; red is a failed
+  booking and almost never appears. New components take colours from `useTheme()`
+  (`src/design/useTheme.ts`) so dark mode is a config flip rather than a second pass.
 - **Reanimated v4** (not v3 as spec'd): API is backward-compatible. Use `useSharedValue`, `withSpring`, etc. as documented in v3 — all work in v4.
 
 ## Git rules

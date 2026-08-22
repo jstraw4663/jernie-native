@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Core, Spacing, Radius, Typography } from '@/src/design/tokens';
+import { Core, Radius, Spacing, Typography } from '@/src/design/tokens';
 import { PlaceListCard } from './PlaceListCard';
 import { SORT_OPTIONS } from '@/src/domain/explore';
 import type { SortKey } from '@/src/domain/explore';
@@ -59,9 +59,9 @@ export function PlaceList({ places, sort, onSortChange, accentColor, getStopColo
 const s = StyleSheet.create({
   container: { paddingHorizontal: Spacing.base, paddingTop: Spacing.md, paddingBottom: Spacing.xxl },
   header:    { marginBottom: Spacing.sm },
-  title:     { ...Typography.roles.h3, color: Core.text },
-  count:     { ...Typography.roles.meta, color: Core.textMuted },
+  title:     { ...Typography.roles.section, color: Core.text },
+  count:     { ...Typography.roles.sub, color: Core.textMuted },
   sortRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs, marginBottom: Spacing.md },
-  sortPill:  { ...Typography.roles.label, color: Core.textMuted, borderWidth: 1, borderColor: Core.border, borderRadius: Radius.full, paddingHorizontal: Spacing.md, paddingVertical: 6, overflow: 'hidden' },
+  sortPill:  { ...Typography.roles.chip, color: Core.textMuted, borderWidth: 1, borderColor: Core.border, borderRadius: Radius.full, paddingHorizontal: Spacing.md, paddingVertical: 6, overflow: 'hidden' },
   empty:     { ...Typography.roles.body, color: Core.textMuted, textAlign: 'center', paddingVertical: Spacing.xl },
 });

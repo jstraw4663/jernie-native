@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import type { StopWithColor, Booking, BookingType, ItineraryDay, ItineraryItem } from '@/src/types';
-import { Core, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { Core, Radius, Spacing, Typography } from '@/src/design/tokens';
 import { TravelCard } from './components/TravelCard';
 import { ItineraryDayRow } from './components/ItineraryDayRow';
 
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.sm,
   },
   sectionLabel: {
-    ...Typography.roles.labelCaps,
+    ...Typography.roles.caps,
     color: Core.textFaint,
   },
   sectionLine: {
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   addPillText: {
-    ...Typography.roles.labelCaps,
+    ...Typography.roles.caps,
     color: Core.textMuted,
   },
   emptyAddRow: {

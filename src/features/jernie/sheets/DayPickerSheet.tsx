@@ -7,7 +7,7 @@ import { useTripContext } from '@/src/contexts/TripContext';
 import { getDefaultDayForStop } from '@/src/domain/explore';
 import { getDevNow } from '@/src/utils/devTime';
 import { formatDayLabel } from '@/src/utils/dates';
-import { Core, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { Core, Radius, Spacing, Typography } from '@/src/design/tokens';
 import { hexWithAlpha } from '@/src/utils/colors';
 import type { ItineraryDay } from '@/src/types';
 
@@ -191,10 +191,10 @@ export const DayPickerSheet = React.forwardRef<DayPickerSheetRef, object>((_, re
 
 const s = StyleSheet.create({
   handle:     { backgroundColor: Core.textFaint, width: 44, height: 5 },
-  background: { backgroundColor: Core.bg, borderRadius: 24 },
+  background: { backgroundColor: Core.surface, borderRadius: 24 },
   content:    { padding: Spacing.lg, paddingBottom: 32 },
   title: {
-    ...Typography.roles.h2,
+    ...Typography.roles.title,
     color: Core.text,
     marginBottom: Spacing.base,
   },
@@ -215,18 +215,18 @@ const s = StyleSheet.create({
     borderColor: Core.action,
   },
   scopeText: {
-    ...Typography.roles.label,
+    ...Typography.roles.chip,
     color: Core.textMuted,
   },
   scopeTextActive: { color: Core.white },
   sectionHeader: {
-    ...Typography.roles.labelCaps,
+    ...Typography.roles.caps,
     color: Core.textFaint,
     marginTop: Spacing.md,
     marginBottom: Spacing.sm,
   },
   emptyText: {
-    ...Typography.roles.meta,
+    ...Typography.roles.sub,
     color: Core.textMuted,
   },
   dayRow: {
@@ -237,7 +237,7 @@ const s = StyleSheet.create({
     backgroundColor: Core.surface,
     borderWidth: 1,
     borderColor: Core.border,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.md,
     marginBottom: Spacing.sm,
@@ -250,7 +250,7 @@ const s = StyleSheet.create({
   },
   dayLabelPast: { color: Core.textMuted },
   dayMeta: {
-    ...Typography.roles.meta,
+    ...Typography.roles.sub,
     color: Core.textFaint,
     marginTop: 1,
   },
@@ -259,5 +259,5 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
-  todayBadgeText: { ...Typography.roles.labelCaps },
+  todayBadgeText: { ...Typography.roles.caps },
 });

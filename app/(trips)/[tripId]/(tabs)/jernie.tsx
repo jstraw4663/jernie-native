@@ -32,7 +32,7 @@ import { BookingFormSheet } from '@/src/features/jernie/sheets/BookingFormSheet'
 import type { BookingFormSheetRef } from '@/src/features/jernie/sheets/BookingFormSheet';
 import { CustomItemSheet } from '@/src/features/jernie/sheets/CustomItemSheet';
 import type { CustomItemSheetRef } from '@/src/features/jernie/sheets/CustomItemSheet';
-import { Brand, Core } from '@/src/design/tokens';
+import { Core } from '@/src/design/tokens';
 import type { Booking, BookingType, ItineraryItem, StopWithColor } from '@/src/types';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -404,7 +404,7 @@ export default function JernieTab() {
                 <RefreshControl
                   refreshing={status === 'loading'}
                   onRefresh={refetch}
-                  tintColor={Brand.gold}
+                  tintColor={Core.action}
                 />
               }
             >
@@ -439,7 +439,7 @@ export default function JernieTab() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Core.bg },
+  container: { flex: 1, backgroundColor: Core.surface },
   pager:     { flex: 1 },
   page:      { width: SCREEN_WIDTH, flex: 1 },
   bottomPad: { height: 48 },

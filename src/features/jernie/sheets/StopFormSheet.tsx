@@ -7,7 +7,7 @@ import { useAddStop } from '@/src/hooks/useAddStop';
 import { useEditStop } from '@/src/hooks/useEditStop';
 import { confirmDelete } from '@/src/utils/confirmDelete';
 import { StopForm, type ResolvedStop } from '@/src/features/jernie/StopForm';
-import { Core, Semantic, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { Core, Radius, Semantic, Spacing, Typography } from '@/src/design/tokens';
 import type { StopWithColor } from '@/src/types';
 
 export type StopFormSheetRef = {
@@ -135,16 +135,16 @@ export const StopFormSheet = React.forwardRef<StopFormSheetRef, StopFormSheetPro
 
 const s = StyleSheet.create({
   handle:     { backgroundColor: Core.textFaint, width: 44, height: 5 },
-  background: { backgroundColor: Core.bg, borderRadius: 24 },
+  background: { backgroundColor: Core.surface, borderRadius: 24 },
   content:    { paddingBottom: 24 },
   removeButton: {
     alignSelf: 'center',
     marginTop: Spacing.md,
     marginBottom: Spacing.lg,
-    backgroundColor: Semantic.errorTint,
+    backgroundColor: Semantic.errorSoft,
     borderWidth: 1,
     borderColor: Semantic.error,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.lg,
   },

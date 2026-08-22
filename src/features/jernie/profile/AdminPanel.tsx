@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput, StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Core, Semantic, Radius, Spacing, Typography, Animation } from '@/src/design/tokens';
+import { Animation, Core, Radius, Semantic, Spacing, Typography } from '@/src/design/tokens';
 import { getBuildInfo, MILESTONE } from '@/src/version';
 import { formatCacheAge } from '@/src/utils/cacheAge';
 import { getQueue, flush, subscribe } from '@/src/lib/writeQueue';
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   panel: {
     position: 'absolute',
     top: 0, right: 0, bottom: 0, left: 0,
-    backgroundColor: Core.bg,
+    backgroundColor: Core.surface,
   },
   header: {
     flexDirection: 'row',
@@ -188,40 +188,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.base,
     paddingBottom: Spacing.md,
   },
-  title: { ...Typography.roles.h2, color: Core.text },
+  title: { ...Typography.roles.title, color: Core.text },
   close: { ...Typography.roles.button, color: Core.action },
   scroll: { paddingHorizontal: Spacing.base, paddingBottom: Spacing.xxxl, gap: Spacing.md },
   card: {
     backgroundColor: Core.surface,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.tile,
     padding: Spacing.md,
     gap: Spacing.xs,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.xs },
-  cardTitle: { ...Typography.roles.labelCaps, color: Core.textMuted },
-  cardAction: { ...Typography.roles.label, color: Core.action },
+  cardTitle: { ...Typography.roles.caps, color: Core.textMuted },
+  cardAction: { ...Typography.roles.chip, color: Core.action },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  rowLabel: { ...Typography.roles.meta, color: Core.textMuted, width: 88 },
-  rowValue: { ...Typography.roles.mono, color: Core.text, flex: 1 },
-  empty: { ...Typography.roles.meta, color: Core.textFaint },
-  queuePath: { ...Typography.roles.mono, color: Core.text, fontSize: 11 },
-  hint: { ...Typography.roles.meta, color: Core.textMuted, marginBottom: Spacing.xs },
+  rowLabel: { ...Typography.roles.sub, color: Core.textMuted, width: 88 },
+  rowValue: { ...Typography.roles.data, color: Core.text, flex: 1 },
+  empty: { ...Typography.roles.sub, color: Core.textFaint },
+  queuePath: { ...Typography.roles.data, color: Core.text, fontSize: 11 },
+  hint: { ...Typography.roles.sub, color: Core.textMuted, marginBottom: Spacing.xs },
   input: {
-    ...Typography.roles.mono,
+    ...Typography.roles.data,
     color: Core.text,
     backgroundColor: Core.surfaceMuted,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.sm,
   },
   setButton: {
     alignSelf: 'flex-start',
     marginTop: Spacing.sm,
-    backgroundColor: Semantic.selectedTint,
-    borderRadius: Radius.md,
+    backgroundColor: Core.actionSoft,
+    borderRadius: Radius.icon,
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.md,
   },
-  setButtonText: { ...Typography.roles.label, color: Semantic.selected },
-  warpError: { ...Typography.roles.meta, color: Semantic.error, marginTop: Spacing.xs },
+  setButtonText: { ...Typography.roles.chip, color: Core.action },
+  warpError: { ...Typography.roles.sub, color: Semantic.error, marginTop: Spacing.xs },
 });

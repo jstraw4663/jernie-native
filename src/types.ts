@@ -60,6 +60,10 @@ export interface Stop {
   tripId: string;
   city: string;
   region: string;
+  /** @deprecated Unrendered since the icon sweep — a stop's glyph now comes from
+   *  `iconFor()` in src/design/icons.ts. The field stays because `trips/{tripId}` is
+   *  create-once and immutable at the top level by RTDB rule, so existing records keep it.
+   *  Still written on create to satisfy the rule; never read. */
   emoji: string;
   lat: number;
   lon: number;
@@ -101,6 +105,7 @@ export interface Place {
   distance?: string;
   photoUrl?: string;
   subcategory?: string;
+  /** @deprecated See `Stop.emoji`. Resolve a place's glyph with `iconFor(category)`. */
   emoji?: string;
 }
 

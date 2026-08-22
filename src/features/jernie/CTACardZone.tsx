@@ -1,8 +1,16 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import type { Trip, StopWithColor, Booking, ItineraryDay, BookingType } from '@/src/types';
-import { Core, Semantic, Typography, Radius, Shadow, Spacing } from '@/src/design/tokens';
+import { Core, Radius, Semantic, Shadow, Spacing, Typography } from '@/src/design/tokens';
 import { hexWithAlpha } from '@/src/utils/colors';
+import type { Icon } from 'phosphor-react-native';
+import { ForkKnifeIcon } from 'phosphor-react-native/src/icons/ForkKnife';
+import { ListChecksIcon } from 'phosphor-react-native/src/icons/ListChecks';
+import { MapPinIcon } from 'phosphor-react-native/src/icons/MapPin';
+import { PlusIcon } from 'phosphor-react-native/src/icons/Plus';
+import { EnvelopeSimpleIcon } from 'phosphor-react-native/src/icons/EnvelopeSimple';
+import { XIcon } from 'phosphor-react-native/src/icons/X';
+import { iconFor, type ItemCategory } from '@/src/design/icons';
 import { isTodayBooking, getBookingDisplay } from '@/src/domain/bookings';
 import type { DueNudgeLevel } from '@/src/domain/saveNudge';
 
@@ -32,11 +40,11 @@ interface CTACardZoneProps {
 
 type SetupKey = keyof Trip['setupIntent'];
 
-const SETUP_ROWS: Array<{ key: SetupKey; emoji: string; label: string; cta: string }> = [
-  { key: 'flights',     emoji: '✈️', label: 'Flights',     cta: 'Book →' },
-  { key: 'stays',       emoji: '🏨', label: 'Stays',       cta: 'Book →' },
-  { key: 'car',         emoji: '🚗', label: 'Rental car',  cta: 'Add →'  },
-  { key: 'restaurants', emoji: '🍽️', label: 'Restaurants', cta: 'Add →'  },
+const SETUP_ROWS: Array<{ key: SetupKey; category: ItemCategory; label: string; cta: string }> = [
+  { key: 'flights',     category: 'flight', label: 'Flights',     cta: 'Book' },
+  { key: 'stays',       category: 'stay',   label: 'Stays',       cta: 'Book' },
+  { key: 'car',         category: 'car',    label: 'Rental car',  cta: 'Add'  },
+  { key: 'restaurants', category: 'food',   label: 'Restaurants', cta: 'Add'  },
 ];
 
 // SETUP_ROWS' keys come from Trip['setupIntent'] and are NOT the BookingType strings —
@@ -69,11 +77,11 @@ function PreTripCard({
   onAddBooking,
 }: { trip: Trip; onDismiss: () => void; onAddBooking?: (type: BookingType) => void }) {
   return (
-    <View style={[styles.card, Shadow.cardResting]}>
+    <View style={[styles.card, Shadow.row]}>
       <View style={styles.headerRow}>
         <Text style={styles.tripName} numberOfLines={1}>{trip.name}</Text>
         <TouchableOpacity testID="cta-dismiss" onPress={onDismiss} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={styles.dismiss}>✕</Text>
+          <XIcon size={13} color={Core.textFaint} />
         </TouchableOpacity>
       </View>
 
@@ -89,7 +97,7 @@ function PreTripCard({
               onPress={() => onAddBooking?.(SETUP_ROW_BOOKING_TYPE[row.key])}
             >
               <View style={[styles.checkIcon, done ? styles.checkIconDone : styles.checkIconTodo]}>
-                <Text style={styles.checkEmoji}>{row.emoji}</Text>
+                {(() => { const Glyph = iconFor(row.category); return <Glyph size={16} color={done ? Core.action : Core.textMuted} weight={done ? 'fill' : 'regular'} />; })()}
               </View>
               <View style={styles.checkTextBlock}>
                 <Text style={[styles.checkLabel, done && styles.checkLabelDone]}>{row.label}</Text>
@@ -97,7 +105,7 @@ function PreTripCard({
                 {!done && <Text style={styles.checkSubTodo}>{row.cta}</Text>}
               </View>
               <Text style={[styles.checkBadge, done ? styles.checkBadgeDone : styles.checkBadgeTodo]}>
-                {done ? '✓' : '·'}
+                {done ? '' : '·'}
               </Text>
             </TouchableOpacity>
           );
@@ -105,7 +113,8 @@ function PreTripCard({
       </View>
 
       <View style={styles.emailStrip}>
-        <Text style={styles.emailText}>📧  Forward confirmations to add@jernie.app</Text>
+        <EnvelopeSimpleIcon size={13} color={Core.textFaint} />
+        <Text style={styles.emailText}>Forward confirmations to add@jernie.app</Text>
       </View>
     </View>
   );
@@ -135,15 +144,16 @@ function InTripCard({
   const itemCount = todayDay?.items.length ?? 0;
 
   return (
-    <View style={[styles.card, Shadow.cardResting]}>
+    <View style={[styles.card, Shadow.row]}>
       {/* Header: day badge + city + date */}
       <View style={styles.inTripHeaderRow}>
         <View style={[styles.dayBadge, { backgroundColor: hexWithAlpha(activeStop.color, 0.12) }]}>
           <Text style={[styles.dayBadgeText, { color: activeStop.color }]}>Day {dayNum}</Text>
         </View>
-        <Text style={styles.inTripCity} numberOfLines={1}>
-          {activeStop.emoji}{'  '}{activeStop.city}
-        </Text>
+        <View style={styles.inTripCityRow}>
+          <MapPinIcon size={13} color={Core.textMuted} weight="fill" />
+          <Text style={styles.inTripCity} numberOfLines={1}>{activeStop.city}</Text>
+        </View>
         <Text style={styles.inTripDate}>{dateStr}</Text>
       </View>
 
@@ -152,9 +162,10 @@ function InTripCard({
         <View style={styles.sectionBlock}>
           {todayBookings.map(b => {
             const info = getBookingDisplay(b, todayIso);
+            const Glyph = iconFor(info.category);
             return (
               <View key={b.id} style={styles.bookingRow}>
-                <Text style={styles.bookingEmoji}>{info.emoji}</Text>
+                <Glyph size={16} color={Core.textMuted} weight="fill" style={styles.bookingIcon} />
                 <View style={styles.bookingText}>
                   <Text style={styles.bookingLabel} numberOfLines={1}>{info.label}</Text>
                   <Text style={styles.bookingMeta}>{info.meta}</Text>
@@ -168,8 +179,9 @@ function InTripCard({
       {/* Agenda item count */}
       {itemCount > 0 && (
         <View style={[styles.sectionBlock, styles.agendaRow]}>
+          <ListChecksIcon size={14} color={Core.textMuted} />
           <Text style={styles.agendaText}>
-            📋{'  '}{itemCount} item{itemCount !== 1 ? 's' : ''} on today's agenda
+            {itemCount} item{itemCount !== 1 ? 's' : ''} on today's agenda
           </Text>
         </View>
       )}
@@ -178,14 +190,14 @@ function InTripCard({
       <View style={styles.quickActionsRow}>
         <QuickActionButton
           testID="quick-action-restaurant"
-          emoji="🍽️"
+          Glyph={ForkKnifeIcon}
           label="Add restaurant"
           color={activeStop.color}
           onPress={() => onAddBooking?.('restaurant')}
         />
         <QuickActionButton
           testID="quick-action-log-activity"
-          emoji="✚"
+          Glyph={PlusIcon}
           label="Log activity"
           color={activeStop.color}
           onPress={onLogActivity}
@@ -195,8 +207,8 @@ function InTripCard({
   );
 }
 
-function QuickActionButton({ testID, emoji, label, color, onPress }: {
-  testID: string; emoji: string; label: string; color: string; onPress?: () => void;
+function QuickActionButton({ testID, Glyph, label, color, onPress }: {
+  testID: string; Glyph: Icon; label: string; color: string; onPress?: () => void;
 }) {
   return (
     <TouchableOpacity
@@ -205,7 +217,8 @@ function QuickActionButton({ testID, emoji, label, color, onPress }: {
       activeOpacity={0.7}
       onPress={onPress}
     >
-      <Text style={[styles.quickBtnText, { color }]}>{emoji}{'  '}{label}</Text>
+      <Glyph size={15} color={color} />
+      <Text style={[styles.quickBtnText, { color }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -217,7 +230,7 @@ function SaveTripCard({
 }: { level: DueNudgeLevel; busy?: boolean; error?: string | null; onSave: () => void; onSnooze: () => void }) {
   const firm = level === 'firm';
   return (
-    <View testID="save-nudge-card" style={[styles.card, Shadow.cardResting]}>
+    <View testID="save-nudge-card" style={[styles.card, Shadow.row]}>
       <Text style={styles.cardTitle}>
         {firm ? 'This trip only exists on this phone' : 'Save your trip'}
       </Text>
@@ -336,7 +349,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.sm,
     gap: 8,
   },
-  tripName: { ...Typography.roles.h3, color: Core.text, flex: 1 },
+  tripName: { ...Typography.roles.section, color: Core.text, flex: 1 },
   dismiss:  { ...Typography.roles.body, color: Core.textFaint },
   checkList: {
     paddingHorizontal: Spacing.base,
@@ -352,7 +365,7 @@ const styles = StyleSheet.create({
     borderColor: Core.border,
     borderRadius: 14,
     padding: 10,
-    ...Shadow.cardResting,
+    ...Shadow.row,
   },
   checkIcon: {
     width: 28,
@@ -362,29 +375,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  checkIconDone: { backgroundColor: Semantic.successTint },
+  checkIconDone: { backgroundColor: Core.actionSoft },
   checkIconTodo: {
     backgroundColor: Core.surfaceMuted,
     borderWidth: 1.5,
     borderStyle: 'dashed' as const,
     borderColor: Core.border,
   },
-  checkEmoji:     { fontSize: 14 },
   checkTextBlock: { flex: 1 },
-  checkLabel:     { ...Typography.roles.label, color: Core.text, fontWeight: '600' as const },
+  checkLabel:     { ...Typography.roles.chip, color: Core.text, fontWeight: '600' as const },
   checkLabelDone: { color: Core.textMuted },
-  checkSubDone:   { ...Typography.roles.meta, color: Core.textFaint, marginTop: 1 },
-  checkSubTodo:   { ...Typography.roles.meta, color: Core.textFaint, marginTop: 1 },
+  checkSubDone:   { ...Typography.roles.sub, color: Core.textFaint, marginTop: 1 },
+  checkSubTodo:   { ...Typography.roles.sub, color: Core.textFaint, marginTop: 1 },
   checkBadge:     { fontSize: 13, fontFamily: 'DMSans', fontWeight: '700' as const },
-  checkBadgeDone: { color: Semantic.success },
+  checkBadgeDone: { color: Core.action },
   checkBadgeTodo: { color: Core.textFaint },
   emailStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Core.border,
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.sm,
   },
-  emailText: { ...Typography.roles.meta, color: Core.textFaint },
+  emailText: { ...Typography.roles.sub, color: Core.textFaint },
 
   // In-trip
   inTripHeaderRow: {
@@ -400,9 +415,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  dayBadgeText:  { ...Typography.roles.labelCaps },
-  inTripCity:    { ...Typography.roles.h3,   color: Core.text,     flex: 1 },
-  inTripDate:    { ...Typography.roles.meta,  color: Core.textMuted },
+  dayBadgeText:  { ...Typography.roles.caps },
+  inTripCityRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1 },
+  inTripCity:    { ...Typography.roles.section,   color: Core.text,     flex: 1 },
+  inTripDate:    { ...Typography.roles.sub,  color: Core.textMuted },
   sectionBlock: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Core.border,
@@ -410,11 +426,11 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
   },
   bookingRow:    { flexDirection: 'row', alignItems: 'center', paddingVertical: 4, gap: 10 },
-  bookingEmoji:  { fontSize: 16, width: 22, textAlign: 'center' },
+  bookingIcon:   { width: 22 },
   bookingText:   { flex: 1 },
-  bookingLabel:  { ...Typography.roles.label, color: Core.text },
-  bookingMeta:   { ...Typography.roles.meta,  color: Core.textMuted, marginTop: 1 },
-  agendaRow:     { flexDirection: 'row', alignItems: 'center' },
+  bookingLabel:  { ...Typography.roles.chip, color: Core.text },
+  bookingMeta:   { ...Typography.roles.sub,  color: Core.textMuted, marginTop: 1 },
+  agendaRow:     { flexDirection: 'row', alignItems: 'center', gap: 7 },
   agendaText:    { ...Typography.roles.body,  color: Core.textMuted },
   quickActionsRow: {
     flexDirection: 'row',
@@ -426,15 +442,18 @@ const styles = StyleSheet.create({
   },
   quickBtn: {
     flex: 1,
+    flexDirection: 'row',
+    gap: 6,
     borderWidth: 1,
     borderRadius: Radius.full,
     paddingVertical: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  quickBtnText: { ...Typography.roles.label },
+  quickBtnText: { ...Typography.roles.chip },
 
   // Save nudge
-  cardTitle: { ...Typography.roles.h3, color: Core.text, paddingHorizontal: Spacing.base, paddingTop: Spacing.base },
+  cardTitle: { ...Typography.roles.section, color: Core.text, paddingHorizontal: Spacing.base, paddingTop: Spacing.base },
   cardSub: {
     ...Typography.roles.body,
     color: Core.textMuted,
@@ -452,14 +471,14 @@ const styles = StyleSheet.create({
   primaryButtonDisabled: { opacity: 0.5 },
   primaryButtonText: { ...Typography.roles.button, color: Core.textInverse },
   nudgeErrorText: {
-    ...Typography.roles.meta,
+    ...Typography.roles.sub,
     color: Semantic.error,
     textAlign: 'center',
     paddingHorizontal: Spacing.base,
     paddingBottom: Spacing.xs,
   },
   dismissText: {
-    ...Typography.roles.label,
+    ...Typography.roles.chip,
     color: Core.textFaint,
     textAlign: 'center',
     paddingVertical: Spacing.base,

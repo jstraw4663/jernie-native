@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
-import { Core, Semantic, Radius, Shadow, Spacing, Typography } from '@/src/design/tokens';
+import { Core, Radius, Semantic, Shadow, Spacing, Typography } from '@/src/design/tokens';
 import { getPlanBadge, type PlanBadge } from '@/src/domain/profile';
 import { Avatar } from '@/src/features/jernie/profile/Avatar';
 import type { TripMemberRole } from '@/src/types';
@@ -57,7 +57,7 @@ export function YouCard({ name, role, plan, accentColor, onRename }: YouCardProp
   };
 
   return (
-    <View style={[styles.card, Shadow.cardResting]}>
+    <View style={[styles.card, Shadow.row]}>
       <View style={styles.top}>
         {/* The draft feeds the avatar while editing, so initials track what is being typed. */}
         <Avatar name={editing ? draft : name} size={52} color={accentColor} />
@@ -115,24 +115,24 @@ const styles = StyleSheet.create({
   },
   top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   identity: { flex: 1, gap: Spacing.xs },
-  name: { ...Typography.roles.h3, color: Core.text },
+  name: { ...Typography.roles.section, color: Core.text },
   input: {
-    ...Typography.roles.h3,
+    ...Typography.roles.section,
     color: Core.text,
     backgroundColor: Core.surfaceMuted,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
   },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  role: { ...Typography.roles.meta, color: Core.textMuted },
+  role: { ...Typography.roles.sub, color: Core.textMuted },
   planPill: {
     borderWidth: 1,
     borderRadius: Radius.full,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 1,
   },
-  planText: { ...Typography.roles.labelCaps, fontSize: 10, letterSpacing: 0.8 },
+  planText: { ...Typography.roles.caps, fontSize: 10, letterSpacing: 0.8 },
   action: { ...Typography.roles.button },
-  error: { ...Typography.roles.meta, color: Semantic.error },
+  error: { ...Typography.roles.sub, color: Semantic.error },
 });

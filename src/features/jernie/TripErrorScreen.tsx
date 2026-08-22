@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Brand, Core, Radius, Spacing, Typography } from '@/src/design/tokens';
+import { Core, Radius, Spacing, Typography } from '@/src/design/tokens';
 
 interface Props {
   onRetry: () => void;
@@ -21,13 +21,13 @@ export function TripErrorScreen({ onRetry }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Core.bg,
+    backgroundColor: Core.surface,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.xxl,
   },
   heading: {
-    ...Typography.roles.h2,
+    ...Typography.roles.title,
     color: Core.text,
     textAlign: 'center',
     marginBottom: Spacing.sm,
@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xxl,
   },
   button: {
-    backgroundColor: Brand.gold,
+    backgroundColor: Core.action,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.md,
     borderRadius: Radius.full,

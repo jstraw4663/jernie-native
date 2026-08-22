@@ -9,7 +9,7 @@ import { confirmDelete } from '@/src/utils/confirmDelete';
 import { formatDayLabel } from '@/src/utils/dates';
 import { DayPickerSheet } from './DayPickerSheet';
 import type { DayPickerSheetRef } from './DayPickerSheet';
-import { Core, Semantic, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { Core, Radius, Semantic, Spacing, Typography } from '@/src/design/tokens';
 import type { ItineraryDay, ItineraryItem, ItineraryItemCategory } from '@/src/types';
 
 export interface CustomItemPayload {
@@ -275,10 +275,10 @@ export const CustomItemSheet = React.forwardRef<CustomItemSheetRef, CustomItemSh
 
 const s = StyleSheet.create({
   handle:     { backgroundColor: Core.textFaint, width: 44, height: 5 },
-  background: { backgroundColor: Core.bg, borderRadius: 24 },
+  background: { backgroundColor: Core.surface, borderRadius: 24 },
   content:    { padding: Spacing.lg, paddingBottom: 32 },
   title: {
-    ...Typography.roles.h2,
+    ...Typography.roles.title,
     color: Core.text,
     marginBottom: Spacing.base,
   },
@@ -287,7 +287,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: Core.surfaceMuted,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.md,
     marginBottom: Spacing.base,
@@ -297,11 +297,11 @@ const s = StyleSheet.create({
     color: Core.text,
   },
   dayAction: {
-    ...Typography.roles.label,
+    ...Typography.roles.chip,
     color: Core.action,
   },
   label: {
-    ...Typography.roles.label,
+    ...Typography.roles.chip,
     color: Core.textMuted,
     marginBottom: Spacing.sm,
   },
@@ -310,7 +310,7 @@ const s = StyleSheet.create({
     ...Typography.roles.body,
     color: Core.text,
     backgroundColor: Core.surfaceMuted,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.sm,
   },
@@ -335,12 +335,12 @@ const s = StyleSheet.create({
     borderColor: Core.action,
   },
   chipText: {
-    ...Typography.roles.label,
+    ...Typography.roles.chip,
     color: Core.textMuted,
   },
   chipTextSelected: { color: Core.white },
   errorText: {
-    ...Typography.roles.meta,
+    ...Typography.roles.sub,
     color: Semantic.error,
     marginTop: Spacing.sm,
   },
@@ -361,7 +361,7 @@ const s = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: Core.action,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.md,
     minWidth: 120,
@@ -376,10 +376,10 @@ const s = StyleSheet.create({
   removeButton: {
     alignSelf: 'center',
     marginTop: Spacing.md,
-    backgroundColor: Semantic.errorTint,
+    backgroundColor: Semantic.errorSoft,
     borderWidth: 1,
     borderColor: Semantic.error,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.lg,
   },

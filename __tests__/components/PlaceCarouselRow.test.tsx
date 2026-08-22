@@ -47,7 +47,7 @@ describe('PlaceCarouselRow / PlaceCarouselCard', () => {
   test('shows an Added badge only for places already in the itinerary', () => {
     const tree = renderRow(<PlaceCarouselRow row={ROW} getStopColor={() => "#123"} getPhotoUrl={getPhotoUrl} addedPlaceIds={new Set(['p1'])} onCardPress={() => {}} />);
     const texts = tree.root.findAllByType(Text).map(t => t.props.children);
-    expect(texts).toContain('✓ Added');
+    expect(texts).toContain('Added');
   });
 
   test('pressing a card calls onCardPress with that place', () => {

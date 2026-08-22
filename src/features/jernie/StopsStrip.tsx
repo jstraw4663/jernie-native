@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from 'react';
+import { MapPinIcon } from 'phosphor-react-native/src/icons/MapPin';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring,
 } from 'react-native-reanimated';
 import type { StopWithColor } from '@/src/types';
-import { Core, Semantic, Typography, Radius, Shadow } from '@/src/design/tokens';
+import { Core, Radius, Shadow, Typography } from '@/src/design/tokens';
 import { formatDateRange } from '@/src/utils/dates';
 import { hexWithAlpha } from '@/src/utils/colors';
 
@@ -86,13 +87,13 @@ export function StopsStrip({ stops, activeStopId, onStopPress, onAddPress }: Sto
                       styles.activePill,
                       {
                         borderColor: hexWithAlpha(stop.color, 0.28),
-                        ...Shadow.cardResting,
+                        ...Shadow.row,
                         shadowColor: stop.color,
                       },
                     ]}
                   >
                     <View style={[styles.activeEmojiCircle, { backgroundColor: hexWithAlpha(stop.color, 0.14) }]}>
-                      <Text style={styles.activeEmoji}>{stop.emoji}</Text>
+                      <MapPinIcon size={14} color={stop.color} weight="fill" />
                     </View>
                     <View>
                       <Text style={[styles.activeCity, { color: stop.color }]}>{stop.city}</Text>
@@ -102,7 +103,7 @@ export function StopsStrip({ stops, activeStopId, onStopPress, onAddPress }: Sto
                 ) : (
                   <View style={styles.dotStop}>
                     <View style={[styles.dot, isPast ? styles.dotPast : styles.dotFuture]}>
-                      <Text style={styles.dotEmoji}>{stop.emoji}</Text>
+                      <MapPinIcon size={10} color={isPast ? Core.textFaint : Core.textMuted} weight="fill" />
                     </View>
                     <Text
                       style={[styles.dotName, isPast ? styles.dotNamePast : styles.dotNameFuture]}
@@ -193,8 +194,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   activeEmoji: { fontSize: 21 },
-  activeCity:  { ...Typography.roles.label, fontWeight: '700' as const },
-  activeDates: { ...Typography.roles.meta, color: Core.textMuted, marginTop: 2 },
+  activeCity:  { ...Typography.roles.chip, fontWeight: '700' as const },
+  activeDates: { ...Typography.roles.sub, color: Core.textMuted, marginTop: 2 },
   // Dot stops (past / future), width kept at DOT_WIDTH constant above
   dotStop: {
     alignItems: 'center',
@@ -214,8 +215,8 @@ const styles = StyleSheet.create({
   dotEmoji:      { fontSize: 15 },
   addDot:        { backgroundColor: 'rgba(120,113,106,0.08)', borderColor: 'rgba(120,113,106,0.32)', borderStyle: 'dashed' },
   addIcon:       { fontSize: 17, fontWeight: '600' as const, color: Core.textMuted },
-  dotName:       { ...Typography.roles.meta, fontSize: 11, fontWeight: '600' as const, textAlign: 'center' },
-  dotNamePast:   { color: Semantic.success },
+  dotName:       { ...Typography.roles.sub, fontSize: 11, fontWeight: '600' as const, textAlign: 'center' },
+  dotNamePast:   { color: Core.action },
   dotNameFuture: { color: Core.textFaint },
   fadeLeft: {
     position: 'absolute',

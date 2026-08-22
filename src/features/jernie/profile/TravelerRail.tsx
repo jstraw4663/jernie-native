@@ -1,5 +1,5 @@
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { Core, Semantic, Spacing, Typography } from '@/src/design/tokens';
+import { Core, Spacing, Typography } from '@/src/design/tokens';
 import { Avatar } from '@/src/features/jernie/profile/Avatar';
 import type { TripMember } from '@/src/types';
 
@@ -32,7 +32,7 @@ export function TravelerRail({ members, currentUid, accentColor, onSelect }: Tra
       >
         {members.map(member => {
           const isYou = member.uid === currentUid;
-          const color = member.role === 'organizer' ? Semantic.confirmed : accentColor;
+          const color = member.role === 'organizer' ? Core.action : accentColor;
           return (
             <Pressable
               key={member.uid}
@@ -56,9 +56,9 @@ export function TravelerRail({ members, currentUid, accentColor, onSelect }: Tra
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.sm },
-  title: { ...Typography.roles.labelCaps, color: Core.textMuted, paddingHorizontal: Spacing.xs },
+  title: { ...Typography.roles.caps, color: Core.textMuted, paddingHorizontal: Spacing.xs },
   rail: { gap: Spacing.base, paddingHorizontal: Spacing.xs, paddingVertical: Spacing.xxs },
   item: { alignItems: 'center', gap: Spacing.xs, width: 60 },
   itemPressed: { opacity: 0.6 },
-  handle: { ...Typography.roles.meta, color: Core.textMuted, fontSize: 11, textAlign: 'center' },
+  handle: { ...Typography.roles.sub, color: Core.textMuted, fontSize: 11, textAlign: 'center' },
 });

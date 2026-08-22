@@ -143,5 +143,5 @@ export const EntityDetailSheet = React.forwardRef<EntityDetailSheetRef, object>(
 
 const s = StyleSheet.create({
   handle:     { backgroundColor: Core.textFaint, width: 44, height: 5 },
-  background: { backgroundColor: Core.bg, borderRadius: 24 },
+  background: { backgroundColor: Core.surface, borderRadius: 24 },
 });

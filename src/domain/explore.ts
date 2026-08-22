@@ -84,8 +84,8 @@ export type SortKey = 'rating' | 'price-asc' | 'price-desc' | 'name';
 
 export const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'rating',     label: 'Top Rated' },
-  { value: 'price-asc',  label: 'Price ↑' },
-  { value: 'price-desc', label: 'Price ↓' },
+  { value: 'price-asc',  label: 'Price, low first' },
+  { value: 'price-desc', label: 'Price, high first' },
   { value: 'name',       label: 'A – Z' },
 ];
 

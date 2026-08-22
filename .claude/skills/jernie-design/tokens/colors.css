@@ -1,0 +1,90 @@
+/* Colour system — derived from the redesign mockups, not the shipped app.
+   The old navy / gold / cream palette is deliberately absent: there is no
+   token here that reproduces it, so nothing can fall back to it.
+   Light is the default. Dark is warm charcoal — neutrals carry a little of the
+   photography's warmth so images sit in the surface rather than on top of it.
+   Never a literal inversion. */
+
+:root {
+  /* Neutrals — light */
+  --surface: #FFFFFF;
+  --surface-sunken: #FAFAFA;
+  --surface-chip: #F4F4F4;
+  --line: #EBEBEB;
+  --line-soft: #F4F4F4;
+
+  --ink: #1B1B1B;
+  --ink-2: #717171;
+  --ink-3: #B0B0B0;
+  --ink-4: #C4C4C4;
+  --ink-inverse: #FFFFFF;
+
+  /* Accent — used for anything the traveller has secured */
+  --accent: #0F7B6C;
+  --accent-soft: rgba(15, 123, 108, 0.09);
+  --accent-line: rgba(15, 123, 108, 0.22);
+
+  /* Warning — unfinished, never broken */
+  --warning: #B56B00;
+  --warning-soft: rgba(181, 107, 0, 0.06);
+  --warning-line: rgba(181, 107, 0, 0.40);
+  --warning-ink: #8A6320;
+
+  /* Error — reserved for a cancelled or failed booking */
+  --error: #A3485F;
+  --error-soft: #F5E8EB;
+
+  /* Item type colours — carried over from the native build unchanged.
+     --type-transit is the one local addition to this file (see docs/redesign-plan.md §8):
+     the taxonomy needs a tenth category for trains, buses and ferries, and no upstream
+     token covered it. Provisional value — validate in the Session 3 gallery. */
+  --type-flight: #2C5880;
+  --type-transit: #57518C;
+  --type-car: #5A7082;
+  --type-stay: #465E7A;
+  --type-food: #B44F1E;
+  --type-bars: #8E4E2F;
+  --type-hike: #2F6B47;
+  --type-activity: #7A4F82;
+  --type-sight: #8A5A2B;
+  --type-shopping: #6B4A3A;
+
+  /* Photography scrims */
+  --scrim-top: rgba(16, 24, 20, 0.50);
+  --scrim-mid: rgba(16, 24, 20, 0.12);
+  --scrim-bottom: rgba(20, 32, 27, 0.90);
+  --on-photo: #FFFFFF;
+  --on-photo-2: rgba(255, 255, 255, 0.72);
+  --on-photo-chip: rgba(255, 255, 255, 0.18);
+
+  /* Canvas — design-review pages only, never in product */
+  --canvas: #0B1016;
+}
+
+[data-theme="dark"] {
+  --surface: #201C1A;
+  --surface-sunken: #191614;
+  --surface-chip: #2A2624;
+  --line: #332E2B;
+  --line-soft: #2A2624;
+
+  --ink: #F5F1ED;
+  --ink-2: #A79E97;
+  --ink-3: #6E655F;
+  --ink-4: #4A4340;
+  --ink-inverse: #201C1A;
+
+  --accent: #5CCBB4;
+  --accent-soft: rgba(92, 203, 180, 0.13);
+  --accent-line: rgba(92, 203, 180, 0.28);
+
+  --warning: #E0A244;
+  --warning-soft: rgba(224, 162, 68, 0.11);
+  --warning-line: rgba(224, 162, 68, 0.38);
+  --warning-ink: #E0A244;
+
+  --error: #D98098;
+  --error-soft: rgba(217, 128, 152, 0.12);
+
+  --scrim-bottom: rgba(14, 12, 11, 0.94);
+}

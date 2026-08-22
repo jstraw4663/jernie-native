@@ -35,6 +35,6 @@ export function PlaceCarouselRow({ row, getStopColor, getPhotoUrl, addedPlaceIds
 
 const s = StyleSheet.create({
   container: { marginBottom: Spacing.md },
-  label:     { ...Typography.roles.h3, color: Core.text, paddingHorizontal: Spacing.base, marginBottom: Spacing.sm },
+  label:     { ...Typography.roles.section, color: Core.text, paddingHorizontal: Spacing.base, marginBottom: Spacing.sm },
   scroll:    { paddingHorizontal: Spacing.base, gap: Spacing.sm },
 });

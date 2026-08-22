@@ -57,6 +57,7 @@ module.exports = {
       "expo-apple-authentication",
       "expo-router",
       "expo-font",
+      "expo-image",
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
       [

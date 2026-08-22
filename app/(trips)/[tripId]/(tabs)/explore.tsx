@@ -10,6 +10,8 @@ import type { FilterId, SortKey } from '@/src/domain/explore';
 import { addPlaceToItinerary } from '@/src/lib/itineraryWrites';
 import { getPlaceEnrichment, resolvePlacePhoto } from '@/src/domain/placeEnrichment';
 import { SearchBar } from '@/src/features/jernie/explore/SearchBar';
+import type { Icon } from 'phosphor-react-native';
+import { iconFor, PLACE_ICON } from '@/src/design/icons';
 import { FilterPillRow } from '@/src/features/jernie/explore/FilterPillRow';
 import { PlaceCarouselRow } from '@/src/features/jernie/explore/PlaceCarouselRow';
 import { PlaceList } from '@/src/features/jernie/explore/PlaceList';
@@ -20,13 +22,13 @@ import type { DayPickerSheetRef } from '@/src/features/jernie/sheets/DayPickerSh
 import { Core, Spacing, Typography } from '@/src/design/tokens';
 import type { Place } from '@/src/types';
 
-const CATEGORY_FILTER_ITEMS: { id: FilterId; label: string }[] = [
+const CATEGORY_FILTER_ITEMS: { id: FilterId; label: string; Glyph?: Icon }[] = [
   { id: 'all', label: 'All' },
-  { id: 'restaurant', label: 'Eats' },
-  { id: 'hike', label: 'Hikes' },
-  { id: 'bar', label: 'Bars' },
-  { id: 'sights', label: 'Sights & More' },
-  { id: 'activity', label: 'Activities' },
+  { id: 'restaurant', label: 'Eats',          Glyph: iconFor('food') },
+  { id: 'hike', label: 'Hikes',               Glyph: iconFor('hike') },
+  { id: 'bar', label: 'Bars',                 Glyph: iconFor('bars') },
+  { id: 'sights', label: 'Sights & More',     Glyph: iconFor('sight') },
+  { id: 'activity', label: 'Activities',      Glyph: iconFor('activity') },
 ];
 
 export default function ExploreTab() {
@@ -98,7 +100,7 @@ export default function ExploreTab() {
 
   const stopFilterItems = useMemo(() => [
     { id: 'all', label: 'All Stops' },
-    ...stops.map(s => ({ id: s.id, label: s.city, emoji: s.emoji, color: s.color })),
+    ...stops.map(s => ({ id: s.id, label: s.city, Glyph: PLACE_ICON, color: s.color })),
   ], [stops]);
 
   const insets = useSafeAreaInsets();
@@ -142,7 +144,7 @@ export default function ExploreTab() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Core.bg },
+  container: { flex: 1, backgroundColor: Core.surface },
   title: { ...Typography.roles.display, color: Core.text, paddingHorizontal: Spacing.base, marginBottom: Spacing.sm },
   scrollContent: { paddingBottom: Spacing.xxxl },
 });

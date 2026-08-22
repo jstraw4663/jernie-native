@@ -1,4 +1,5 @@
 import React from 'react';
+import { PersonSimpleHikeIcon } from 'phosphor-react-native/src/icons/PersonSimpleHike';
 import { View, Text, StyleSheet } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
@@ -6,7 +7,7 @@ import { SheetHero } from './SheetHero';
 import { InfoSection, PhotoStrip } from './SheetParts';
 import { FloatingCTA } from './FloatingCTA';
 import { MOCK_HIKE } from './mockEntityData';
-import { Brand, Core, Typography, Spacing, Radius } from '@/src/design/tokens';
+import { Core, Radius, Spacing, Typography } from '@/src/design/tokens';
 import type { Place, PlaceEnrichment } from '@/src/types';
 
 interface HikeSheetProps {
@@ -29,7 +30,7 @@ export function HikeSheet({ name, stopLabel, stopColor, place, enrichment, isAdd
     const m = MOCK_HIKE;
     return (
       <View style={s.root}>
-        <SheetHero mode="place" photoUri={m.heroPhoto} emoji="🥾" categoryLabel="🥾 Hike" stopLabel={stopLabel} stopColor={stopColor} onClose={onClose} scrollY={scrollY} />
+        <SheetHero mode="place" photoUri={m.heroPhoto} Glyph={PersonSimpleHikeIcon} categoryLabel="Hike" stopLabel={stopLabel} stopColor={stopColor} onClose={onClose} scrollY={scrollY} />
         <BottomSheetScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
           <View style={s.titleRow}>
             <View style={s.titleLeft}>
@@ -50,11 +51,11 @@ export function HikeSheet({ name, stopLabel, stopColor, place, enrichment, isAdd
             { label: 'About', value: m.curatorNote },
             { label: 'Route type', value: m.routeType },
             { label: 'Dogs', value: m.dogFriendly ? 'Allowed on leash' : 'Not allowed' },
-            { label: 'Curated', value: '⭐ Must-do in Acadia' },
+            { label: 'Curated', value: 'Must-do in Acadia' },
           ]} />
           <InfoSection title="Notes" rows={[
             { label: 'Guide notes', value: m.guideNote },
-            { label: 'Heads up', value: `⚠ ${m.headsUp}`, variant: 'warning' },
+            { label: 'Heads up', value: m.headsUp, variant: 'warning' },
           ]} />
           <Text style={s.photoLabel}>Photos</Text>
           <PhotoStrip photos={m.photos} />
@@ -78,7 +79,7 @@ export function HikeSheet({ name, stopLabel, stopColor, place, enrichment, isAdd
 
   const infoRows: { label: string; value: string; variant?: 'default' | 'link' | 'warning' }[] = [];
   if (place.curatorNote) infoRows.push({ label: 'About', value: place.curatorNote });
-  if (place.must) infoRows.push({ label: 'Curated', value: '⭐ Must-do pick' });
+  if (place.must) infoRows.push({ label: 'Curated', value: 'Must-do pick' });
 
   const address = place.addr ?? enrichment?.address;
 
@@ -87,8 +88,8 @@ export function HikeSheet({ name, stopLabel, stopColor, place, enrichment, isAdd
       <SheetHero
         mode="place"
         photoUri={photos[0]}
-        emoji={place.emoji ?? '🥾'}
-        categoryLabel="🥾 Hike"
+        Glyph={PersonSimpleHikeIcon}
+        categoryLabel="Hike"
         stopLabel={stopLabel}
         stopColor={stopColor}
         onClose={onClose}
@@ -147,12 +148,12 @@ const s = StyleSheet.create({
   titleRow:   { padding: Spacing.base, paddingBottom: Spacing.sm, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   titleLeft:  { flex: 1 },
   name:       { fontFamily: 'Fraunces', fontSize: 26, color: Core.text, marginBottom: 3, lineHeight: 30 },
-  subtitle:   { ...Typography.roles.meta, color: Core.textMuted, lineHeight: 18 },
+  subtitle:   { ...Typography.roles.sub, color: Core.textMuted, lineHeight: 18 },
   ratingCol:  { alignItems: 'flex-end', gap: 3, flexShrink: 0 },
-  stars:      { fontSize: 13, color: Brand.gold, fontWeight: '700' as const, fontFamily: 'DMSans' },
+  stars:      { fontSize: 13, color: Core.textMuted, fontWeight: '700' as const, fontFamily: 'DMSans' },
   ratingCount:{ fontSize: 11, color: Core.textFaint, fontFamily: 'DMSans' },
   statsGrid:  { flexDirection: 'row', paddingHorizontal: Spacing.base, gap: Spacing.sm, marginBottom: Spacing.md },
-  statCard:   { flex: 1, backgroundColor: Core.surface, borderWidth: 1, borderColor: Core.border, borderRadius: Radius.lg, padding: 10, alignItems: 'center' },
+  statCard:   { flex: 1, backgroundColor: Core.surface, borderWidth: 1, borderColor: Core.border, borderRadius: Radius.tile, padding: 10, alignItems: 'center' },
   statValue:  { fontSize: 18, fontWeight: '800' as const, fontFamily: 'DMSans', letterSpacing: -0.5, marginBottom: 3 },
   statLabel:  { fontSize: 10, fontWeight: '700' as const, fontFamily: 'DMSans', color: Core.textMuted, letterSpacing: 0.8, textTransform: 'uppercase' as const },
   photoLabel: { fontSize: 11, fontFamily: 'DMSans', fontWeight: '700', letterSpacing: 1.3, textTransform: 'uppercase', color: Core.textFaint, paddingHorizontal: Spacing.base, paddingTop: Spacing.md, paddingBottom: Spacing.sm },

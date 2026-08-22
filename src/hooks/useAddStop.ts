@@ -48,7 +48,9 @@ export function useAddStop(): AddStopState {
       tripId,
       city: input.city,
       region: input.region,
-      emoji: '📍',
+      // Deprecated and never rendered; written only because the field is non-optional
+      // on Stop and the record is immutable once created. See src/design/icons.ts.
+      emoji: '',
       lat: input.lat,
       lon: input.lon,
       dates: input.dates,

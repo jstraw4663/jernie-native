@@ -123,7 +123,7 @@ describe('createTrip', () => {
       tripId,
       city: 'Manhattan',
       region: 'NY',
-      emoji: '📍',
+      emoji: '',
       lat: 40.7831,
       lon: -73.9712,
       dates: { start: '2026-08-10', end: '2026-08-14' },

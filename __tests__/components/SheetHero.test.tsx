@@ -1,3 +1,4 @@
+import { ForkKnifeIcon } from 'phosphor-react-native/src/icons/ForkKnife';
 import React from 'react';
 import renderer from 'react-test-renderer';
 import { Image } from 'react-native';
@@ -17,7 +18,7 @@ function renderHero(ui: React.ReactElement) {
 describe('SheetHero', () => {
   test('place mode with a photoUri renders an Image', () => {
     const tree = renderHero(
-      <SheetHero mode="place" photoUri="https://example.com/photo.jpg" emoji="🍽️" categoryLabel="Restaurant" stopLabel="Portland" stopColor="#123" onClose={() => {}} />,
+      <SheetHero mode="place" photoUri="https://example.com/photo.jpg" Glyph={ForkKnifeIcon} categoryLabel="Restaurant" stopLabel="Portland" stopColor="#123" onClose={() => {}} />,
     );
     const images = tree.root.findAllByType(Image);
     expect(images.some(img => img.props.source?.uri === 'https://example.com/photo.jpg')).toBe(true);
@@ -25,7 +26,7 @@ describe('SheetHero', () => {
 
   test('place mode with no photoUri falls back to the gradient — no Image at all (regression: this used to always render an Image)', () => {
     const tree = renderHero(
-      <SheetHero mode="place" emoji="🍽️" categoryLabel="Restaurant" stopLabel="Portland" stopColor="#123" onClose={() => {}} />,
+      <SheetHero mode="place" Glyph={ForkKnifeIcon} categoryLabel="Restaurant" stopLabel="Portland" stopColor="#123" onClose={() => {}} />,
     );
     expect(tree.root.findAllByType(Image)).toHaveLength(0);
   });

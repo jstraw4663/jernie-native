@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Platform, View, Text, StyleSheet } from 'react-native';
-import { Core, Brand } from '@/src/design/tokens';
+import { Core } from '@/src/design/tokens';
 import { AdminUnlockProvider, useAdminUnlock } from '@/src/contexts/AdminUnlockContext';
 
 // Minimal icon placeholders — replaced with SVG icons in Plan 4/5/6
@@ -31,7 +31,7 @@ function TabsNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: Brand.navy,
+        tabBarActiveTintColor: Core.action,
         tabBarInactiveTintColor: Core.textFaint,
         tabBarLabelStyle: styles.tabLabel,
       }}
@@ -90,5 +90,5 @@ const styles = StyleSheet.create({
   },
   iconActive: { backgroundColor: Core.surfaceMuted },
   iconText: { fontSize: 14, fontFamily: 'DMSans', color: Core.textFaint },
-  iconTextActive: { color: Brand.navy },
+  iconTextActive: { color: Core.action },
 });

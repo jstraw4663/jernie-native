@@ -1,4 +1,5 @@
 import React from 'react';
+import { MapPinIcon } from 'phosphor-react-native/src/icons/MapPin';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -10,7 +11,7 @@ import type { SharedValue } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Trip, StopWithColor } from '@/src/types';
-import { Typography, Radius, Spacing, Semantic } from '@/src/design/tokens';
+import { Core, Radius, Semantic, Spacing, Typography } from '@/src/design/tokens';
 import { formatDateRange } from '@/src/utils/dates';
 import { getDevNow } from '@/src/utils/devTime';
 import { stopHeroGradient } from '@/src/utils/colors';
@@ -103,7 +104,7 @@ export function HeroLayer({ trip, activeStop, visibleStop, scrollY, onEditStop }
       {/* Compact strip — fades in as hero shrinks, pinned to bottom */}
       <Animated.View style={[styles.compactStrip, compactStyle]}>
         <View style={styles.compactMark}>
-          <Text style={styles.compactEmoji}>{effectiveVisibleStop.emoji}</Text>
+          <MapPinIcon size={15} color={Core.white} weight="fill" />
         </View>
         <View>
           <Text style={styles.compactPlace}>Current stop</Text>
@@ -117,8 +118,8 @@ export function HeroLayer({ trip, activeStop, visibleStop, scrollY, onEditStop }
 
 const styles = StyleSheet.create({
   container: {
-    borderBottomLeftRadius: Radius.hero,
-    borderBottomRightRadius: Radius.hero,
+    borderBottomLeftRadius: Radius.sheet,
+    borderBottomRightRadius: Radius.sheet,
     marginBottom: -4,
     overflow: 'hidden',
   },
@@ -141,14 +142,14 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   tripPillText: {
-    ...Typography.roles.label,
+    ...Typography.roles.chip,
     color: 'rgba(255,255,255,0.9)',
   },
   phasePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: Semantic.warningTint,
+    backgroundColor: Semantic.warningSoft,
     borderRadius: Radius.full,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -160,7 +161,7 @@ const styles = StyleSheet.create({
     backgroundColor: Semantic.warning,
   },
   phaseText: {
-    ...Typography.roles.label,
+    ...Typography.roles.chip,
     color: Semantic.warning,
   },
   editButton: {
@@ -175,7 +176,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   editGlyph: {
-    ...Typography.roles.label,
+    ...Typography.roles.chip,
     color: 'rgba(255,255,255,0.9)',
     lineHeight: 14,
   },
@@ -188,7 +189,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   subtitle: {
-    ...Typography.roles.meta,
+    ...Typography.roles.sub,
     color: 'rgba(255,255,255,0.7)',
   },
   compactStrip: {

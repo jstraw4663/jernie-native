@@ -1,11 +1,12 @@
 import React from 'react';
+import type { Icon } from 'phosphor-react-native';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { Core, Spacing, Radius, Typography } from '@/src/design/tokens';
+import { Core, Radius, Spacing, Typography } from '@/src/design/tokens';
 
 export interface PillItem {
   id: string;
   label: string;
-  emoji?: string;
+  Glyph?: Icon;
   color?: string; // per-item accent override (e.g. a stop's own color)
 }
 
@@ -38,7 +39,7 @@ export function FilterPillRow({ items, activeId, onSelect, defaultColor }: Filte
             onPress={() => onSelect(item.id)}
             activeOpacity={0.7}
           >
-            {item.emoji && <Text style={s.emoji}>{item.emoji}</Text>}
+            {item.Glyph && <item.Glyph size={12} color={active ? Core.white : Core.textMuted} weight={active ? 'fill' : 'regular'} />}
             <Text style={[s.label, { color: active ? Core.white : Core.textMuted }]} numberOfLines={1}>{item.label}</Text>
           </TouchableOpacity>
         );
@@ -56,5 +57,5 @@ const s = StyleSheet.create({
   row:   { paddingHorizontal: Spacing.base, gap: Spacing.sm, alignItems: 'center' },
   pill:  { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: Radius.full, paddingHorizontal: Spacing.md, paddingVertical: 7, alignSelf: 'center' },
   emoji: { fontSize: 12 },
-  label: { ...Typography.roles.label },
+  label: { ...Typography.roles.chip },
 });

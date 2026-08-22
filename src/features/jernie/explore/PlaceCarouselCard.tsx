@@ -1,7 +1,9 @@
+import { iconFor } from '@/src/design/icons';
+import { CheckIcon } from 'phosphor-react-native/src/icons/Check';
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Core, Spacing, Radius, Typography, Brand, Shadow } from '@/src/design/tokens';
+import { Core, Radius, Scrim, Shadow, Spacing, Typography } from '@/src/design/tokens';
 import { stopHeroGradient } from '@/src/utils/colors';
 import type { Place } from '@/src/types';
 
@@ -17,21 +19,20 @@ export function PlaceCarouselCard({ place, photoUrl, stopColor, isAdded, onPress
   const gradientColors = stopHeroGradient(stopColor);
 
   return (
-    <TouchableOpacity style={[s.card, Shadow.cardResting]} onPress={onPress} activeOpacity={0.85}>
+    <TouchableOpacity style={[s.card, Shadow.row]} onPress={onPress} activeOpacity={0.85}>
       <View style={s.photoWrap}>
         {photoUrl ? (
           <Image source={{ uri: photoUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
         ) : (
-          <LinearGradient colors={[Brand.navy, gradientColors[1]]} style={StyleSheet.absoluteFill} />
+          <LinearGradient colors={[Scrim.mid, Scrim.bottom]} style={StyleSheet.absoluteFill} />
         )}
-        {place.emoji && (
-          <View style={s.emojiBadge}>
-            <Text style={s.emojiText}>{place.emoji}</Text>
-          </View>
-        )}
+        <View style={s.emojiBadge}>
+          {(() => { const Glyph = iconFor(place.category); return <Glyph size={12} color={Core.white} weight="fill" />; })()}
+        </View>
         {isAdded && (
           <View style={s.addedBadge}>
-            <Text style={s.addedBadgeText}>✓ Added</Text>
+            <CheckIcon size={9} color={s.addedBadgeText.color} weight="bold" />
+            <Text style={s.addedBadgeText}>Added</Text>
           </View>
         )}
       </View>
@@ -46,12 +47,12 @@ export function PlaceCarouselCard({ place, photoUrl, stopColor, isAdded, onPress
 
 const s = StyleSheet.create({
   card:       { width: 148 },
-  photoWrap:  { width: 148, height: 108, borderRadius: Radius.lg, backgroundColor: Core.surfaceMuted, overflow: 'hidden', marginBottom: Spacing.xs },
-  emojiBadge: { position: 'absolute', top: 6, left: 6, width: 26, height: 26, borderRadius: Radius.md, backgroundColor: 'rgba(255,255,255,0.85)', alignItems: 'center', justifyContent: 'center' },
+  photoWrap:  { width: 148, height: 108, borderRadius: Radius.tile, backgroundColor: Core.surfaceMuted, overflow: 'hidden', marginBottom: Spacing.xs },
+  emojiBadge: { position: 'absolute', top: 6, left: 6, width: 26, height: 26, borderRadius: Radius.icon, backgroundColor: 'rgba(255,255,255,0.85)', alignItems: 'center', justifyContent: 'center' },
   emojiText:  { fontSize: 14 },
   addedBadge: { position: 'absolute', bottom: 6, right: 6, borderRadius: Radius.full, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: 'rgba(0,0,0,0.55)' },
   addedBadgeText: { fontSize: 10, fontWeight: '700' as const, color: Core.white, fontFamily: 'DMSans' },
-  name:       { ...Typography.roles.label, color: Core.text },
+  name:       { ...Typography.roles.chip, color: Core.text },
   metaRow:    { flexDirection: 'row', gap: Spacing.sm, marginTop: 2 },
-  meta:       { ...Typography.roles.meta, color: Core.textMuted },
+  meta:       { ...Typography.roles.sub, color: Core.textMuted },
 });

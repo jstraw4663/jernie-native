@@ -1,0 +1,17 @@
+/* Durations and springs match the native build's Animation tokens so a
+   web mock and the app feel the same. Reanimated withSpring takes the
+   damping/stiffness pairs noted in comments. */
+
+:root {
+  --dur-fast: 175ms;
+  --dur-normal: 300ms;
+  --dur-slow: 420ms;
+  --dur-sheet: 460ms;
+
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* spring-gentle  → damping 34, stiffness 280  (chip selection, fades) */
+  /* spring-snappy  → damping 44, stiffness 400  (tab switch, toggle) */
+  /* spring-drag    → damping 50, stiffness 460  (sheet detents, rail snap) */
+}

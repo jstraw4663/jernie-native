@@ -67,7 +67,9 @@ export async function createTrip(input: CreateTripInput): Promise<string> {
     tripId,
     city: input.firstStop.city,
     region: input.firstStop.region,
-    emoji: '📍',
+    // Deprecated and never rendered; written only because the field is non-optional
+    // on Stop and the record is immutable once created. See src/design/icons.ts.
+    emoji: '',
     lat: input.firstStop.lat,
     lon: input.firstStop.lon,
     dates: input.firstStop.dates,

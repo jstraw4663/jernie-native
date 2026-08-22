@@ -6,17 +6,24 @@ import { SheetHero } from './SheetHero';
 import { InfoSection, PhotoStrip, ReviewRail, QuickActions } from './SheetParts';
 import { FloatingCTA } from './FloatingCTA';
 import { MOCK_RESTAURANT } from './mockEntityData';
-import { Brand, Core, Typography, Spacing } from '@/src/design/tokens';
+import { Core, Spacing, Typography } from '@/src/design/tokens';
+import { ForkKnifeIcon } from 'phosphor-react-native/src/icons/ForkKnife';
+import { GlobeIcon } from 'phosphor-react-native/src/icons/Globe';
+import { NavigationArrowIcon } from 'phosphor-react-native/src/icons/NavigationArrow';
+import { PhoneIcon } from 'phosphor-react-native/src/icons/Phone';
+import { iconFor } from '@/src/design/icons';
 import type { Place, PlaceEnrichment, PlaceCategory } from '@/src/types';
 
-const CATEGORY_META: Record<PlaceCategory, { emoji: string; label: string }> = {
-  restaurant: { emoji: '🍽️', label: 'Restaurant' },
-  sight:      { emoji: '🏛️', label: 'Sight' },
-  activity:   { emoji: '🎯', label: 'Activity' },
-  hike:       { emoji: '🥾', label: 'Hike' },
-  bar:        { emoji: '🍸', label: 'Bar' },
-  flight:     { emoji: '✈️', label: 'Flight' },
-  other:      { emoji: '📍', label: 'Place' },
+// `PlaceCategory` is the older, narrower set; the taxonomy's 10 categories live in
+// src/design/icons.ts. Map across rather than duplicating the icon table.
+const CATEGORY_META: Record<PlaceCategory, { category: string; label: string }> = {
+  restaurant: { category: 'food',     label: 'Restaurant' },
+  sight:      { category: 'sight',    label: 'Sight' },
+  activity:   { category: 'activity', label: 'Activity' },
+  hike:       { category: 'hike',     label: 'Hike' },
+  bar:        { category: 'bars',     label: 'Bar' },
+  flight:     { category: 'flight',   label: 'Flight' },
+  other:      { category: '',         label: 'Place' },
 };
 
 interface PlaceSheetProps {
@@ -41,7 +48,7 @@ export function PlaceSheet({ name, stopLabel, stopColor, place, enrichment, isAd
     const priceLabel = ['', '$', '$$', '$$$'][m.price] ?? '';
     return (
       <View style={s.root}>
-        <SheetHero mode="place" photoUri={m.heroPhoto} emoji="🍽️" categoryLabel="🍽 Restaurant" stopLabel={stopLabel} stopColor={stopColor} onClose={onClose} scrollY={scrollY} />
+        <SheetHero mode="place" photoUri={m.heroPhoto} Glyph={ForkKnifeIcon} categoryLabel="Restaurant" stopLabel={stopLabel} stopColor={stopColor} onClose={onClose} scrollY={scrollY} />
         <BottomSheetScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
           <View style={s.titleRow}>
             <View style={s.titleLeft}>
@@ -54,13 +61,13 @@ export function PlaceSheet({ name, stopLabel, stopColor, place, enrichment, isAd
               <Text style={s.price}>{priceLabel}</Text>
             </View>
           </View>
-          <QuickActions actions={['📞 Call', '🌐 Website', '📍 Navigate']} stopColor={stopColor} />
+          <QuickActions actions={[{ label: 'Call', Glyph: PhoneIcon }, { label: 'Website', Glyph: GlobeIcon }, { label: 'Navigate', Glyph: NavigationArrowIcon }]} stopColor={stopColor} />
           <View style={s.hoursRow}>
             <Text style={s.openNow}>Open now</Text>
             <Text style={s.hoursText}> · closes {m.closesAt}</Text>
           </View>
-          <InfoSection title="Info" rows={[{ label: 'About', value: m.curatorNote }, { label: 'Curated', value: '⭐ Must-visit pick' }]} />
-          <InfoSection title="Notes" rows={[{ label: 'Guide notes', value: m.guideNote }, { label: 'Heads up', value: `⚠ ${m.headsUp}`, variant: 'warning' }]} />
+          <InfoSection title="Info" rows={[{ label: 'About', value: m.curatorNote }, { label: 'Curated', value: 'Must-visit pick' }]} />
+          <InfoSection title="Notes" rows={[{ label: 'Guide notes', value: m.guideNote }, { label: 'Heads up', value: m.headsUp, variant: 'warning' }]} />
           <Text style={s.photoLabel}>Photos</Text>
           <PhotoStrip photos={m.photos} />
           <Text style={s.photoLabel}>Reviews</Text>
@@ -81,7 +88,7 @@ export function PlaceSheet({ name, stopLabel, stopColor, place, enrichment, isAd
 
   const infoRows: { label: string; value: string; variant?: 'default' | 'link' | 'warning' }[] = [];
   if (place.curatorNote) infoRows.push({ label: 'About', value: place.curatorNote });
-  if (place.must) infoRows.push({ label: 'Curated', value: '⭐ Must-visit pick' });
+  if (place.must) infoRows.push({ label: 'Curated', value: 'Must-visit pick' });
   if (enrichment?.hours && enrichment.hours.length > 0) infoRows.push({ label: 'Hours', value: enrichment.hours.join(' · ') });
 
   const contactRows: { label: string; value: string; variant?: 'default' | 'link' | 'warning' }[] = [];
@@ -91,8 +98,8 @@ export function PlaceSheet({ name, stopLabel, stopColor, place, enrichment, isAd
   if (enrichment?.website) contactRows.push({ label: 'Website', value: 'Open website', variant: 'link' });
 
   const quickActions = [
-    ...(enrichment?.phone ? ['📞 Call'] : []),
-    ...(enrichment?.website ? ['🌐 Website'] : []),
+    ...(enrichment?.phone ? [{ label: 'Call', Glyph: PhoneIcon }] : []),
+    ...(enrichment?.website ? [{ label: 'Website', Glyph: GlobeIcon }] : []),
   ];
 
   return (
@@ -100,8 +107,8 @@ export function PlaceSheet({ name, stopLabel, stopColor, place, enrichment, isAd
       <SheetHero
         mode="place"
         photoUri={photos[0]}
-        emoji={place.emoji ?? meta.emoji}
-        categoryLabel={`${meta.emoji} ${meta.label}`}
+        Glyph={iconFor(meta.category)}
+        categoryLabel={meta.label}
         stopLabel={stopLabel}
         stopColor={stopColor}
         onClose={onClose}
@@ -152,9 +159,9 @@ const s = StyleSheet.create({
   titleRow:   { padding: Spacing.base, paddingBottom: Spacing.sm, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   titleLeft:  { flex: 1 },
   name:       { fontFamily: 'Fraunces', fontSize: 26, color: Core.text, marginBottom: 3, lineHeight: 30 },
-  subtitle:   { ...Typography.roles.meta, color: Core.textMuted, lineHeight: 18 },
+  subtitle:   { ...Typography.roles.sub, color: Core.textMuted, lineHeight: 18 },
   ratingCol:  { alignItems: 'flex-end', gap: 3, flexShrink: 0 },
-  stars:      { fontSize: 13, color: Brand.gold, fontWeight: '700' as const, fontFamily: 'DMSans' },
+  stars:      { fontSize: 13, color: Core.textMuted, fontWeight: '700' as const, fontFamily: 'DMSans' },
   ratingCount:{ fontSize: 11, color: Core.textFaint, fontFamily: 'DMSans' },
   price:      { fontSize: 12, color: Core.textMuted, fontFamily: 'DMSans', fontWeight: '500' as const },
   hoursRow:   { flexDirection: 'row', paddingHorizontal: Spacing.base, paddingVertical: Spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Core.border },
