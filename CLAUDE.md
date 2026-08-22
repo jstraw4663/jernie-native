@@ -10,6 +10,46 @@ eas build --profile development --platform ios   # first-time dev build
 eas update --branch preview --message "..."      # push JS update to testers
 ```
 
+## Metro on this machine
+
+`watchman` is **not installed**, so Metro falls back to Node's fs watcher, which misses files
+created while the dev server is already running. The symptom is a resolution error for a file
+that demonstrably exists:
+
+```
+Unable to resolve module @/src/features/jernie/sheets/MemberSheet ...
+could not be found within the project
+```
+
+Confirm it's the watcher and not the code by cold-bundling — if this succeeds, the code is fine:
+
+```bash
+npx expo export --platform ios --output-dir /tmp/verify
+```
+
+Then restart Metro with `npx expo start --clear`.
+
+Restarting is usually enough. Installing `watchman` stops it recurring, but it is **optional**
+— it is a background daemon with its own failure modes (`watchman watch-del-all`), and it needs
+sudo. Worth doing only if the restarts get annoying.
+
+If you do: **do not `apt install watchman`.** watchman itself is current and actively developed
+(releases weekly), but Debian/Ubuntu's *package* has been frozen at 4.9.0 since 2017 — that
+specific ancient build is what React Native warns against, not watchman. A current build is
+staged at `~/.local/share/watchman-dist`:
+
+```bash
+sudo mkdir -p /usr/local/bin /usr/local/lib /usr/local/var/run/watchman
+sudo cp ~/.local/share/watchman-dist/bin/* /usr/local/bin/
+sudo cp ~/.local/share/watchman-dist/lib/* /usr/local/lib/
+sudo chmod 755 /usr/local/bin/watchman /usr/local/bin/watchmanctl
+sudo chmod 2777 /usr/local/var/run/watchman
+watchman version   # verify
+```
+
+The binaries hardcode `/usr/local/lib` in their `DT_NEEDED` entries, which is why they cannot
+be installed under `$HOME` — `LD_LIBRARY_PATH` does not apply to absolute paths.
+
 ## Key API notes
 
 - **MMKV v4:** Use `createMMKV({ id: 'name' })` — NOT `new MMKV()`. The constructor was removed in v4.

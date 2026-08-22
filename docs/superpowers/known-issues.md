@@ -11,6 +11,22 @@ Findings discovered during development that are real but out of scope for the pa
 
 ## Architecture
 
+- **Renaming yourself is invisible to everyone else on the trip.** `updateDisplayName` writes
+  `users/{uid}/displayName`, but the name other members see in the traveller rail and member
+  sheet is `trips/{tripId}/members/{uid}/handle`, denormalized at join time. That node is
+  write-once by rule (`members/$uid` requires `!data.exists()`), so the handle genuinely cannot
+  be updated by any client — a rename can only ever change what you see. Fixing it needs both a
+  rules change and a fan-out write across every trip the user is in. Found while building the
+  Profile tab's You card (2026-08-21).
+
+- **`src/lib/refreshScheduler.ts` has no production callers.** It is a complete, tested
+  90-minute Firestore read debouncer that nothing uses: `useFirestoreEnrichment` does a
+  cache-aside read against Firestore on every mount and never consults it. Either wire it into
+  `useFirestoreEnrichment` (which would cut a Firestore round-trip per trip open) or delete it.
+  It was left in place rather than surfaced in the admin panel, because a status card for a
+  subsystem nothing writes to would always read empty. Found while building the Profile tab's
+  admin panel (2026-08-21).
+
 - **Deleting an organizer's account does not cascade to members or group references.** When `deleteAccountData()` is called (Task 6 auth durability), it archives the user's owned trips and removes `users/{uid}`, but does not clean up `members` entries in those trips, group references, or other travellers' views of the deleted organizer. A deleted organizer still appears in other members' member lists and group-scoped views. Because this is a shared-data problem that only the organizer or a Cloud Function can repair across all affected trips, it requires a Cloud Function to handle the cascade — out of scope for the current auth implementation (2026-08-21).
 - **Rental cross-stop linking is rental-specific; should generalize.** `RentalBooking.dropoffStopId` (and the "Pickup here"/"Drop-off here" badge logic in `TravelCard.tsx`) models a booking that spans two stops, but it's hardcoded to rentals. Other booking types or future features may need the same "spans multiple stops" concept. Current behavior is correct, just narrowly named/scoped. Raised by the user during Explore-tab planning (2026-07-13) — logged for a later pass rather than done immediately.
 - **Most curated `Place` records have no coordinates yet.** `Place.lat`/`Place.lon` are only populated where the one-time enrichment import (`scripts/importFirestoreEnrichment.ts`) backfilled them — most places (and everything added by future manual curation, until this is addressed) will lack coordinates, meaning `getPlaceEnrichment()` can never look up cached enrichment for them (fails closed — no crash, just no enrichment shown, section hidden). Any future curation UI or auto-seed flow should always capture lat/lon per place. Found while building the canonical-key enrichment cache (2026-07-14).

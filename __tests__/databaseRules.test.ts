@@ -12,7 +12,7 @@ const rules = JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
 const tripRules = rules.rules.trips.$tripId;
 
 const MEMBER_WRITABLE_COLLECTIONS = ['stops', 'bookings', 'itinerary', 'confirms', 'reservationTimes', 'places'];
-const OWNER_ONLY_COLLECTIONS = ['name', 'pills', 'colorPack', 'setupIntent'];
+const OWNER_ONLY_COLLECTIONS = ['name', 'pills', 'colorPack', 'setupIntent', 'deletedAt'];
 
 function writeRuleFor(collection: string): string {
   const rule = tripRules[collection]?.['.write'];
@@ -50,15 +50,53 @@ describe('database.rules.json — duplicated write-rule expressions stay in sync
   });
 });
 
-describe('database.rules.json — trips/$tripId/deletedAt', () => {
-  test('the deletedAt node exists with a string .write rule', () => {
-    expect(() => writeRuleFor('deletedAt')).not.toThrow();
+describe('database.rules.json — bug_reports', () => {
+  const bugReports = rules.rules.bug_reports;
+
+  test('the node exists and is not client-readable', () => {
+    // There is no admin role in these rules to grant a read to, and inventing one to back
+    // an in-app bug list is a bigger change than the feature justifies. Reports are read in
+    // the Firebase console. If this ever flips to true, that decision has been reversed by
+    // accident.
+    expect(bugReports).toBeDefined();
+    expect(bugReports['.read']).toBe(false);
   });
 
-  test('deletedAt is owner-only (matches the name/pills/colorPack/setupIntent rule), not the broader owner-or-member form', () => {
-    const deletedAtRule = writeRuleFor('deletedAt');
-    expect(deletedAtRule).toContain('ownerUid');
-    expect(deletedAtRule).toBe(writeRuleFor('name'));
-    expect(deletedAtRule).not.toBe(writeRuleFor('stops'));
+  test('writes are create-only — an existing report can never be edited or deleted', () => {
+    const rule = bugReports.$reportId['.write'];
+    expect(rule).toContain('!data.exists()');
+    expect(rule).toContain('auth != null');
+  });
+
+  test('the author field is bound to the caller in both .write and .validate', () => {
+    // Bound in .write so a forged author is rejected before validation, and again in
+    // .validate so the field cannot be absent.
+    expect(bugReports.$reportId['.write']).toContain("newData.child('author').val() === auth.uid");
+    expect(bugReports.$reportId['.validate']).toContain("newData.child('author').val() === auth.uid");
+  });
+
+  test('.validate requires every field feedbackWrites sends', () => {
+    const rule = bugReports.$reportId['.validate'];
+    ['id', 'tripId', 'title', 'priority', 'author', 'createdAt'].forEach(field => {
+      expect(rule).toContain(field);
+    });
+  });
+
+  test('.validate constrains priority to the three BugPriority values', () => {
+    // Kept in sync by hand with BugPriority in src/types.ts — RTDB rules cannot import it.
+    const rule = bugReports.$reportId['.validate'];
+    ['high', 'medium', 'low'].forEach(priority => {
+      expect(rule).toContain(`newData.child('priority').val() === '${priority}'`);
+    });
+  });
+
+  test('.validate bounds title length to the 200 chars the sheet enforces', () => {
+    // FeedbackSheet caps its input at the same number. If they drift, a report the UI
+    // accepts is rejected by the server with no useful message.
+    expect(bugReports.$reportId['.validate']).toContain("newData.child('title').val().length <= 200");
+  });
+
+  test('body is optional but bounded when present', () => {
+    expect(bugReports.$reportId['.validate']).toContain("!newData.hasChild('body')");
   });
 });

@@ -1,39 +1,96 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Share } from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, Share, TextInput, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Core, Semantic, Typography, Radius, Spacing } from '@/src/design/tokens';
-import { getBuildLabel } from '@/src/version';
+import { Core, Semantic, Typography, Spacing, Radius } from '@/src/design/tokens';
 import { useTripContext } from '@/src/contexts/TripContext';
-import { useTripAdmin } from '@/src/hooks/useTripAdmin';
-import { confirmDelete } from '@/src/utils/confirmDelete';
+import { useConnectivityState } from '@/src/contexts/ConnectivityContext';
 import { useAuth } from '@/src/contexts/AuthContext';
+import { useAdminUnlock } from '@/src/contexts/AdminUnlockContext';
+import { useTripAdmin } from '@/src/hooks/useTripAdmin';
 import { useCollisionSignIn } from '@/src/hooks/useCollisionSignIn';
+import { useUserProfile } from '@/src/hooks/useUserProfile';
+import { confirmDelete } from '@/src/utils/confirmDelete';
+import { updateDisplayName } from '@/src/lib/userProfile';
+import { getActiveStopId } from '@/src/domain/trip';
+import { getDevNow } from '@/src/utils/devTime';
+import { getCacheStatus, getMemberRole } from '@/src/domain/profile';
+import { ProfileHeader } from '@/src/features/jernie/profile/ProfileHeader';
+import { YouCard } from '@/src/features/jernie/profile/YouCard';
+import { TravelerRail } from '@/src/features/jernie/profile/TravelerRail';
+import { SettingsCard } from '@/src/features/jernie/profile/SettingsCard';
+import { SettingsRow } from '@/src/features/jernie/profile/SettingsRow';
+import { CacheCard, type CacheRow } from '@/src/features/jernie/profile/CacheCard';
+import { VersionRow } from '@/src/features/jernie/profile/VersionRow';
+import { AdminPanel } from '@/src/features/jernie/profile/AdminPanel';
+import { MemberSheet, type MemberSheetRef } from '@/src/features/jernie/sheets/MemberSheet';
+import { FeedbackSheet, type FeedbackSheetRef } from '@/src/features/jernie/sheets/FeedbackSheet';
 
 export default function ProfileTab() {
   const router = useRouter();
-  const { trip, refetch } = useTripContext();
+  const { trip, stops, members, groups, currentUid, places, enrichment, fromCache, cachedAt, status: tripStatus, refetch } = useTripContext();
+  const { pendingWriteCount, isOnline } = useConnectivityState();
   const { updateTrip, archiveTrip } = useTripAdmin();
-  const [name, setName] = useState(trip.name);
+
   // Two independent error slots. A single shared one rendered in both the Account block and
   // the owner-only trip-settings block, so one failed sign-in printed the same message twice
   // on screen — under Account and again under Save.
   const [accountError, setAccountError] = useState<string | null>(null);
   const [tripError, setTripError] = useState<string | null>(null);
+  const [name, setName] = useState(trip.name);
   const inviteLink = `jernie://join/${trip.inviteToken}`;
-
-  const saveDisabled = name.trim().length === 0 || name === trip.name;
 
   const { status, user, signInWithApple, signOut, deleteAccount } = useAuth();
   const adoptOnCollision = useCollisionSignIn();
+  const profile = useUserProfile(currentUid);
+  const { unlocked, lock } = useAdminUnlock();
+
+  const memberSheetRef = useRef<MemberSheetRef>(null);
+  const feedbackSheetRef = useRef<FeedbackSheetRef>(null);
 
   // `user` from useAuth(), not auth().currentUser read directly — the latter is
   // non-reactive (no re-render on change) and reads stale/false during the brief window a
   // delete or sign-out is in flight and the uid has already moved on underneath it.
   const isOwner = trip.ownerUid === user?.uid;
 
-  // Same four-branch handling as handleShareInvite below: a bare `void signInWithApple()`
-  // discarded collision, error and cancellation alike, so an anonymous user tapping this
-  // button could never see why nothing happened.
+  const accentColor = useMemo(() => {
+    const activeId = getActiveStopId(stops, getDevNow());
+    return stops.find(s => s.id === activeId)?.color ?? stops[0]?.color ?? Core.action;
+  }, [stops]);
+
+  const role = getMemberRole(members, currentUid);
+  // displayName is the renameable one. It falls back to the member handle, which is
+  // denormalized at join time and write-once by rule — see the rename note below.
+  const myHandle = members.find(m => m.uid === currentUid)?.handle ?? '';
+  const displayName = profile.displayName ?? myHandle;
+
+  const cacheRows: CacheRow[] = useMemo(() => {
+    const trip = getCacheStatus({ fromCache, status: tripStatus, cachedAt, now: Date.now() });
+    const withCoords = places.filter(p => p.lat != null && p.lon != null).length;
+    return [
+      { label: 'Trip data', state: trip.state, detail: trip.label },
+      {
+        label: 'Place details',
+        // Places without coordinates can never resolve an enrichment key at all, so
+        // "0 of 12" here is the honest answer rather than an error — see known-issues.md.
+        state: withCoords === 0 ? 'stale' : Object.keys(enrichment).length > 0 ? 'live' : 'connecting',
+        detail: `${Object.keys(enrichment).length} of ${withCoords} lookups cached`,
+      },
+      {
+        label: 'Pending changes',
+        state: pendingWriteCount === 0 ? 'live' : isOnline ? 'connecting' : 'stale',
+        detail: pendingWriteCount === 0
+          ? 'Everything saved'
+          : `${pendingWriteCount} waiting${isOnline ? '' : ' — offline'}`,
+      },
+    ];
+  }, [fromCache, tripStatus, cachedAt, places, enrichment, pendingWriteCount, isOnline]);
+
+  // ── Auth handlers ──────────────────────────────────────────────────────────
+  // Moved verbatim from this screen's previous layout. Their four-branch LinkOutcome
+  // handling and the early return below are each a bug fix with a commit behind it
+  // (0c8dace, c99ce90, cf00082); this sprint re-lays-out the screen, it does not revisit
+  // auth behaviour.
+
   const handleSignIn = async () => {
     const outcome = await signInWithApple();
     if (outcome.ok) return;
@@ -102,17 +159,6 @@ export default function ProfileTab() {
     });
   };
 
-  const handleSave = async () => {
-    if (saveDisabled) return;
-    try {
-      await updateTrip(trip.id, { name });
-      setTripError(null);
-      refetch();
-    } catch {
-      setTripError("Couldn't save the trip name. Try again.");
-    }
-  };
-
   const handleDelete = () => {
     confirmDelete({
       title: 'Delete trip?',
@@ -126,163 +172,181 @@ export default function ProfileTab() {
     });
   };
 
+  // ── Profile actions ────────────────────────────────────────────────────────
+
+  const handleRename = useCallback(async (next: string) => {
+    if (!currentUid) throw new Error('Not signed in');
+    await updateDisplayName(currentUid, next);
+    profile.refetch();
+  }, [currentUid, profile]);
+
+  const saveDisabled = name.trim().length === 0 || name === trip.name;
+
+  const handleSave = async () => {
+    if (saveDisabled) return;
+    try {
+      await updateTrip(trip.id, { name });
+      setTripError(null);
+      refetch();
+    } catch {
+      setTripError("Couldn't save the trip name. Try again.");
+    }
+  };
+
+  // `replace`, not `push`: leaving this trip should unmount its TripProvider (and the live
+  // RTDB listeners it holds) rather than leaving it stacked underneath.
+  const handleSwitchTrip = useCallback(() => router.replace('/(home)' as never), [router]);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Profile</Text>
-      <Text style={styles.sub}>Settings · Traveler rail · Admin — Plan 6</Text>
-      {__DEV__ && <Text style={styles.buildLabel}>{getBuildLabel()}</Text>}
+      <ProfileHeader tripName={trip.name} accentColor={accentColor} onSwitchTrip={handleSwitchTrip} />
 
-      <View style={styles.inviteBlock}>
-        <Text style={styles.inviteLabel}>Invite travelers</Text>
-        <Text style={styles.inviteLink} selectable>{inviteLink}</Text>
-        <TouchableOpacity testID="share-invite-button" style={styles.inviteButton} onPress={handleShareInvite}>
-          <Text style={styles.inviteButtonText}>Share invite link</Text>
-        </TouchableOpacity>
-      </View>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <YouCard
+          name={displayName}
+          role={role}
+          plan={profile.plan}
+          accentColor={accentColor}
+          // Renaming needs a durable record to rename. An anonymous user has one in RTDB, but
+          // offering it before they sign in invites them to personalise an account that
+          // vanishes with the device.
+          onRename={status === 'authenticated' ? handleRename : undefined}
+        />
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account</Text>
-        {status === 'authenticated' ? (
-          <>
-            <Text style={styles.accountIdentity}>{user?.email ?? user?.displayName ?? 'Signed in'}</Text>
-            <TouchableOpacity testID="profile-signout" onPress={() => { void handleSignOut(); }}>
-              <Text style={styles.accountAction}>Sign out</Text>
-            </TouchableOpacity>
-            <TouchableOpacity testID="profile-delete-account" onPress={handleDeleteAccount}>
-              <Text style={styles.accountDanger}>Delete account</Text>
-            </TouchableOpacity>
-            {accountError && <Text style={styles.errorText}>{accountError}</Text>}
-          </>
-        ) : (
-          <>
-            <Text style={styles.accountIdentity}>This trip lives only on this phone.</Text>
-            <TouchableOpacity testID="profile-signin" onPress={() => { void handleSignIn(); }}>
-              <Text style={styles.accountAction}>Sign in with Apple</Text>
-            </TouchableOpacity>
-            {accountError && <Text style={styles.errorText}>{accountError}</Text>}
-          </>
-        )}
-      </View>
+        <TravelerRail
+          members={members}
+          currentUid={currentUid}
+          accentColor={accentColor}
+          onSelect={member => memberSheetRef.current?.present(member)}
+        />
 
-      {isOwner && (
-        <View style={styles.settingsBlock}>
-          <Text style={styles.settingsLabel}>Trip name</Text>
-          <TextInput
-            testID="trip-name-input"
-            style={styles.nameInput}
-            value={name}
-            onChangeText={setName}
+        <SettingsCard
+          title="Account"
+          footer={accountError ? <Text style={styles.errorText}>{accountError}</Text> : undefined}
+        >
+          {status === 'authenticated' ? (
+            <SettingsRow
+              icon="👤"
+              label={user?.email ?? profile.email ?? displayName ?? 'Signed in'}
+              sublabel="Your trips are saved to this account"
+              testID="profile-account-row"
+            />
+          ) : (
+            <SettingsRow
+              icon="🔒"
+              label="Sign in with Apple"
+              sublabel="This trip lives only on this phone"
+              onPress={() => { void handleSignIn(); }}
+              testID="profile-signin"
+            />
+          )}
+
+          <SettingsRow
+            icon="✉️"
+            label="Invite travellers"
+            sublabel={status === 'authenticated' ? inviteLink : 'Sign in first — an invite outlives your phone'}
+            onPress={() => { void handleShareInvite(); }}
+            testID="share-invite-button"
           />
-          <TouchableOpacity
-            testID="save-trip-button"
-            disabled={saveDisabled}
-            style={[styles.saveButton, saveDisabled && styles.saveButtonDisabled]}
-            onPress={handleSave}
+
+          {status === 'authenticated' ? (
+            <SettingsRow
+              icon="🚪"
+              label="Sign out"
+              onPress={() => { void handleSignOut(); }}
+              testID="profile-signout"
+            />
+          ) : null}
+
+          {status === 'authenticated' ? (
+            <SettingsRow
+              icon="⚠️"
+              label="Delete account"
+              destructive
+              onPress={handleDeleteAccount}
+              testID="profile-delete-account"
+            />
+          ) : null}
+        </SettingsCard>
+
+        {isOwner && (
+          <SettingsCard
+            title="Trip"
+            footer={tripError ? <Text style={styles.errorText}>{tripError}</Text> : undefined}
           >
-            <Text style={styles.saveButtonText}>Save</Text>
-          </TouchableOpacity>
+            {/* Kept as an always-visible field rather than a row that opens a sheet. One text
+                input does not need a modal, and the inline form is what the existing
+                owner-only test suite exercises. */}
+            <View style={styles.tripNameBlock}>
+              <Text style={styles.settingsLabel}>Trip name</Text>
+              <TextInput
+                testID="trip-name-input"
+                style={styles.nameInput}
+                value={name}
+                onChangeText={setName}
+              />
+              <TouchableOpacity
+                testID="save-trip-button"
+                disabled={saveDisabled}
+                style={[styles.saveButton, saveDisabled && styles.saveButtonDisabled]}
+                onPress={handleSave}
+              >
+                <Text style={styles.saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+            <SettingsRow
+              icon="🗑️"
+              label="Delete trip"
+              sublabel="Moves to Recently Deleted"
+              destructive
+              onPress={handleDelete}
+              testID="delete-trip-button"
+            />
+          </SettingsCard>
+        )}
 
-          {tripError && <Text style={styles.errorText}>{tripError}</Text>}
+        <CacheCard rows={cacheRows} />
 
-          <TouchableOpacity testID="delete-trip-button" style={styles.deleteButton} onPress={handleDelete}>
-            <Text style={styles.deleteButtonText}>Delete trip</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+        <VersionRow onFeedback={() => feedbackSheetRef.current?.present()} />
+      </ScrollView>
 
-      {__DEV__ && (
-        // `replace`, not `push`: leaving this trip should unmount its TripProvider (and
-        // the live RTDB listeners it holds) rather than leaving it stacked underneath.
-        <TouchableOpacity style={styles.switchButton} onPress={() => router.replace('/(home)' as never)}>
-          <Text style={styles.switchButtonText}>Switch trip (dev)</Text>
-        </TouchableOpacity>
-      )}
+      <MemberSheet ref={memberSheetRef} groups={groups} currentUid={currentUid} accentColor={accentColor} />
+      <FeedbackSheet ref={feedbackSheetRef} tripId={trip.id} />
+
+      <AdminPanel
+        visible={unlocked}
+        onClose={lock}
+        cachedAt={cachedAt}
+        fromCache={fromCache}
+        places={places}
+        enrichment={enrichment}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Core.bg, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  title: { ...Typography.roles.display, color: Core.text, marginBottom: 8 },
-  sub: { ...Typography.roles.meta, color: Core.textMuted, textAlign: 'center' },
-  buildLabel: { ...Typography.roles.mono, color: Core.textFaint, textAlign: 'center', marginTop: Spacing.md },
+  container: { flex: 1, backgroundColor: Core.bg },
+  scroll: { paddingHorizontal: Spacing.base, paddingBottom: Spacing.xxxl, gap: Spacing.lg },
+  errorText: { ...Typography.roles.meta, color: Semantic.error },
 
-  inviteBlock: {
-    marginTop: Spacing.xxl,
-    width: '100%',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  inviteLabel: { ...Typography.roles.label, color: Core.textMuted },
-  inviteLink: { ...Typography.roles.mono, color: Core.text, textAlign: 'center' },
-  inviteButton: {
-    marginTop: Spacing.xs,
-    backgroundColor: Core.action,
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-  },
-  inviteButtonText: { ...Typography.roles.button, color: Core.textInverse },
-
-  section: {
-    marginTop: Spacing.xxl,
-    width: '100%',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  sectionTitle: { ...Typography.roles.label, color: Core.textMuted },
-  accountIdentity: { ...Typography.roles.body, color: Core.text, textAlign: 'center' },
-  accountAction: { ...Typography.roles.button, color: Core.action },
-  accountDanger: { ...Typography.roles.button, color: Semantic.error },
-
-  settingsBlock: {
-    marginTop: Spacing.xxl,
-    width: '100%',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
+  tripNameBlock: { padding: Spacing.base, gap: Spacing.sm },
   settingsLabel: { ...Typography.roles.label, color: Core.textMuted },
   nameInput: {
     ...Typography.roles.body,
     color: Core.text,
     backgroundColor: Core.surfaceMuted,
     borderRadius: Radius.md,
-    paddingHorizontal: Spacing.base,
+    paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    width: '100%',
-    textAlign: 'center',
   },
   saveButton: {
-    marginTop: Spacing.xs,
+    alignSelf: 'flex-start',
     backgroundColor: Core.action,
     borderRadius: Radius.md,
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.lg,
   },
-  saveButtonDisabled: {
-    opacity: 0.5,
-  },
+  saveButtonDisabled: { opacity: 0.5 },
   saveButtonText: { ...Typography.roles.button, color: Core.textInverse },
-  errorText: { ...Typography.roles.meta, color: Semantic.error, textAlign: 'center' },
-
-  deleteButton: {
-    marginTop: Spacing.md,
-    backgroundColor: Semantic.errorTint,
-    borderWidth: 1,
-    borderColor: Semantic.error,
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-  },
-  deleteButtonText: { ...Typography.roles.button, color: Semantic.error },
-
-  switchButton: {
-    marginTop: Spacing.xxl,
-    borderWidth: 1,
-    borderColor: Core.border,
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-  },
-  switchButtonText: { ...Typography.roles.body, color: Core.text },
 });

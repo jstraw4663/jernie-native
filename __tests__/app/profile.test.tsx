@@ -24,6 +24,30 @@ jest.mock('@/src/hooks/useCollisionSignIn', () => ({
 let mockUserTripsState: { trips: unknown[]; status: 'loading' | 'ready' | 'error' };
 jest.mock('@/src/hooks/useUserTrips', () => ({ useUserTrips: () => mockUserTripsState }));
 
+// The screen now also composes the cache card, the traveller rail and the admin panel.
+// These are mocked rather than imported for real: ConnectivityContext and AdminPanel both
+// reach react-native-mmkv -> NitroModules, which has no native binary under jest.
+jest.mock('@/src/contexts/ConnectivityContext', () => ({
+  useConnectivityState: () => ({ isOnline: true, wasOffline: false, pendingWriteCount: 0 }),
+}));
+jest.mock('@/src/contexts/AdminUnlockContext', () => ({
+  useAdminUnlock: () => ({ unlocked: false, registerTabPress: jest.fn(), lock: jest.fn() }),
+}));
+jest.mock('@/src/features/jernie/profile/AdminPanel', () => ({ AdminPanel: () => null }));
+jest.mock('@/src/utils/devTime', () => ({ getDevNow: () => new Date('2026-07-11T12:00:00Z') }));
+let mockProfileState: { displayName: string | null; email: string | null; plan: string | undefined; status: string; refetch: jest.Mock };
+jest.mock('@/src/hooks/useUserProfile', () => ({ useUserProfile: () => mockProfileState }));
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+// Reaches src/lib/firebase, which pulls the whole @react-native-firebase stack.
+const mockUpdateDisplayName = jest.fn();
+jest.mock('@/src/lib/userProfile', () => ({ updateDisplayName: (...args: unknown[]) => mockUpdateDisplayName(...args) }));
+// The sheets are @gorhom BottomSheetModals; they need a modal provider that this renderer
+// has no reason to set up, and their behaviour is not what this suite is about.
+jest.mock('@/src/features/jernie/sheets/MemberSheet', () => ({ MemberSheet: () => null }));
+jest.mock('@/src/features/jernie/sheets/FeedbackSheet', () => ({ FeedbackSheet: () => null }));
+
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { Share, Text } from 'react-native';
@@ -57,7 +81,19 @@ const baseTrip = {
 };
 
 function setTrip(overrides: Partial<typeof baseTrip> = {}) {
-  mockUseTripContext.mockReturnValue({ trip: { ...baseTrip, ...overrides }, refetch: mockRefetch });
+  mockUseTripContext.mockReturnValue({
+    trip: { ...baseTrip, ...overrides },
+    stops: [{ id: 'stop-1', city: 'Portland', color: '#2C5880', dates: { start: '2026-07-10', end: '2026-07-12' } }],
+    members: [{ uid: 'owner-uid', handle: 'Jeremy', role: 'organizer', joinedAt: 0 }],
+    groups: [],
+    currentUid: 'owner-uid',
+    places: [],
+    enrichment: {},
+    fromCache: false,
+    cachedAt: null,
+    status: 'ready',
+    refetch: mockRefetch,
+  });
 }
 
 beforeEach(() => {
@@ -67,6 +103,7 @@ beforeEach(() => {
   mockConfirmDelete.mockReset();
   mockAdoptOnCollision.mockReset().mockResolvedValue({ status: 'signed-in', failed: 0 });
   mockUserTripsState = { trips: [], status: 'ready' };
+  mockProfileState = { displayName: 'Jeremy', email: 'j@example.com', plan: 'free', status: 'ready', refetch: jest.fn() };
   mockUpdateTrip.mockReset().mockResolvedValue(undefined);
   mockArchiveTrip.mockReset().mockResolvedValue(undefined);
   mockUseTripAdmin.mockReturnValue({
@@ -483,5 +520,106 @@ describe('app/(trips)/[tripId]/(tabs)/profile', () => {
       expect(mockAdoptOnCollision).toHaveBeenCalledWith(signIn);
       expect(mockShare).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('Profile — You card', () => {
+  it('shows the display name from users/{uid}, not the join-time member handle', () => {
+    // The handle is denormalized at join and write-once by rule, so renaming can only ever
+    // change displayName. Showing the handle here would make Edit look broken.
+    mockProfileState = { displayName: 'Ada Lovelace', email: null, plan: 'free', status: 'ready', refetch: jest.fn() };
+    expect(texts(renderScreen())).toContain('Ada Lovelace');
+  });
+
+  it('falls back to the member handle when the profile read has not landed', () => {
+    mockProfileState = { displayName: null, email: null, plan: undefined, status: 'loading', refetch: jest.fn() };
+    expect(texts(renderScreen())).toContain('Jeremy');
+  });
+
+  it('shows the role from the member record', () => {
+    expect(texts(renderScreen())).toContain('Organizer');
+  });
+
+  it('badges an anonymous user as a guest and a linked one as free', () => {
+    mockProfileState = { displayName: 'Jeremy', email: null, plan: 'anonymous', status: 'ready', refetch: jest.fn() };
+    expect(texts(renderScreen())).toContain('Guest');
+    mockProfileState = { displayName: 'Jeremy', email: null, plan: 'free', status: 'ready', refetch: jest.fn() };
+    expect(texts(renderScreen())).toContain('Free');
+  });
+
+  it('offers rename only once signed in', () => {
+    // An anonymous account is thrown away with the device. Inviting someone to personalise
+    // it before they sign in is inviting them to lose the effort.
+    expect(renderScreen().root.findAllByProps({ testID: 'display-name-edit' }).length).toBeGreaterThan(0);
+
+    mockAuthState = { ...mockAuthState, status: 'anonymous' };
+    expect(renderScreen().root.findAllByProps({ testID: 'display-name-edit' }).length).toBe(0);
+  });
+
+  it('writes the new name and refetches the profile', async () => {
+    const refetch = jest.fn();
+    mockProfileState = { displayName: 'Jeremy', email: null, plan: 'free', status: 'ready', refetch };
+    mockUpdateDisplayName.mockReset().mockResolvedValue(undefined);
+    const tree = renderScreen();
+
+    act(() => { tree.root.findByProps({ testID: 'display-name-edit' }).props.onPress(); });
+    act(() => { tree.root.findByProps({ testID: 'display-name-input' }).props.onChangeText('Ada'); });
+    await act(async () => { await tree.root.findByProps({ testID: 'display-name-save' }).props.onPress(); });
+
+    expect(mockUpdateDisplayName).toHaveBeenCalledWith('owner-uid', 'Ada');
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it('keeps the editor open with the typed name when the rename fails', async () => {
+    mockUpdateDisplayName.mockReset().mockRejectedValue(new Error('offline'));
+    const tree = renderScreen();
+    act(() => { tree.root.findByProps({ testID: 'display-name-edit' }).props.onPress(); });
+    act(() => { tree.root.findByProps({ testID: 'display-name-input' }).props.onChangeText('Ada'); });
+    await act(async () => { await tree.root.findByProps({ testID: 'display-name-save' }).props.onPress(); });
+
+    // Dismissing on failure discards what they typed and looks identical to succeeding.
+    expect(tree.root.findByProps({ testID: 'display-name-input' }).props.value).toBe('Ada');
+    expect(texts(tree)).toContain("Couldn't save that name. Try again.");
+  });
+});
+
+describe('Profile — traveller rail and cache card', () => {
+  it('labels the only member as "Just you so far" rather than "1 travellers"', () => {
+    expect(texts(renderScreen())).toContain('Just you so far');
+  });
+
+  it('marks the current user as You and names everyone else', () => {
+    mockUseTripContext.mockReturnValue({
+      ...mockUseTripContext(),
+      members: [
+        { uid: 'owner-uid', handle: 'Jeremy', role: 'organizer', joinedAt: 0 },
+        { uid: 'friend', handle: 'Sam', role: 'traveler', joinedAt: 0 },
+      ],
+    });
+    const out = texts(renderScreen());
+    expect(out).toContain('You');
+    expect(out).toContain('Sam');
+    expect(out).toContain('2 travellers');
+  });
+
+  it('reports live trip data when reading straight from RTDB', () => {
+    expect(texts(renderScreen())).toContain('Trip data');
+    expect(texts(renderScreen())).toContain('Live');
+  });
+
+  it('says everything is saved when the write queue is empty', () => {
+    expect(texts(renderScreen())).toContain('Everything saved');
+  });
+});
+
+describe('Profile — version row', () => {
+  it('shows the build label in every build, not only __DEV__', () => {
+    // It is what a tester reads off this screen to say which code they were running, so
+    // hiding it in release builds hid it from the only people who needed it.
+    expect(texts(renderScreen())).toContain('auth-durability');
+  });
+
+  it('offers a way into the feedback sheet', () => {
+    expect(renderScreen().root.findAllByProps({ testID: 'open-feedback' }).length).toBeGreaterThan(0);
   });
 });
