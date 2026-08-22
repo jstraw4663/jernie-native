@@ -7,6 +7,7 @@ import { SignOutIcon } from 'phosphor-react-native/src/icons/SignOut';
 import { TrashIcon } from 'phosphor-react-native/src/icons/Trash';
 import { UserCircleIcon } from 'phosphor-react-native/src/icons/UserCircle';
 import { WarningIcon } from 'phosphor-react-native/src/icons/Warning';
+import { DevIconProbe } from '@/src/features/jernie/DevIconProbe';
 import { Core, Radius, Semantic, Spacing, Typography } from '@/src/design/tokens';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { useConnectivityState } from '@/src/contexts/ConnectivityContext';
@@ -208,6 +209,7 @@ export default function ProfileTab() {
       <ProfileHeader tripName={trip.name} accentColor={accentColor} onSwitchTrip={handleSwitchTrip} />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <DevIconProbe />
         <YouCard
           name={displayName}
           role={role}

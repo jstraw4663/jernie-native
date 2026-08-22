@@ -76,6 +76,16 @@ be installed under `$HOME` — `LD_LIBRARY_PATH` does not apply to absolute path
   The symptom is a salmon-tinted box showing a single letter where an icon should be — that
   is RN's `Unimplemented component: <RNSVGSvgView>` label crushed into a 16px square, not a
   rendering bug. Confirm with `git show HEAD:package.json | grep <the-dep>`.
+- **`RCT_USE_PREBUILT_RNCORE=0` and `EXPO_USE_PRECOMPILED_MODULES=0` are set in `eas.json`,
+  deliberately.** EAS turns both on by default for SDK 56. Prebuilt RN core skips
+  `use_react_native_codegen_discovery`, so third-party New-Arch libraries never get their
+  generated Fabric `ComponentDescriptor`s — the library compiles, links, and then renders as
+  `Unimplemented component: <RNSVGSvgView>` at runtime. `react-native-screens` is immune
+  because Expo ships pre-generated codegen for it; `react-native-svg` is not. Builds are
+  slower from source; that is the whole cost. See expo/expo#47266.
+  Diagnose by pulling the `.ipa` from `eas build:list --json` and comparing:
+  `RNSScreenComponentDescriptor` present vs `RNSVGSvgViewComponentDescriptor` absent means
+  codegen discovery did not run.
 - **Native deps need a dev build.** `react-native-svg` (Phosphor icons) and `expo-image` ship
   native code, so `eas build --profile development --platform ios` after adding them.
 - **Phosphor icons import per-icon, never from the barrel.** Metro does not tree-shake
