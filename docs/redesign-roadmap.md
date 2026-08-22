@@ -19,7 +19,7 @@ with hand-rolled code limited to the register in
 | Session 1 — audit | **Done.** `docs/redesign-plan.md`. Taxonomy decided (§8); date-semantics "conflict" disproved — two units, both correct. |
 | Session 2a — fonts | **Done, gate green.** Six static faces; variable fonts deleted; weight now comes from the family name. Awaiting device check at `jernie://dev/fonts`. |
 | Session 2b — tokens + sweep | **Done, gate green.** `tokens.ts` regenerated; 54 files re-pointed; `Brand` deleted; three deps installed. Awaiting Jeremy's screen-by-screen look. |
-| Session 2c — icons | **Done, gate green.** Zero emoji in `app/` and `src/`. `src/design/icons.ts` registry; `Stop.emoji` deprecated, not removed. **Needs the new dev build to render.** |
+| Session 2c — icons | **Done, verified on device.** Zero emoji in `app/` and `src/`; `src/design/icons.ts` registry; `Stop.emoji` deprecated, not removed. Needed an `eas.json` build-flag fix — see Known repo facts. |
 | Sessions 3–12 | Not started |
 
 ---
@@ -163,7 +163,13 @@ the two `href` links to it are dead by design. It remains in Claude Design.
   (`Radius.icon/tile/row/card/sheet/full`, `Typography.roles.hero/display/title/screen/
   section/row/body/sub/button/chip/caps/data`). `Scrim` and `Layout` are new. Colour is
   static via `Core`; new components use `useTheme()`.
-- **A dev build is needed before 2c.** `react-native-svg` and `expo-image` are native.
+- **iOS builds must compile RN from source.** `eas.json` sets `RCT_USE_PREBUILT_RNCORE=0`
+  and `EXPO_USE_PRECOMPILED_MODULES=0` on all three profiles. EAS enables both by default on
+  SDK 56; prebuilt RN core skips `use_react_native_codegen_discovery`, so `react-native-svg`
+  linked but never got its Fabric `ComponentDescriptor`s and every icon rendered as
+  `Unimplemented component: <RNSVGSvgView>`. Builds are slower; that is the whole cost.
+- **`eas build` uploads the committed git state.** Commit before any build that adds a
+  native dependency.
 - **Fonts — fixed in 2a.** `assets/fonts/` now holds six static faces (Fraunces 400, DM Sans
   400/600/700, DM Mono 400/500) and the variable files are gone. **Weight comes from the
   family name, never from `fontWeight`** — `DMSans-Bold`, not `DMSans` + `700`. Every token
