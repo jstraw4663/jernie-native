@@ -9,7 +9,7 @@
 // The card is custom; the scroll is not. A horizontal ScrollView with `snapToInterval` is
 // ~30 lines — carousel libraries own their own scroll handler and would fight the collapse.
 // See reference/custom-components.md.
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, useWindowDimensions, View } from 'react-native';
 import Animated, { Extrapolation, interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
@@ -51,6 +51,16 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
   // first card parks hard left and only the middle of a three-stop trip ever looks centred.
   // Falls back to 14 (the canvas's flat padding) on anything too narrow to centre in.
   const sideInset = Math.max(14, (width - STOP_CARD_WIDTH) / 2);
+
+  // `contentOffset` is an INITIAL offset, not a controlled one. Now that the index changes
+  // mid-scroll, re-rendering with a new value made RN re-apply it and yank the drag out from
+  // under the user, which is what stopped cards landing centred. Frozen on first render;
+  // every later move goes through scrollTo.
+  const initialOffset = useRef({ x: index * SNAP_INTERVAL, y: 0 }).current;
+
+  // Stable identity — a fresh style array on every scroll frame makes the ScrollView
+  // re-apply its content container mid-gesture.
+  const trackStyle = useMemo(() => [s.track, { paddingHorizontal: sideInset }], [s.track, sideInset]);
 
   // Gone by the halfway point, which is exactly where the pinned bar starts arriving.
   const fade = useAnimatedStyle(() => {
@@ -100,12 +110,18 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
     [commit],
   );
 
-  // Backstop: a scroll that ends without crossing (a short drag that springs back, or a
-  // programmatic scroll) still has to land on a definite index.
-  const handleMomentumEnd = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => commit(e.nativeEvent.contentOffset.x),
-    [commit],
-  );
+  // Backstop, and the guarantee that a card ends up centred. A scroll that ends without
+  // crossing (a short drag that springs back) still has to resolve to a definite index, and
+  // if the rest came to rest off the snap grid — an interrupted deceleration, a gesture that
+  // fought a re-render — it is corrected here rather than left a few pixels out.
+  // This cannot loop: the corrective scroll settles exactly on the grid, so the second
+  // momentum-end finds nothing to fix.
+  const handleMomentumEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const x = e.nativeEvent.contentOffset.x;
+    commit(x);
+    const target = Math.max(0, Math.min(Math.round(x / SNAP_INTERVAL), stops.length - 1)) * SNAP_INTERVAL;
+    if (Math.abs(x - target) > 1) railRef.current?.scrollTo({ x: target, animated: true });
+  }, [commit, stops.length]);
 
   const handleTap = useCallback((i: number) => {
     settledRef.current = i;
@@ -127,8 +143,8 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
         snapToInterval={SNAP_INTERVAL}
         decelerationRate="fast"
         disableIntervalMomentum
-        contentContainerStyle={[s.track, { paddingHorizontal: sideInset }]}
-        contentOffset={{ x: index * SNAP_INTERVAL, y: 0 }}
+        contentContainerStyle={trackStyle}
+        contentOffset={initialOffset}
         scrollEventThrottle={16}
         onScroll={handleScroll}
         onMomentumScrollEnd={handleMomentumEnd}
