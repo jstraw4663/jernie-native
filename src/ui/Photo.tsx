@@ -4,6 +4,13 @@
 // fade-in are set once rather than per call site, and so a missing photo is a designed
 // placeholder rather than an empty grey box. Plain RN `Image` re-fetches and flickers on
 // scroll, which is why the mapping names `expo-image`.
+//
+// **Never put one of these in a box whose width or height is animated.** `ImageView.swift`
+// reloads on every `bounds` change, and `reload()` cancels the request in flight — so an
+// image inside a resizing container re-issues its download every frame and can fail to ever
+// finish it, leaving the previous photo on screen. Animate a `scale` on a fixed-size box, or
+// let a clipping parent crop a fixed-size image. Both the home hero and `StopMorph`'s
+// thumbnail do the latter; see HomeHeader.tsx.
 import { Image } from 'expo-image';
 import type { Icon } from 'phosphor-react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
@@ -39,6 +46,13 @@ export function Photo({ source, Glyph, glyphSize, style, transition, accessibili
     <View style={[s.box, style]} testID={testID}>
       <Image
         source={{ uri: source }}
+        // The view is reused when the subject changes — a different stop, a different place.
+        // Without this expo-image keeps the last image it successfully loaded on screen until
+        // the new one is decoded, which on the home hero meant the previous stop's photograph
+        // sitting under the new stop's name. Blank while it loads is honest; the wrong
+        // photograph is not. Resetting only happens when the key *changes*, so a first mount
+        // is unaffected.
+        recyclingKey={source}
         style={s.fill}
         contentFit="cover"
         cachePolicy="memory-disk"

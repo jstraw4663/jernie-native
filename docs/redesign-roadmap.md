@@ -217,6 +217,36 @@ the reference bar's 14/10.5. There is no way to animate a type size that is not 
 re-measuring text every frame or scaling the line spacing with it, and the larger size reads
 fine at 62 tall.
 
+### The hero held the previous stop's photograph — 2026-08-23
+
+Reported on Maine Coast: swipe to Bar Harbor, the rail card shows its photo, the hero keeps
+Portland's. Two defects, both in how `expo-image` behaves and neither visible to the test
+suite.
+
+**1. A reused image view keeps its last successful image.** `expo-image` has a prop for
+exactly this — `recyclingKey`, documented as *"prevents showing the previous source before
+the new one fully loads"* — and the seam was not passing one. Every `<Photo>` now sets
+`recyclingKey={source}`. Resetting only fires when the key changes, so a first mount is
+unaffected; what changes is that a subject swap goes blank-then-loads instead of holding the
+wrong photograph. Blank is honest.
+
+**2. An image in an animating box re-downloads every frame.** `ImageView.swift` reloads on
+every `bounds` change, and `reload()` calls `cancelPendingOperation()` first. The hero photo
+was `absoluteFill` inside the container the collapse resizes, so it re-issued its request
+about sixty times a second while the header moved — and `handleSelectStop` animates the list
+back to the top on *every* stop change, which is precisely when a new photograph is being
+fetched. With a `transition` set it also restarts a 300ms `UIView.transition` each frame.
+
+The hero now renders the image at a fixed `HERO_MAX` box and translates it by half the height
+the container has given up, so the container clips rather than stretches it. Same visible
+slice for any photo the width binds on — everything narrower than about 16:9 — and a wider
+one now holds its zoom through the collapse instead of easing out of it, which is closer to
+`collapse.md`'s "re-crops in place" than the thing it replaced. `StopMorph`'s thumbnail had
+the same defect (54 to 36 by animated width) and now scales a fixed box instead.
+
+The rule is recorded at the top of `src/ui/Photo.tsx`: never put a `<Photo>` in a box whose
+width or height is animated.
+
 ### Carried into Session 5
 
 - **Bookings not on the itinerary are invisible on home.** `StopSection`'s "Flights / Stays /

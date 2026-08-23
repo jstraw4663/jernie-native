@@ -121,6 +121,15 @@ export function StopMorph({
     };
   });
 
+  // The photograph inside it keeps a fixed 54px box and *scales* to fit, rather than being
+  // resized along with the tile. `expo-image` reloads on every `bounds` change and cancels the
+  // request in flight, so an image in an animating box re-issues its download every frame.
+  // A scale is not a bounds change. See the note at the top of src/ui/Photo.tsx.
+  const thumbInner = useAnimatedStyle(() => {
+    const p = interpolate(scrollY.value, [0, RANGE], [0, 1], Extrapolation.CLAMP);
+    return { transform: [{ scale: interpolate(p, [0, 1], [1, BAR_THUMB / M.thumb]) }] };
+  });
+
   // The name and dates keep the card's type sizes in the bar — 16/11.5, not the reference
   // bar's 14/10.5. Animating `fontSize` re-measures the text every frame, and a text block
   // that scales drags its own line spacing with it. The larger size reads fine at 62 tall.
@@ -154,9 +163,11 @@ export function StopMorph({
       <Animated.Text style={[s.kicker, { color: t.action }, shedKicker]} numberOfLines={1}>{kicker}</Animated.Text>
 
       <Animated.View style={[s.thumb, thumb]}>
-        {photo
-          ? <Photo source={photo} style={s.fill} />
-          : <ImagePlaceholder style={s.fill} glyphSize={18} />}
+        <Animated.View style={[s.thumbInner, thumbInner]}>
+          {photo
+            ? <Photo source={photo} style={s.fill} />
+            : <ImagePlaceholder style={s.fill} glyphSize={18} />}
+        </Animated.View>
       </Animated.View>
 
       <Animated.View style={[s.text, text]}>
@@ -200,7 +211,9 @@ const useStyles = createThemedStyles((t) => ({
     letterSpacing: 1.14, textTransform: 'uppercase' as const,
   },
 
+  // The tile animates its size and does the clipping; the photograph inside it does not.
   thumb: { position: 'absolute', left: 0, top: 0, overflow: 'hidden' },
+  thumbInner: { width: M.thumb, height: M.thumb, transformOrigin: 'top left' },
   fill:  { width: '100%', height: '100%' },
 
   text:  { position: 'absolute', left: 0, top: 0, gap: 5 },

@@ -1,8 +1,14 @@
 // The home hero: one photograph, one trip name, one scroll value.
 //
 // Sits ABOVE the scroll view so content passes underneath it rather than over it. The photo
-// re-crops in place: the container's height animates and `contentFit="cover"` re-crops to
-// fill, so the image is never smaller than its box and no band can appear above it.
+// re-crops in place: the image is rendered once at the resting height and the container
+// clips it, so the image is never smaller than its box and no band can appear above it.
+//
+// The image box is deliberately NOT the animating one. `expo-image` reloads on every
+// `bounds` change and cancels the request in flight, so an image stretched by the collapse
+// re-issues its download sixty times a second and can fail to ever finish — which showed up
+// as the hero keeping the previous stop's photograph. Fixed box, translated to hold the
+// centre, clipped by the parent. See the note at the top of src/ui/Photo.tsx.
 //
 // It no longer owns the collapsed stop bar. That is `StopMorph`, which is the active stop
 // card stretched — the header just gets out of its way and leaves it the bottom 62px.
@@ -33,6 +39,16 @@ export function HomeHeader({ kicker, title, sub, photo, insetTop, scrollY }: Hom
   const hero = useAnimatedStyle(() => ({
     height: interpolate(scrollY.value, [0, RANGE], [HERO_MAX, min], Extrapolation.CLAMP),
   }));
+
+  // Half the height the container has given up, so the slice on show stays the middle of the
+  // photograph rather than its top. That is the same region `contentFit: 'cover'` picked when
+  // the image box itself was doing the shrinking, for any photo the width binds on — which is
+  // every photo narrower than about 16:9. A wider one now holds its zoom through the collapse
+  // instead of easing out of it, which is closer to "re-crops in place" than what it replaced.
+  const photoCrop = useAnimatedStyle(() => {
+    const h = interpolate(scrollY.value, [0, RANGE], [HERO_MAX, min], Extrapolation.CLAMP);
+    return { transform: [{ translateY: -(HERO_MAX - h) / 2 }] };
+  });
 
   // The trip name is the one thing that survives. It is bottom-anchored, so the shrinking
   // hero carries it most of the way for free; this only shrinks it and nudges the last
@@ -67,9 +83,11 @@ export function HomeHeader({ kicker, title, sub, photo, insetTop, scrollY }: Hom
 
   return (
     <Animated.View style={[s.hero, hero]} pointerEvents="box-none">
-      {photo
-        ? <Photo source={photo} style={StyleSheet.absoluteFill} transition={Animation.duration.normal} />
-        : <ImagePlaceholder style={StyleSheet.absoluteFill} glyphSize={34} />}
+      <Animated.View style={[s.photoLayer, photoCrop]} pointerEvents="none">
+        {photo
+          ? <Photo source={photo} style={StyleSheet.absoluteFill} transition={Animation.duration.normal} />
+          : <ImagePlaceholder style={StyleSheet.absoluteFill} glyphSize={34} />}
+      </Animated.View>
 
       {/* Three stops, not two. The mid stop is what stops the gradient banding across a
           bright sky — see reference/photo-scrim.md. */}
@@ -114,6 +132,11 @@ const useStyles = createThemedStyles(() => ({
     overflow: 'hidden',
     backgroundColor: '#1B2A24',   // behind the photo while it decodes; never visible after
   },
+
+  // Full resting height whatever the container is doing, so the image view's bounds never
+  // change and it loads exactly once per photograph. The hero's `overflow: 'hidden'` is what
+  // turns that into a crop.
+  photoLayer: { position: 'absolute', top: 0, left: 0, right: 0, height: HERO_MAX },
 
   kickerRow: { position: 'absolute', left: Gutter, right: Gutter, flexDirection: 'row', alignItems: 'center' },
   kicker: {
