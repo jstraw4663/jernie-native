@@ -20,7 +20,7 @@
 //  2. The stop card does not cross-fade into the bar — it *becomes* it. See StopMorph.tsx.
 //  3. The range is 165, not the token's 140. See STRETCH below.
 import { Layout } from '@/src/design/tokens';
-import { STOP_CARD_WIDTH } from '@/src/ui/StopCard';
+import { stopCardWidth } from '@/src/ui/StopCard';
 
 /** Resting hero height, full-bleed to the top of the screen. */
 export const HERO_MAX = 272;
@@ -88,11 +88,12 @@ export const CARD_TOP = RAIL_TOP + RAIL_PAD_TOP;   // 218
  * The snapped card's left edge, which is also the rail track's side padding.
  *
  * The rail centres the card it is parked on, so the inset is whatever is left over either
- * side of a 292 card — 49 on a 390pt phone. Falls back to the canvas's flat 14 on anything
- * too narrow to centre in. `StopRail` pads its track by this and `StopMorph` starts from
- * it; they have to be the same number or the morph appears a few pixels off the card.
+ * side of it — 11% of the screen each side, which is also the width of the neighbour's peek
+ * minus the gap. Falls back to the canvas's flat 14 on anything too narrow to centre in.
+ * `StopRail` pads its track by this and `StopMorph` starts from it; they have to be the same
+ * number or the morph appears a few pixels off the card.
  */
-export const cardLeft = (width: number) => Math.max(14, (width - STOP_CARD_WIDTH) / 2);
+export const cardLeft = (width: number) => Math.max(14, (width - stopCardWidth(width)) / 2);
 
 // ── The trip name's journey ────────────────────────────────────────────────
 // It is bottom-anchored inside the hero, so most of the travel is free: shrink the hero and

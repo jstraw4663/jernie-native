@@ -14,12 +14,9 @@ import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, useWindo
 import Animated, { Extrapolation, interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { createThemedStyles } from '@/src/design/useTheme';
-import { ImagePlaceholder, Photo, STOP_CARD_WIDTH, StopCard } from '@/src/ui';
+import { ImagePlaceholder, Photo, STOP_CARD_GAP, StopCard, stopCardWidth } from '@/src/ui';
 import { RAIL_PAD_TOP, RAIL_TOP, RANGE, cardLeft } from './collapse';
 import { StopDots } from './StopDots';
-
-/** Card width plus the 10px gap. The rail snaps on this, per react-native-mapping.md. */
-export const SNAP_INTERVAL = STOP_CARD_WIDTH + 10;   // 302
 
 export interface RailStop {
   id: string;
@@ -55,12 +52,15 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
 
   // Shared with StopMorph, which starts its journey from exactly this x — see collapse.ts.
   const sideInset = cardLeft(width);
+  // The card is a share of the screen, so the snap grid is too. Everything that rounds a
+  // scroll offset to an index reads this one value.
+  const snap = stopCardWidth(width) + STOP_CARD_GAP;
 
   // `contentOffset` is an INITIAL offset, not a controlled one. Now that the index changes
   // mid-scroll, re-rendering with a new value made RN re-apply it and yank the drag out from
   // under the user, which is what stopped cards landing centred. Frozen on first render;
   // every later move goes through scrollTo.
-  const initialOffset = useRef({ x: index * SNAP_INTERVAL, y: 0 }).current;
+  const initialOffset = useRef({ x: index * snap, y: 0 }).current;
 
   // Stable identity — a fresh style array on every scroll frame makes the ScrollView
   // re-apply its content container mid-gesture.
@@ -82,8 +82,8 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
 
   const scrollToIndex = useCallback((i: number, animated = true) => {
     selfScrollRef.current = true;
-    railRef.current?.scrollTo({ x: i * SNAP_INTERVAL, animated });
-  }, []);
+    railRef.current?.scrollTo({ x: i * snap, animated });
+  }, [snap]);
 
   // The header's dots can change the stop without the rail having moved. Follow, but only
   // when the change came from outside — matching on settledRef avoids fighting a live drag.
@@ -104,12 +104,12 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
   // scroll that is still under the user's thumb.
   const commit = useCallback((x: number) => {
     if (selfScrollRef.current) return;
-    const i = Math.max(0, Math.min(Math.round(x / SNAP_INTERVAL), stops.length - 1));
+    const i = Math.max(0, Math.min(Math.round(x / snap), stops.length - 1));
     if (i !== settledRef.current) {
       settledRef.current = i;
       onSelect(i);
     }
-  }, [stops.length, onSelect]);
+  }, [stops.length, onSelect, snap]);
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => commit(e.nativeEvent.contentOffset.x),
@@ -126,9 +126,9 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
     const x = e.nativeEvent.contentOffset.x;
     selfScrollRef.current = false;
     commit(x);
-    const target = Math.max(0, Math.min(Math.round(x / SNAP_INTERVAL), stops.length - 1)) * SNAP_INTERVAL;
+    const target = Math.max(0, Math.min(Math.round(x / snap), stops.length - 1)) * snap;
     if (Math.abs(x - target) > 1) railRef.current?.scrollTo({ x: target, animated: true });
-  }, [commit, stops.length]);
+  }, [commit, stops.length, snap]);
 
   const handleTap = useCallback((i: number) => {
     settledRef.current = i;
@@ -152,7 +152,7 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
         ref={railRef}
         horizontal
         showsHorizontalScrollIndicator={false}
-        snapToInterval={SNAP_INTERVAL}
+        snapToInterval={snap}
         decelerationRate="fast"
         disableIntervalMomentum
         contentContainerStyle={trackStyle}
@@ -214,7 +214,7 @@ const useStyles = createThemedStyles(() => ({
   layer: { position: 'absolute', top: RAIL_TOP, left: 0, right: 0 },
   // paddingHorizontal is applied inline — it depends on the screen width, so that the
   // snapped card lands centred. Vertical padding leaves the card's shadow room to breathe.
-  track: { gap: 10, paddingBottom: 4, paddingTop: RAIL_PAD_TOP },
+  track: { gap: STOP_CARD_GAP, paddingBottom: 4, paddingTop: RAIL_PAD_TOP },
   thumb: { width: '100%', height: '100%' },
   dotRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 11 },
 }));

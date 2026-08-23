@@ -22,7 +22,7 @@ import Animated, { Extrapolation, interpolate, useAnimatedStyle } from 'react-na
 import type { SharedValue } from 'react-native-reanimated';
 import { Shadow, Spacing } from '@/src/design/tokens';
 import { createThemedStyles } from '@/src/design/useTheme';
-import { ImagePlaceholder, Photo, STOP_CARD_METRICS as M } from '@/src/ui';
+import { ImagePlaceholder, Photo, STOP_CARD_METRICS as M, stopCardWidth } from '@/src/ui';
 import { CARD_TOP, PINNED_BAR_H, RANGE, barTop, cardLeft } from './collapse';
 import { StopDots, dotsWidth } from './StopDots';
 
@@ -75,10 +75,13 @@ export function StopMorph({
 
   const restX = cardLeft(width);
   const endY = barTop(insetTop);
+  // The card is a share of the screen, so this has to be measured off the same screen the
+  // card measured itself against — not off a constant.
+  const cardW = stopCardWidth(width);
   // Where the thumbnail starts: hard against the card's right padding, inside its border.
-  const restThumbX = M.width - M.border * 2 - M.padH - M.thumb;
+  const restThumbX = cardW - M.border * 2 - M.padH - M.thumb;
   const barTextX = BAR_PAD + BAR_THUMB + Spacing.rowPad;
-  const restTextW = M.width - M.border * 2 - M.padH * 2 - M.gap - M.thumb;
+  const restTextW = cardW - M.border * 2 - M.padH * 2 - M.gap - M.thumb;
   const barTextW = Math.max(60, width - barTextX - BAR_PAD - dotsWidth(stopCount) - BAR_GAP);
 
   // The card's silhouette. `width`/`height` are laid out every frame, which is the same cost
@@ -88,7 +91,7 @@ export function StopMorph({
     return {
       // Off entirely while the rail owns the card, so the two are never both drawn.
       opacity: scrollY.value > 0.5 ? 1 : 0,
-      width: interpolate(p, [0, 1], [M.width, width]),
+      width: interpolate(p, [0, 1], [cardW, width]),
       height: interpolate(p, [0, 1], [M.height, PINNED_BAR_H]),
       borderRadius: interpolate(p, [0, 1], [M.radius, 0]),
       // The selection ring belongs to a card floating on a photo. A full-bleed bar with a

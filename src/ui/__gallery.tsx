@@ -259,7 +259,7 @@ export function Gallery() {
         </Section>
 
         {/* ── StopCard ───────────────────────────────────────────── */}
-        <Section title="StopCard" note="292 wide; Session 4's rail snaps at 302. Inactive drops to 62% and loses its ring.">
+        <Section title="StopCard" note="78% of the screen wide; the rail snaps on that plus 10. Inactive drops to 62% and loses its ring.">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.rail}>
             <StopCard
               kicker="Stop 1 of 3" name="Portland" dates="May 21 – 24 · 3 nights"

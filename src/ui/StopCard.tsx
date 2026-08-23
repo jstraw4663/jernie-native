@@ -2,17 +2,38 @@
 // navigation between stops.
 //
 // The card is custom; the scroll is not. Session 4 puts these in a horizontal
-// `Animated.ScrollView` with `snapToInterval={302}` — 292 wide plus a 10px gap — and
+// `Animated.ScrollView` snapping on `stopCardWidth(screen) + STOP_CARD_GAP` with
 // `decelerationRate="fast"`. Dots below the rail are the only swipe hint; no arrows.
 // Reference: .claude/skills/jernie-design/components/travel/StopCard.{d.ts,jsx}
 import type { ReactNode } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { interpolate, interpolateColor, useAnimatedStyle, useDerivedValue, withSpring } from 'react-native-reanimated';
 import { Animation, PRESSED_OPACITY, Radius, Shadow, Spacing } from '@/src/design/tokens';
 import { createThemedStyles } from '@/src/design/useTheme';
 import { hexWithAlpha } from '@/src/utils/colors';
 
-export const STOP_CARD_WIDTH = 292;
+/**
+ * The card is a share of the screen, not a fixed number.
+ *
+ * The canvas draws it 292 wide against a 390pt phone — 75% — and shipping that literal meant
+ * it was 78% of an SE and 68% of a Max: the same card carrying visibly different weight
+ * depending on the handset. Holding the proportion instead makes every device look like the
+ * one the canvas was drawn on. 78% because that is where the narrowest phone already sat, so
+ * nothing gets *narrower* than it is today.
+ *
+ * The clamp is for the ends: a tablet, where 78% of the screen is not a card, and anything
+ * narrower than the design was ever drawn for.
+ */
+export const STOP_CARD_RATIO = 0.78;
+const STOP_CARD_MIN = 260;
+const STOP_CARD_MAX = 380;
+
+export function stopCardWidth(screenWidth: number): number {
+  return Math.round(Math.min(STOP_CARD_MAX, Math.max(STOP_CARD_MIN, screenWidth * STOP_CARD_RATIO)));
+}
+
+/** Between cards in the rail. The rail snaps on `stopCardWidth(screen) + this`. */
+export const STOP_CARD_GAP = 10;
 
 // Every number the card's own sheet lays out with, named once so a second component can
 // reproduce the card exactly. `StopMorph` draws this card and then stretches it into the
@@ -30,8 +51,9 @@ const FOOT_H = 10 + 9 + 1 + 11;
 
 export const STOP_CARD_HEIGHT = BORDER * 2 + PAD_V * 2 + THUMB + FOOT_H;   // 112
 
+// Width is absent on purpose: it depends on the screen, so anything reproducing the card
+// calls `stopCardWidth()` with the same width the card itself measured.
 export const STOP_CARD_METRICS = {
-  width: STOP_CARD_WIDTH,
   height: STOP_CARD_HEIGHT,
   border: BORDER,
   padH: PAD_H,
@@ -69,6 +91,10 @@ export function StopCard({
   name, dates, kicker, photo, status, statusTone = 'accent', count, active, onPress, testID,
 }: StopCardProps) {
   const [s, t] = useStyles();
+  const { width: screenWidth } = useWindowDimensions();
+  // Inline rather than in the sheet: the sheet is created once per palette and cannot see a
+  // screen width. Everything else about the card's geometry is static.
+  const width = stopCardWidth(screenWidth);
 
   const toneColor = statusTone === 'warning' ? t.warning : t.action;
   // Resolved here, on the JS thread. `useAnimatedStyle`'s body is a worklet, and calling a
@@ -112,7 +138,7 @@ export function StopCard({
       accessibilityState={{ selected: !!active }}
       style={({ pressed }) => pressed && handlePress ? s.pressed : undefined}
     >
-      <Animated.View style={[s.card, lift]}>
+      <Animated.View style={[s.card, { width }, lift]}>
         <View style={s.top}>
           <View style={s.head}>
             <AnimatedText style={[s.kicker, kickerInk]} numberOfLines={1}>{kicker}</AnimatedText>
@@ -133,7 +159,6 @@ export function StopCard({
 
 const useStyles = createThemedStyles((t) => ({
   card: {
-    width: STOP_CARD_WIDTH,
     flexShrink: 0,
     backgroundColor: t.surface,
     borderRadius: Radius.card,

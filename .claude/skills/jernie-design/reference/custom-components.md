@@ -24,7 +24,7 @@ name without saying why first.
 
 | Custom | Library rejected | Why |
 | --- | --- | --- |
-| `StopCard` rail | carousel libraries | A snapping `ScrollView` with three cards is ~30 lines. Carousel libs own their own scroll handler, which fights the 0–140 collapse animation. |
+| `StopCard` rail | carousel libraries | A snapping `ScrollView` with three cards is ~30 lines. Carousel libs own their own scroll handler, which fights the collapse animation. |
 | Collapse header | collapsing-header libraries | Every one assumes the header *translates*. Ours re-crops the photo in place, which is why no black band ever appears above it. See `collapse.md`. |
 | `SegmentedControl` | `@react-native-segmented-control` | iOS-only, and renders the platform control, which will not take our tokens. Ours is a 25-line `View`. |
 | `GapRow` derivation | — | Business logic, not UI: compare each stop's date span against bookings of that type. Belongs in `src/domain/`, not in a component. |
@@ -38,8 +38,15 @@ name without saying why first.
 ## Notes on the four
 
 **`StopCard` rail.** The *card* is custom; the scroll is not. Use a horizontal
-`Animated.ScrollView` from `react-native-gesture-handler` with `snapToInterval={302}` and
-`decelerationRate="fast"`.
+`Animated.ScrollView` from `react-native-gesture-handler` with `decelerationRate="fast"` and
+`snapToInterval={stopCardWidth(screen) + STOP_CARD_GAP}`.
+
+The card's width is **a share of the screen, not the canvas's literal 292**. 292 against the
+390pt phone the canvas was drawn on is 75%, but shipped as a constant it was 78% of an SE and
+68% of a Max — the same card reading as a different weight per handset. `stopCardWidth()`
+holds 78%, clamped at the ends for tablets and for anything narrower than the design was ever
+drawn for. Everything that has to agree with it — the rail's snap grid and side inset, and
+`StopMorph`'s starting frame — calls that function rather than carrying its own number.
 
 **Collapse header.** Reanimated v4 is already a dependency. One `useSharedValue`, one
 `useAnimatedScrollHandler`, several `useAnimatedStyle`s. Do not introduce a second scroll
