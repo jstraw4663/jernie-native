@@ -24,7 +24,7 @@ import { getActiveStopId } from '@/src/domain/trip';
 import { useCollisionSignIn } from '@/src/hooks/useCollisionSignIn';
 import { readSnooze, writeSnooze } from '@/src/lib/nudgeSnooze';
 import { resolvePhoto } from '@/src/lib/images';
-import { Core, Gutter } from '@/src/design/tokens';
+import { Animation, Core, Gutter } from '@/src/design/tokens';
 import { createThemedStyles } from '@/src/design/useTheme';
 import { Button } from '@/src/ui';
 import { getDevNow } from '@/src/utils/devTime';
@@ -54,12 +54,15 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 // scrolling does not. The stagger caps at 6 steps so a two-week stop does not spend most of
 // a second dealing itself out.
 const RISE = 10;
-const STEP = 55;
+const STEP = 28;
 const MAX_STEPS = 6;
 
+// Worst case is 168ms of stagger plus a 175ms fade — ~343ms to the last visible section,
+// down from 630. The stagger still reads as a sequence rather than a single block, which is
+// the whole point of it; it just no longer feels like waiting.
 const rise = (step: number) =>
   FadeInDown
-    .duration(300)
+    .duration(Animation.duration.fast)
     .delay(Math.min(step, MAX_STEPS) * STEP)
     .withInitialValues({ opacity: 0, transform: [{ translateY: RISE }] });
 

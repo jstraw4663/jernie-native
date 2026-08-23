@@ -60,7 +60,7 @@ export function HomeHeader({
   return (
     <Animated.View style={[s.hero, hero]} pointerEvents="box-none">
       {photo
-        ? <Photo source={photo} style={StyleSheet.absoluteFill} transition={Animation.duration.slow} />
+        ? <Photo source={photo} style={StyleSheet.absoluteFill} transition={Animation.duration.normal} />
         : <ImagePlaceholder style={StyleSheet.absoluteFill} glyphSize={34} />}
 
       {/* Three stops, not two. The mid stop is what stops the gradient banding across a

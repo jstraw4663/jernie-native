@@ -20,8 +20,9 @@ export interface PhotoProps {
   glyphSize?: number;
   /** Size and radius live here; the photo fills whatever box it is given. */
   style?: StyleProp<ViewStyle>;
-  /** Crossfade in ms when the source changes. Defaults to `fast`; a hero deserves `slow`,
-   *  because swapping the biggest image on the screen at 175ms reads as a glitch. */
+  /** Crossfade in ms when the source changes. Defaults to `fast`. A hero wants `normal` —
+   *  swapping the biggest image on the screen at 175ms reads as a glitch, but `slow` reads
+   *  as waiting. */
   transition?: number;
   accessibilityLabel?: string;
   testID?: string;
