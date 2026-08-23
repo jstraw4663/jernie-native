@@ -32,10 +32,12 @@ name without saying why first.
 | `Toggle` | React Native's `Switch` | `Switch` renders the platform control. iOS gives it the system green and will not take `--accent`; `trackColor` reaches the track but not the knob shadow or the 44×26 geometry. Ours is a `Pressable` + one `withSpring` progress driving translate and `interpolateColor` — 45 lines. Named in `react-native-mapping.md`'s primitive table, but never registered here. |
 | `StopMorph` | shared-element / hero-transition libraries | The card and the collapsed header bar are one object that changes shape on a scroll value. Every shared-element library drives its own timeline off a navigation event, and there is no navigation here. ~190 lines of `interpolate` on the collapse value we already have. |
 | `ProgressBar` | `react-native-progress`, `react-native-animated-progress` | Both are wrappers around the same thing this is: a `View` with an animated width. 15 lines against a dependency, an unmaintained one in the second case, and neither does the wizard's discrete-segment mode without fighting it. |
+| `CoverageGrid` (Agenda) | `react-native-table-component` | A 2×N status matrix: the two things that can be missing against one column per stop. The only maintained table library renders its own text styles and will not take these tokens, for a grid whose whole content is two colours and two glyphs. ~120 lines of `View`. |
+| `AgendaSection` header | SectionList wrappers | `ListRow` is the closest primitive and the wrong one — its title is `roles.row` 13.5px against this one's `roles.section` 15px, its media tile is 44px against 30, and it is an *item* where this is the list's heading. Every library that owns section headers owns the sectioning too, and Agenda's sections are a flat `FlashList` array by design. |
 
 <!-- Add new rows above this line. Include: what, the library you rejected, and why. -->
 
-## Notes on the four
+## Notes on the register
 
 **`StopCard` rail.** The *card* is custom; the scroll is not. Use a horizontal
 `Animated.ScrollView` from `react-native-gesture-handler` with `decelerationRate="fast"` and
@@ -83,3 +85,20 @@ starts to flinch — that is the one way to break it.
 (Android needs `borderRadius` ≤ 15 or the dash renders square). The *logic* — which gaps
 exist — is a pure function over stops and bookings and belongs in `src/domain/`. Only stays
 and transport generate gaps; eating and doing are preferences and only ever count.
+
+**`CoverageGrid`.** Rendered **only when a gap exists** — a wall of teal checks is a screen
+telling you nothing. Two rows, because there are exactly two gap-generating roles
+(`GAP_ROLES` in `src/domain/taxonomy.ts`), and one column per stop. Partial is not covered:
+two of three nights booked still leaves a night on a bench, so the cell is amber.
+
+The whole grid sits in **one** horizontal `ScrollView` rather than three — a per-row scroll
+view would let the header and the two rows fall out of alignment. The label column absorbs
+the slack while the stops fit, exactly as the canvas's `flex:1` does, and holds a 96px floor
+past that, at which point the grid scrolls sideways as a single piece. On a 393pt phone that
+is five stops before it scrolls.
+
+**`AgendaSection`.** The caret is real: the section collapses, and collapse state is keyed by
+section rather than by index, so it survives a lens switch. A caret that does nothing is the
+same dead affordance the hero's notification bell would have been, and this one costs a
+`useState`. It buzzes on press — a committed state change, the rule `SegmentedControl` and
+`Toggle` follow.

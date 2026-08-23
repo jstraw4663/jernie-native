@@ -21,8 +21,9 @@ with hand-rolled code limited to the register in
 | Session 2b — tokens + sweep | **Done, gate green.** `tokens.ts` regenerated; 54 files re-pointed; `Brand` deleted; three deps installed. Awaiting Jeremy's screen-by-screen look. |
 | Session 2c — icons | **Done, verified on device.** Zero emoji in `app/` and `src/`; `src/design/icons.ts` registry; `Stop.emoji` deprecated, not removed. Needed an `eas.json` build-flag fix — see Known repo facts. |
 | Session 3 — primitives | **Done, gate green.** Twelve components in `src/ui/`, all theme-aware via `useTheme()`. Photo seam split across `src/lib/images.ts` and `src/ui/Photo.tsx`. Gallery at `jernie://dev/ui`. Two deps added (`expo-haptics`, `@shopify/flash-list`) — **needs a dev build**. |
-| Session 4 — Jernie home | **Done, gate green.** One vertical scroll; hero, collapse, rail, CTA row, day groups. Pager, accordion and `CTACardZone`'s phase router removed. 84 suites / 900 tests. |
-| Sessions 5–12 | Not started |
+| Session 4 — Jernie home | **Done, gate green.** One vertical scroll; hero, collapse, rail, CTA row, day groups. Pager, accordion and `CTACardZone`'s phase router removed. Revised on device: the card *becomes* the bar, the header keeps the trip name, range stretched to 165, hero photo bug fixed. |
+| Session 5 — Agenda + gaps | **Done, awaiting device check.** Three lenses, four type groups, derived gap rows, coverage grid. `taxonomy.ts` / `gaps.ts` / `agenda.ts` new and unit tested. 87 suites / 951 tests. |
+| Sessions 6–12 | Not started |
 
 ---
 
@@ -265,6 +266,98 @@ width or height is animated.
 
 ---
 
+---
+
+## Session 5 — Agenda and gap derivation, 2026-08-23
+
+### The three new domain modules
+
+**`src/domain/taxonomy.ts`** is the role layer — the top of a three-level taxonomy whose
+lower two already existed. Subtype (open string) owns the icon; category (the closed ten of
+`docs/redesign-plan.md` §8) owns the colour; **role** (`sleep`/`move`/`eat`/`do`) owns the
+Agenda group and the gap rule. Nothing stored changed: the five competing category sets
+became *inputs* to `normalizeCategory`, which absorbs `restaurant`→`food` and `bar`→`bars`
+rather than picking a winner, and returns `null` for `other`/`custom` because "no category"
+is a real answer. `bookingCategory()` is the single adapter between `BookingType` and the
+taxonomy — `getBookingDisplay` now routes through it too, so Session 6's rename touches one
+function.
+
+**`src/domain/gaps.ts`** derives coverage and gaps in one pass. Two rules, and the asymmetry
+between them is deliberate: sleep is counted **per night** (you need a bed every night, so
+the gap says how many are missing), transport is **per stop** (you need a way to get around,
+not one per night, so the gap explains the cause instead of counting).
+
+**`src/domain/agenda.ts`** flattens bookings and itinerary items into one chronological row
+list. A booking referenced from the itinerary appears once. This is where the bookings that
+Session 4 removed from home went.
+
+### Two decisions inside the derivation worth knowing
+
+**Coverage asks dates, never `stopId`.** A hotel booked in on the 22nd and out on the 25th is
+tagged to the first stop but genuinely covers the second stop's first night if the changeover
+is the 24th. Asking the dates gets that right and cannot invent a gap from a mis-tagged
+booking.
+
+**A plan counts as cover, not only a booking.** An itinerary item whose role is `sleep`
+covers that night; one whose role is `move` covers that day. Without it, *staying with
+friends* is a permanent stay gap and *driving your own car* is a permanent transport gap on
+every stop — two false alarms common enough to make the feature read as broken. The row still
+says whether the thing is booked; the gap only asks whether the question has an answer.
+
+That second rule needed `ItineraryItemCategory` widened to reach the canonical ten — `stay`
+was previously inexpressible. **No writer offers the new values yet and nothing new is
+written**; the type simply stopped forbidding what the domain understands. Giving
+`CustomItemSheet`'s picker the wider set is Session 6's.
+
+### Three lenses, not one
+
+The canvas puts By type / By day / By stop above the list and the gate only asked for the
+type groups. All three ship: they are one regrouping each over a row list that is built
+once, `SegmentedControl` was written in Session 3 specifically for this screen and had no
+call site, and two dead segments is the same problem as a dead notification bell.
+
+Gaps attach where they make sense. **By type** they sit under the group that owns them —
+stay gaps under *Where you're staying*, transport under *Getting around*. **By stop** they
+sit under their stop, which is arguably their most natural home. **By day** they are carried
+by the coverage grid alone: a gap is a range of nights, not a day, and pinning one to a date
+would be a lie.
+
+### What could not be derived
+
+The canvas's group sublines are part derivation and part editorial. *"2 of 3 stops covered ·
+7 of 8 nights"* is now computable and ships verbatim. *"2 dinners open"* and *"3 need
+tickets"* have no field behind them — an open dinner is not a concept and nothing records
+whether an activity needs a ticket. The derivable halves ship (`4 booked · 2 planned`,
+`8 planned`) and the rest is omitted rather than invented, the same call the day-group title
+got in Session 4.
+
+### Deviations from the canvas, each on purpose
+
+- **Rows are `ItineraryRow`.** `ItineraryRow.prompt.md` says verbatim "use inside a day group
+  on Home, **and in Agenda's type groups**", so the primitive is the row. Its media tile is
+  44px where the canvas's inline agenda markup draws 26, and the component reference wins.
+- **The mono time column is 24-hour.** The lead is 44px wide by the component's own
+  definition and "8:22 AM" is seven characters where five fit. Only Agenda converts; nothing
+  else in the app changed.
+- **A stay's lead is `22–24`, unspaced**, for the same width reason. Prose ranges use
+  `formatDateRange`, which gained its spaces this session (`Jul 10 – 12`) because the design
+  writes the range spaced in both places it appears.
+- **The header's Add is a labelled `Button`, not the canvas's bare round `+`.** `Button` has
+  no icon-only mode, and a naked glyph is more ambiguous than the word.
+- **No sticky section headers.** The mapping suggests `stickyHeaderIndices` as a technique;
+  the canvas does not sticky, and sticky plus collapsible plus a leading grid is a lot of
+  behaviour to add unverified.
+
+### Known limits
+
+- **The by-stop lens silently drops an entry whose `stopId` matches no stop.** Only reachable
+  from stale data, and the other two lenses still show it.
+- **A stop's coverage column truncates a long city name** at 56px — "Southwest Harb…". The
+  active stop is in accent, which is how you find yourself.
+- **`DayGroup` on home still passes raw `item.time`** into an 11px mono column, so "8:22 AM"
+  overflows 44px there. Pre-existing, one line to fix with `formatClock`, deliberately not
+  swept this session.
+
 ## Blocking decisions
 
 Settle the first three before Session 3. **All three are now settled** — taxonomy in `docs/redesign-plan.md` §8, date semantics disproved as a conflict, photo seam in §6d.
@@ -377,8 +470,9 @@ the two `href` links to it are dead by design. It remains in Claude Design.
   The helper in [useTheme.ts](src/design/useTheme.ts) caches on the palette object and
   returns `[sheet, palette]`. `Palette` now carries `warning*` and `error*` too — dark amber
   is `#E0A244`, a different colour, not `#B56B00` dimmed.
-- **Agenda is a 17-line stub.** `src/domain/gaps.ts` does not exist; there is no gap or
-  coverage concept anywhere in the codebase.
+- **Agenda is built, as of Session 5.** `src/domain/{taxonomy,gaps,agenda}.ts` are the
+  derivation; `app/(trips)/[tripId]/(tabs)/agenda.tsx` renders it through the primitives plus
+  two registered customs. Gaps come from `deriveCoverage()` and nothing else computes one.
 - **Drafts are in-memory only** and `trips/{tripId}` is create-once and immutable at the top
   level by RTDB rule — a partial trip written during a draft could not be cleaned up by the
   client.

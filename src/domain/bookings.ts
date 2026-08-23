@@ -2,6 +2,7 @@
 
 import type { Booking, FlightBooking, FlightLeg } from '@/src/types';
 import type { ItemCategory } from '@/src/design/icons';
+import { bookingCategory } from './taxonomy';
 
 export interface BookingDisplay {
   /** Resolve to a glyph with `iconFor(category)`. The domain names the thing; the view
@@ -94,7 +95,7 @@ export function getBookingDisplay(b: Booking, todayIso: string): BookingDisplay 
     case 'flight': {
       const { firstLeg, lastLeg } = getFlightEndpoints(b);
       return {
-        category: 'flight',
+        category: bookingCategory(b),
         label: `${firstLeg.airline} · ${firstLeg.flightNumber}`,
         meta: `${firstLeg.origin} → ${lastLeg.destination} · ${firstLeg.departureTime} → ${lastLeg.arrivalTime}`,
       };
@@ -102,21 +103,21 @@ export function getBookingDisplay(b: Booking, todayIso: string): BookingDisplay 
 
     case 'hotel':
       return {
-        category: 'stay',
+        category: bookingCategory(b),
         label: b.hotelName,
         meta: `${b.checkIn} – ${b.checkOut}`,
       };
 
     case 'rental':
       return {
-        category: 'car',
+        category: bookingCategory(b),
         label: b.carType ? `${b.company} · ${b.carType}` : b.company,
         meta: `${b.pickupDate} – ${b.dropoffDate}`,
       };
 
     case 'restaurant':
       return {
-        category: 'food',
+        category: bookingCategory(b),
         label: b.restaurantName,
         meta: `${b.date}${b.time ? ` · ${b.time}` : ''}`,
       };

@@ -173,7 +173,23 @@ export type Booking = FlightBooking | HotelBooking | RentalBooking | RestaurantB
 
 // ── Itinerary ───────────────────────────────────────────────────────────────
 
-export type ItineraryItemCategory = PlaceCategory | 'transport' | 'custom';
+/**
+ * What an itinerary item is, in any spelling the app has ever written.
+ *
+ * Widened in Session 5 to reach the canonical ten of `docs/redesign-plan.md` §8 —
+ * `src/domain/taxonomy.ts` normalises the whole union down to those ten (or to `null`), and
+ * the role it derives from them is what decides Agenda's group and the gap rule. Without
+ * `stay` here, "staying with friends" was inexpressible and therefore a permanent stay gap.
+ *
+ * **Nothing new is written.** No writer offers the added values yet; this only stops the
+ * type from forbidding what the domain already understands. The legacy spellings stay
+ * because they are what is in RTDB: `restaurant`→`food`, `bar`→`bars`, `transport`→`car`,
+ * and `other`/`custom`→ no category at all.
+ */
+export type ItineraryItemCategory =
+  | PlaceCategory
+  | 'transit' | 'car' | 'stay' | 'food' | 'bars' | 'shopping'
+  | 'transport' | 'custom';
 
 export interface ItineraryItem {
   id: string;
