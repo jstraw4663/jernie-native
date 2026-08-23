@@ -79,15 +79,33 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
     }
   }, [index, scrollToIndex]);
 
-  // Selection follows the settled card, not every frame of the drag — committing mid-flick
-  // would swap the whole screen's content under the user's thumb.
-  const handleMomentumEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const i = Math.max(0, Math.min(Math.round(e.nativeEvent.contentOffset.x / SNAP_INTERVAL), stops.length - 1));
+  // Selection commits at the crossover — the instant the incoming card is more centred than
+  // the outgoing one — not when the scroll finishes decelerating. Waiting for
+  // `onMomentumScrollEnd` meant the card sat faded through the whole deceleration and only
+  // lit up once everything had stopped, which reads as lag however fast the spring is.
+  //
+  // `settledRef` makes this cheap: the index changes at most once or twice per swipe, so
+  // this is not a setState per frame. It also keeps the sync effect below from yanking a
+  // scroll that is still under the user's thumb.
+  const commit = useCallback((x: number) => {
+    const i = Math.max(0, Math.min(Math.round(x / SNAP_INTERVAL), stops.length - 1));
     if (i !== settledRef.current) {
       settledRef.current = i;
       onSelect(i);
     }
   }, [stops.length, onSelect]);
+
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => commit(e.nativeEvent.contentOffset.x),
+    [commit],
+  );
+
+  // Backstop: a scroll that ends without crossing (a short drag that springs back, or a
+  // programmatic scroll) still has to land on a definite index.
+  const handleMomentumEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => commit(e.nativeEvent.contentOffset.x),
+    [commit],
+  );
 
   const handleTap = useCallback((i: number) => {
     settledRef.current = i;
@@ -111,6 +129,8 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
         disableIntervalMomentum
         contentContainerStyle={[s.track, { paddingHorizontal: sideInset }]}
         contentOffset={{ x: index * SNAP_INTERVAL, y: 0 }}
+        scrollEventThrottle={16}
+        onScroll={handleScroll}
         onMomentumScrollEnd={handleMomentumEnd}
       >
         {stops.map((stop, i) => (
