@@ -39,6 +39,15 @@ to the bar's left, sheds "Stop 2 of 3" and the status line, and grows its dots. 
 `StopMorph` in `custom-components.md` for how the handoff from the rail's real card is made
 seamless.
 
+**3. The range is 165, not 140.** `--collapse-range` is 140 and the app stretches it by 18%.
+The header was finished before the gesture felt finished, and a flick upward snapped the hero
+back to full height. Nothing in the animation was wrong; there was not enough finger in it.
+The stretch lives in `collapse.ts` rather than in `tokens.ts`, because tokens are regenerated
+from `tokens/*.css` and would clobber it.
+
+Every ramp on the screen is a fraction of that one number, so it stays the only place the
+pacing is set.
+
 Everything else here still holds — one scroll value, the photo re-cropping in place, no
 second animation clock.
 

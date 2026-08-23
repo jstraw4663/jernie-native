@@ -202,6 +202,16 @@ the same shared value in the same frame: `scrollY === 0` the rail's card is draw
 `scrollY > 0` the morph is. No window where both are drawn (a doubled shadow), none where
 neither is (a flash).
 
+**The range is 165, not 140.** Stretched 18% the same day, after the first pass: the header
+finished before the gesture did, and a flick upward snapped the hero back to full height in
+one frame. The stretch is applied in `collapse.ts`, not in `tokens.ts` — tokens are
+regenerated from `tokens/*.css` and would clobber it. Every ramp on the screen is a fraction
+of `RANGE`, so this one number still sets the whole screen's pacing.
+
+Net content velocity falls again with it, to ~1.24x, and `spacerMin` rises to 95 against a
+measured rail of ~134. That gap is the headroom: past the point where `spacerMin` exceeds the
+rail's height the spacer would have to grow as you scroll, which is not a collapse.
+
 One thing the bar does not reproduce: the name and dates keep the card's 16/11.5 rather than
 the reference bar's 14/10.5. There is no way to animate a type size that is not either
 re-measuring text every frame or scaling the line spacing with it, and the larger size reads

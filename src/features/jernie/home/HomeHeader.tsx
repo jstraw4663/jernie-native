@@ -49,7 +49,8 @@ export function HomeHeader({ kicker, title, sub, photo, insetTop, scrollY }: Hom
   });
 
   // The dates and the day count are the parts that stop being worth their space. Gone by
-  // y=64, well before the bar arrives, so the two never overlap. Multipliers are the canvas's.
+  // y=75, well before the bar arrives, so the two never overlap. The divisors are the
+  // canvas's; they are fractions of RANGE, so stretching the range stretches these with it.
   const subFade = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, [0, RANGE / 2.2], [1, 0], Extrapolation.CLAMP),
   }));

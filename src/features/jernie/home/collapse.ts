@@ -5,8 +5,8 @@
 // the morph — everything derives from this one, which is what keeps them in lockstep.
 //
 //   y=0    photo full at 272, trip name large, stop rail floating on top
-//   y=70   photo re-cropping, trip name shrinking, the active card halfway to being the bar
-//   y=140  photo at a title strip plus the bar, trip name still there, content unmoved
+//   y=82   photo re-cropping, trip name shrinking, the active card halfway to being the bar
+//   y=165  photo at a title strip plus the bar, trip name still there, content unmoved
 //
 // The photo **re-crops in place** rather than translating, which is why no band ever
 // appears above it. Every collapsing-header library assumes a translate; that is the whole
@@ -18,14 +18,35 @@
 //     strip of photograph. The spec collapses to navigation alone; on device that threw
 //     away the one thing that says which trip you are in.
 //  2. The stop card does not cross-fade into the bar — it *becomes* it. See StopMorph.tsx.
+//  3. The range is 165, not the token's 140. See STRETCH below.
 import { Layout } from '@/src/design/tokens';
 import { STOP_CARD_WIDTH } from '@/src/ui/StopCard';
 
 /** Resting hero height, full-bleed to the top of the screen. */
 export const HERO_MAX = 272;
 
-/** The scroll distance the whole app collapses over. `--collapse-range`. */
-export const RANGE = Layout.collapseRange;   // 140
+/**
+ * How much more scroll the collapse takes than the token says.
+ *
+ * The design's `--collapse-range` is 140. On device the whole header — shrink, morph, title,
+ * scrim — was over and done with before the gesture felt finished, and the expand back out
+ * was worse: a flick upward snapped the hero to full height. Nothing about the animation was
+ * wrong, there was just not enough finger in it. 18% more travel, Jeremy's call.
+ *
+ * Stretching the range rather than editing the token, because `tokens.ts` is regenerated from
+ * `.claude/skills/jernie-design/tokens/*.css` and would clobber the edit. This is the third
+ * entry in reference/collapse.md's deviations.
+ */
+const STRETCH = 1.18;
+
+/**
+ * The scroll distance the whole app collapses over. `--collapse-range`, stretched.
+ *
+ * Every ramp on this screen is a fraction of this one number, so it is the only place the
+ * pacing is set — the morph's five curves, the title's scale, both scrims, the rail's fade
+ * and the spacer all move with it.
+ */
+export const RANGE = Math.round(Layout.collapseRange * STRETCH);   // 165
 
 /** How far the stop rail floats up onto the photo at rest. */
 export const RAIL_LIFT = 56;
@@ -105,5 +126,9 @@ export const TITLE_SHIFT =
  * is wrong against this one — the first card would come to rest 70px behind the bar. This
  * is the height that lands it exactly on the header's bottom edge at `y = RANGE`; its own
  * `paddingTop` supplies the gap.
+ *
+ * It rises with `RANGE`, and the rail's measured height is the ceiling: past the point where
+ * this exceeds it the spacer would have to *grow* as you scroll, which is not a collapse.
+ * At 165 it is 95 against a rail of about 134, so there is room, but not unlimited room.
  */
 export const spacerMin = (insetTop: number) => Math.max(0, heroMin(insetTop) - RAIL_TOP + RANGE);
