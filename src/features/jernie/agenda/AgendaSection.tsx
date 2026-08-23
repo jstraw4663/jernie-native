@@ -12,10 +12,10 @@
 // affordance the hero's notification bell was, and this one costs a `useState`.
 // Reference: docs/design/Jernie Screen.dc.html, the Agenda tab.
 import type { Icon } from 'phosphor-react-native';
-import { CaretDownIcon } from 'phosphor-react-native/src/icons/CaretDown';
 import { CaretUpIcon } from 'phosphor-react-native/src/icons/CaretUp';
 import { Pressable, Text, View } from 'react-native';
-import { Gutter, PRESSED_OPACITY, Radius, Spacing, Typography } from '@/src/design/tokens';
+import Animated, { useAnimatedStyle, useDerivedValue, withSpring } from 'react-native-reanimated';
+import { Animation, Gutter, PRESSED_OPACITY, Radius, Spacing, Typography } from '@/src/design/tokens';
 import { createThemedStyles } from '@/src/design/useTheme';
 import { tap } from '@/src/ui';
 
@@ -36,7 +36,15 @@ export function AgendaSection({
   Glyph, title, sub, collapsed, count, first, onToggle, testID,
 }: AgendaSectionProps) {
   const [s, t] = useStyles();
-  const Caret = collapsed ? CaretDownIcon : CaretUpIcon;
+
+  // One glyph turned over, not two glyphs swapped — the rotation is the feedback, and it is
+  // the only thing about a collapse that can move. `spring-snappy`, the same spring the
+  // segmented pill and the lens swap use.
+  const turn = useDerivedValue(
+    () => withSpring(collapsed ? 1 : 0, Animation.springs.snappy),
+    [collapsed],
+  );
+  const caret = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.value * 180}deg` }] }));
 
   return (
     <Pressable
@@ -56,7 +64,9 @@ export function AgendaSection({
         <Text style={s.sub} numberOfLines={1}>{sub}</Text>
       </View>
 
-      <Caret size={15} color={t.textFaint} weight="regular" />
+      <Animated.View style={caret}>
+        <CaretUpIcon size={15} color={t.textFaint} weight="regular" />
+      </Animated.View>
     </Pressable>
   );
 }

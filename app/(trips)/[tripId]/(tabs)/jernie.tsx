@@ -8,11 +8,10 @@
 //
 // The rail is an overlay rather than a list child, so a collapsing spacer reclaims its space
 // as it leaves. Everything animated reads one shared `scrollY`; see home/collapse.ts.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { RefreshControl, View } from 'react-native';
 import Animated, {
-  Extrapolation, FadeInDown, interpolate, useAnimatedScrollHandler, useAnimatedStyle,
-  useSharedValue,
+  Extrapolation, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlusIcon } from 'phosphor-react-native/src/icons/Plus';
@@ -25,7 +24,8 @@ import { getActiveStopId } from '@/src/domain/trip';
 import { useCollisionSignIn } from '@/src/hooks/useCollisionSignIn';
 import { readSnooze, writeSnooze } from '@/src/lib/nudgeSnooze';
 import { resolvePhoto } from '@/src/lib/images';
-import { Animation, Core, Gutter } from '@/src/design/tokens';
+import { rise } from '@/src/design/motion';
+import { Core, Gutter } from '@/src/design/tokens';
 import { createThemedStyles } from '@/src/design/useTheme';
 import { Button, tap } from '@/src/ui';
 import { getDevNow } from '@/src/utils/devTime';
@@ -48,25 +48,12 @@ import type { CustomItemSheetRef } from '@/src/features/jernie/sheets/CustomItem
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 // Changing stop changes almost everything below the header at once, which without this
-// reads as a hard cut. Each section rises 10px into place instead, one after the next, so
-// the eye is told what changed rather than left to notice. `FadeInDown` starts at
-// translateY 25 — too much travel for a section, hence the override.
+// reads as a hard cut. Each section rises into place instead, one after the next, so the eye
+// is told what changed rather than left to notice.
 //
 // Keys carry the stop id, so a stop change remounts each section and re-fires its entrance;
-// scrolling does not. The stagger caps at 6 steps so a two-week stop does not spend most of
-// a second dealing itself out.
-const RISE = 10;
-const STEP = 28;
-const MAX_STEPS = 6;
-
-// Worst case is 168ms of stagger plus a 175ms fade — ~343ms to the last visible section,
-// down from 630. The stagger still reads as a sequence rather than a single block, which is
-// the whole point of it; it just no longer feels like waiting.
-const rise = (step: number) =>
-  FadeInDown
-    .duration(Animation.duration.fast)
-    .delay(Math.min(step, MAX_STEPS) * STEP)
-    .withInitialValues({ opacity: 0, transform: [{ translateY: RISE }] });
+// scrolling does not. `rise` itself lives in src/design/motion.ts — one motion vocabulary
+// for the whole app, shared with Agenda.
 
 const SETUP_KEYS = ['stays', 'flights', 'car', 'restaurants'] as const;
 type SetupKey = (typeof SETUP_KEYS)[number];

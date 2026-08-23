@@ -19,9 +19,22 @@ import { Gutter, Radius, Spacing, Typography } from '@/src/design/tokens';
 import { createThemedStyles } from '@/src/design/useTheme';
 import { gapCaption } from './copy';
 
-const COL = 56;
-const LABEL_MIN = 96;
+// Wide enough that "Bar Harbor" sits on one line and "Southwest Harbor" wraps to two rather
+// than truncating. Three stops still fit a 393pt phone without scrolling; four do not, which
+// is what the horizontal scroll is for.
+const COL = 74;
+const LABEL_MIN = 88;
 const CELL = 21;
+
+/**
+ * "Portland, ME" → "Portland". A geocoded stop carries its region in `city`, and in a column
+ * this narrow the state is the least useful half of the name — every stop on one trip tends
+ * to share it. The full name stays in the accessibility label.
+ */
+function shortCity(city: string): string {
+  const comma = city.indexOf(',');
+  return comma > 0 ? city.slice(0, comma).trim() : city;
+}
 
 export interface CoverageGridProps {
   coverage: TripCoverage;
@@ -49,14 +62,22 @@ export function CoverageGrid({ coverage, activeStopId, testID }: CoverageGridPro
   // The label column absorbs the slack when the stops fit, exactly as the canvas's `flex:1`
   // does; past that it holds its floor and the whole grid scrolls sideways as one piece.
   // One scroll view, so the header and both rows can never fall out of alignment.
-  const available = width - Gutter * 2;
-  const labelW = Math.max(LABEL_MIN, available - COL * coverage.stops.length);
+  //
+  // The card's own gutters, padding and borders all come off first — measuring against the
+  // bare screen width overstates the room by 26px and makes a grid that fits scroll anyway.
+  const available = width - Gutter * 2 - Spacing.md * 2 - 2;
+  const stopsW = COL * coverage.stops.length;
+  const labelW = Math.max(LABEL_MIN, available - stopsW);
+  const overflows = labelW + stopsW > available;
 
   return (
     <View testID={testID} style={s.card}>
       <ScrollView
         horizontal
-        showsHorizontalScrollIndicator={false}
+        // Only when there is somewhere to go. On a three-stop trip the grid fits and a bar
+        // under it would be a control for nothing.
+        showsHorizontalScrollIndicator={overflows}
+        scrollEnabled={overflows}
         // Nothing in here is a tap target, so the whole grid can be a page-turn surface.
         bounces={false}
       >
@@ -69,9 +90,10 @@ export function CoverageGrid({ coverage, activeStopId, testID }: CoverageGridPro
               <Text
                 key={stop.stopId}
                 style={[s.stopName, { color: stop.stopId === activeStopId ? t.action : t.textMuted }]}
-                numberOfLines={1}
+                numberOfLines={2}
+                accessibilityLabel={stop.city}
               >
-                {stop.city}
+                {shortCity(stop.city)}
               </Text>
             ))}
           </View>
@@ -124,6 +146,8 @@ const useStyles = createThemedStyles((t) => ({
   caption:  { ...Typography.roles.caps, color: t.textFaint },
   stopName: {
     width: COL,
+    // A hair of side padding so two adjacent two-line names never read as one block.
+    paddingHorizontal: 3,
     textAlign: 'center',
     fontSize: 9.5, lineHeight: 11,
     fontFamily: 'DMSans-Bold', fontWeight: '700' as const,

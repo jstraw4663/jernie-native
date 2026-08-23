@@ -348,6 +348,43 @@ got in Session 4.
   the canvas does not sticky, and sticky plus collapsible plus a leading grid is a lot of
   behaviour to add unverified.
 
+### Motion, made shared — same day
+
+Two changes on device. Both are now in **`src/design/motion.ts`**, which is the point of
+them: one module decides how content arrives and how it changes, so Sessions 6–12 do not each
+invent an animation.
+
+**`rise(step)`** — the staggered fade-up for *new* content — moved there out of
+`jernie.tsx` unchanged, and home now imports it.
+
+**`useSwapTransition(index)`** is new: the transition for the *same* content re-grouped by a
+segmented control. It is **directional** — moving right sends the list in from the right — so
+the content travels the way the thumb did, which is the only useful thing motion can say when
+the rows on either side of the change are largely the same rows. It springs on
+`springs.snappy`, the spring `SegmentedControl`'s own pill uses, so the control and the
+content settle as one event rather than two.
+
+Three details it turns on. There is **no fade-out**: a cross-fade would put a blank list on
+screen for half the transition, which reads as a load rather than as a change. It runs in
+**`useLayoutEffect`**, because the data swaps during the same render and a post-paint effect
+would show one frame of the new list at rest before yanking it back to the animation's start
+— a visible blink. And the list **scrolls to the top** on a lens change, un-animated, because
+a scroll offset means nothing across a regrouping and two motions would fight.
+
+`AgendaSection`'s caret is now one glyph rotating 180° on the same spring rather than two
+glyphs swapped. The collapse itself is still instant — Reanimated layout animations inside a
+recycling `FlashList` are the one thing here worth not attempting blind.
+
+### The coverage grid, widened — same day
+
+Columns were 56px against names like "Southwest Harbor" and ran into each other. Now 74px
+with names wrapping to two lines, the region stripped for the column header only
+(`Portland, ME` → `Portland`; the full name stays in the accessibility label), and the
+available width finally measured properly — it was computed against the bare screen and
+overstated the room by 26px, so a grid that fitted scrolled anyway. Three stops now fit a
+393pt phone exactly; four scroll, and the scroll indicator only appears when there is
+somewhere to go.
+
 ### Known limits
 
 - **The by-stop lens silently drops an entry whose `stopId` matches no stop.** Only reachable

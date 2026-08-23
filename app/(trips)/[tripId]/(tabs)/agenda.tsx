@@ -11,9 +11,10 @@
 // their stop — and in the by-day lens they are carried by the coverage grid instead, because
 // a gap is a range of nights and not a day.
 // Reference: docs/design/Jernie Screen.dc.html (the Agenda tab) + components/travel/GapRow.*
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import Animated from 'react-native-reanimated';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDotsIcon } from 'phosphor-react-native/src/icons/CalendarDots';
 import { MapPinIcon } from 'phosphor-react-native/src/icons/MapPin';
@@ -27,6 +28,7 @@ import { deriveCoverage, gapsForStop, type Gap } from '@/src/domain/gaps';
 import type { ItemRole } from '@/src/domain/taxonomy';
 import { getActiveStopId } from '@/src/domain/trip';
 import { iconFor } from '@/src/design/icons';
+import { useSwapTransition } from '@/src/design/motion';
 import { Gutter, Spacing, Typography } from '@/src/design/tokens';
 import { createThemedStyles } from '@/src/design/useTheme';
 import { Badge, Button, GapRow, ImagePlaceholder, ItineraryRow, Photo, PromptRow, SegmentedControl } from '@/src/ui';
@@ -44,6 +46,9 @@ import { EntityDetailSheet } from '@/src/features/jernie/sheets/EntityDetailShee
 import type { EntityDetailSheetRef } from '@/src/features/jernie/sheets/EntityDetailSheet';
 
 type Lens = 'type' | 'day' | 'stop';
+
+/** Order matters: it is what tells the swap transition which way the content should travel. */
+const LENSES: readonly Lens[] = ['type', 'day', 'stop'];
 
 const LENS_ICON_SIZE = 14;
 
@@ -78,6 +83,13 @@ export default function AgendaTab() {
   const activeStopId = getActiveStopId(stops, now);
 
   const [lens, setLens] = useState<Lens>('type');
+  // The list travels the way the thumb did, on the same spring the segmented pill uses, so
+  // the control and the content settle together. See src/design/motion.ts.
+  const swap = useSwapTransition(LENSES.indexOf(lens));
+  const listRef = useRef<FlashListRef<Row>>(null);
+  // A scroll position means nothing across a regrouping — the rows under it are different
+  // rows. Not animated: the swap *is* the transition, and two motions would fight.
+  useEffect(() => { listRef.current?.scrollToOffset({ offset: 0, animated: false }); }, [lens]);
   // Section keys, not indices — the keys are stable across a lens switch, so collapsing
   // "Where you're eating" and switching to by-day and back leaves it collapsed.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
@@ -339,15 +351,18 @@ export default function AgendaTab() {
         />
       </View>
 
-      <FlashList
-        data={rows}
-        renderItem={renderItem}
-        keyExtractor={(row) => row.key}
-        // Recycling pools are per type, so a section header is never recycled into a row.
-        getItemType={(row) => row.kind}
-        contentContainerStyle={s.content}
-        showsVerticalScrollIndicator={false}
-      />
+      <Animated.View style={[s.list, swap]}>
+        <FlashList
+          ref={listRef}
+          data={rows}
+          renderItem={renderItem}
+          keyExtractor={(row) => row.key}
+          // Recycling pools are per type, so a section header is never recycled into a row.
+          getItemType={(row) => row.kind}
+          contentContainerStyle={s.content}
+          showsVerticalScrollIndicator={false}
+        />
+      </Animated.View>
 
       <EntityDetailSheet ref={entitySheetRef} />
       <BookingFormSheet ref={bookingSheetRef} tripId={trip.id} onSaved={refetch} />
@@ -376,6 +391,7 @@ const useStyles = createThemedStyles((t) => ({
   title:      { ...Typography.roles.screen, color: t.text },
   sub:        { ...Typography.roles.sub, color: t.textMuted, marginTop: 5 },
 
+  list:    { flex: 1 },
   content: { paddingBottom: 28 },
   gutter:  { paddingHorizontal: Gutter },
   gapSlot: { paddingTop: 9 },
