@@ -10,6 +10,11 @@
 // Navigation ones do not — `ListRow` and `ItineraryRow` bodies open a sheet or push a
 // screen, and a buzz on every tap through a list turns the signal into noise. That split
 // follows `reference/react-native-mapping.md`: "haptics on commit actions".
+//
+// **Beyond presses**, the same tap marks the stop rail's detent — the mapping names
+// "stop change" alongside add-to-itinerary and sheet snap. Whoever owns the *gesture* fires
+// it: the rail on a swipe crossover, `StopCard` on a tap, `StopDots` on a dot press. Each
+// path guards against the others so a single change never buzzes twice.
 import * as Haptics from 'expo-haptics';
 
 /** Light impact on a committing press. Fire-and-forget — a rejected promise is not an error

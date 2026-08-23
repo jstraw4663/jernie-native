@@ -14,7 +14,7 @@ import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, useWindo
 import Animated, { Extrapolation, interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { createThemedStyles } from '@/src/design/useTheme';
-import { ImagePlaceholder, Photo, STOP_CARD_WIDTH, StopCard } from '@/src/ui';
+import { ImagePlaceholder, Photo, STOP_CARD_WIDTH, StopCard, tap } from '@/src/ui';
 import { RAIL_TOP, RANGE } from './collapse';
 import { StopDots } from './HomeHeader';
 
@@ -101,6 +101,14 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
     const i = Math.max(0, Math.min(Math.round(x / SNAP_INTERVAL), stops.length - 1));
     if (i !== settledRef.current) {
       settledRef.current = i;
+      // The detent. `react-native-mapping.md` names "stop change" as one of the three
+      // Light impacts, so this is the existing tap, not a new haptic. It fires at the
+      // crossover alongside the card lighting up — the buzz and the visual are the same
+      // event, and separating them would read as two things happening.
+      //
+      // At most one per gesture: `disableIntervalMomentum` caps a swipe at one interval,
+      // so a fast flick cannot machine-gun this.
+      tap();
       onSelect(i);
     }
   }, [stops.length, onSelect]);
@@ -123,6 +131,9 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
     if (Math.abs(x - target) > 1) railRef.current?.scrollTo({ x: target, animated: true });
   }, [commit, stops.length]);
 
+  // Deliberately silent: a card tap has already buzzed through StopCard's own press
+  // handling, and setting settledRef first means the resulting scroll's `commit` no-ops
+  // rather than firing a second one. Dots buzz in StopDots, which is their own press.
   const handleTap = useCallback((i: number) => {
     settledRef.current = i;
     scrollToIndex(i);
