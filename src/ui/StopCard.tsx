@@ -39,6 +39,10 @@ export function StopCard({
   const [s, t] = useStyles();
 
   const toneColor = statusTone === 'warning' ? t.warning : t.action;
+  // Resolved here, on the JS thread. `useAnimatedStyle`'s body is a worklet, and calling a
+  // plain function like `hexWithAlpha` from the UI thread throws. It is constant per render
+  // anyway, so the worklet closes over the finished string.
+  const ringOff = hexWithAlpha(toneColor, 0);
   const handlePress = onPress ? () => { tap(); onPress(); } : undefined;
 
   // Becoming the selected stop is a state change, so it springs rather than cuts —
@@ -52,7 +56,7 @@ export function StopCard({
   const lift = useAnimatedStyle(() => ({
     opacity: interpolate(p.value, [0, 1], [0.62, 1]),
     transform: [{ scale: interpolate(p.value, [0, 1], [0.955, 1]) }],
-    borderColor: interpolateColor(p.value, [0, 1], [hexWithAlpha(toneColor, 0), toneColor]),
+    borderColor: interpolateColor(p.value, [0, 1], [ringOff, toneColor]),
     shadowOpacity: interpolate(p.value, [0, 1], [0.05, 0.14]),
     shadowRadius: interpolate(p.value, [0, 1], [14, 30]),
     elevation: interpolate(p.value, [0, 1], [3, 9]),
@@ -73,19 +77,19 @@ export function StopCard({
       style={({ pressed }) => pressed && handlePress ? s.pressed : undefined}
     >
       <Animated.View style={[s.card, lift]}>
-      <View style={s.top}>
-        <View style={s.head}>
-          <AnimatedText style={[s.kicker, kickerInk]} numberOfLines={1}>{kicker}</AnimatedText>
-          <Text style={s.name} numberOfLines={1}>{name}</Text>
-          <Text style={s.dates} numberOfLines={1}>{dates}</Text>
+        <View style={s.top}>
+          <View style={s.head}>
+            <AnimatedText style={[s.kicker, kickerInk]} numberOfLines={1}>{kicker}</AnimatedText>
+            <Text style={s.name} numberOfLines={1}>{name}</Text>
+            <Text style={s.dates} numberOfLines={1}>{dates}</Text>
+          </View>
+          {photo ? <View style={s.photo}>{photo}</View> : null}
         </View>
-        {photo ? <View style={s.photo}>{photo}</View> : null}
-      </View>
 
-      <View style={s.foot}>
-        <Text style={[s.status, { color: toneColor }]} numberOfLines={1}>{status}</Text>
-        {count ? <Text style={s.count} numberOfLines={1}>{count}</Text> : null}
-      </View>
+        <View style={s.foot}>
+          <Text style={[s.status, { color: toneColor }]} numberOfLines={1}>{status}</Text>
+          {count ? <Text style={s.count} numberOfLines={1}>{count}</Text> : null}
+        </View>
       </Animated.View>
     </Pressable>
   );
