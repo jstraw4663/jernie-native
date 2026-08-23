@@ -28,8 +28,9 @@ name without saying why first.
 | Collapse header | collapsing-header libraries | Every one assumes the header *translates*. Ours re-crops the photo in place, which is why no black band ever appears above it. See `collapse.md`. |
 | `SegmentedControl` | `@react-native-segmented-control` | iOS-only, and renders the platform control, which will not take our tokens. Ours is a 25-line `View`. |
 | `GapRow` derivation | — | Business logic, not UI: compare each stop's date span against bookings of that type. Belongs in `src/domain/`, not in a component. |
-
 | Icon registry (`src/design/icons.ts`) | icon-pack wrappers | Not a component — a lookup table. `iconFor(category, subtype)` resolves the two-axis taxonomy to a Phosphor glyph. The icons themselves are all `phosphor-react-native`; this only decides which one. |
+| `Toggle` | React Native's `Switch` | `Switch` renders the platform control. iOS gives it the system green and will not take `--accent`; `trackColor` reaches the track but not the knob shadow or the 44×26 geometry. Ours is a `Pressable` + one `withSpring` progress driving translate and `interpolateColor` — 45 lines. Named in `react-native-mapping.md`'s primitive table, but never registered here. |
+| `ProgressBar` | `react-native-progress`, `react-native-animated-progress` | Both are wrappers around the same thing this is: a `View` with an animated width. 15 lines against a dependency, an unmaintained one in the second case, and neither does the wizard's discrete-segment mode without fighting it. |
 
 <!-- Add new rows above this line. Include: what, the library you rejected, and why. -->
 
@@ -50,6 +51,17 @@ value.
 (`phosphor-react-native/src/icons/<Name>`) because Metro does not tree-shake barrels and
 phosphor's index is over 500KB. An unknown subtype falls back to its category's icon, and an
 unknown category to `MapPin`, so old data degrades rather than throwing.
+
+**`Toggle`.** `Pressable` + `withSpring` on a 0→1 progress: `translateX` for the knob,
+`interpolateColor` for the track. `spring-snappy` (damping 44 / stiffness 400). The control
+is 26px tall against a 44px minimum tap target, so it carries `hitSlop` of 9 top and bottom.
+The knob stays white in both themes — against the resting grey it is `--shadow-row` that
+separates it, not the fill.
+
+**`ProgressBar`.** Two modes in one component: `segments` for the wizard header, `value` for
+trip completeness. The continuous mode animates a pixel width off an `onLayout` measurement
+rather than a percentage string — the string form works, but only once Reanimated has
+resolved the parent's layout, which shows as a jump on first paint.
 
 **`GapRow` derivation.** The *component* is a `Pressable` with `borderStyle: 'dashed'`
 (Android needs `borderRadius` ≤ 15 or the dash renders square). The *logic* — which gaps

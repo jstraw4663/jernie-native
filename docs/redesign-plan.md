@@ -342,6 +342,56 @@ A barrel import would have pulled the 500KB index alone. This is the rule that h
 `jest.config.js` needed `phosphor-react-native` added to `transformIgnorePatterns` — it ships
 untranspiled `.tsx`, so fourteen suites failed to parse before that.
 
+## 6d. Session 3 — what building the primitives settled
+
+Twelve components into `src/ui/`, plus the photo seam and the gallery. Five decisions worth
+recording, because later sessions inherit all of them.
+
+**The photo seam was already half-built.** `resolvePlacePhoto()` in
+[src/domain/placeEnrichment.ts](../src/domain/placeEnrichment.ts) has been resolving a
+place's display photo in production since the Foursquare work — curated `photoUrl` first,
+then the first photo from the Firestore enrichment cache. So `src/lib/images.ts` is not a new
+mechanism, it is that one generalised: `resolvePhoto(subject, ctx)` over a
+`{ place | stop | trip }` union. **Resolved URLs stay derived and are never written back.**
+That is what the existing code already does, it needs no schema change (which the standing
+rules forbid), it has no staleness problem when a provider rotates its URLs, and for trips it
+is the only legal option — `trips/{tripId}` is create-once and immutable at the top level.
+`stop` and `trip` return `undefined` today and render a placeholder; Session 11 fills them in
+and touches no screen.
+
+**`Palette` gained `warning*` and `error*`.** `colors.css` redefines all six for dark —
+`#B56B00` on charcoal reads as brown, not as a warning — but 2b's `Palette` type covered only
+neutrals and the accent. `GapRow` and `PromptRow` are the two amber components, so
+"theme-aware from birth" was impossible without this. `Semantic` still exports the light
+values for the 54 pre-redesign files, exactly as `Core` does; it is now derived from `light`
+rather than duplicating the hexes. In dark, `warningInk` collapses onto `warning` — there is
+no darker ink that stays legible on an 11%-amber fill.
+
+**Three tokens read `#fff` in the reference and should not.** `Button` variant `accent`,
+`Badge` tone `solid` and the selected `Chip` all hard-code white on `--accent`. That is
+correct on light's `#0F7B6C` and unreadable on dark's `#5CCBB4` mint. All three now use
+`textInverse`, which **is** `#FFFFFF` in light — so the light rendering is byte-identical to
+the reference and dark is merely correct.
+
+**Weight comes from the family name, so every literal is spelled out.** Seven components
+carry type the roles do not cover — `Badge` at 9.5/0.05em, `StopCard`'s kicker at 9.5/0.12em,
+`StatStrip`'s value at 21/-0.5px, the 11px action pills, `Button`'s `sm` at 11.5. These are
+literal in the reference `.jsx`, not missing from `tokens/`, so they are inline with an
+explicit `fontFamily`. None of them is a new role and none should become one until a second
+component wants it.
+
+**`createThemedStyles` keys the stylesheet on the palette object.** `StyleSheet.create` at
+module scope cannot see a hook, and calling it inside a component allocates a fresh sheet per
+mounted row — unacceptable for `ListRow`. A `WeakMap` over the two module-constant palettes
+gives every instance the same sheet, so theming costs nothing. It returns `[sheet, palette]`
+because colour that varies with a prop has to be applied inline.
+
+**Deferred deliberately:** the twelve components have no call sites yet. `SettingsRow`
+remains the Profile's row and is Session 9's consolidation; the 7-file sheet scaffold is
+Session 6's. Adopting them early would be redesign work under a primitives brief.
+
+---
+
 ---
 
 ## 7. Recommended ordering change

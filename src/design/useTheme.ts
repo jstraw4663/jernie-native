@@ -1,4 +1,5 @@
-import { useColorScheme } from 'react-native';
+import { StyleSheet, useColorScheme } from 'react-native';
+import type { ImageStyle, TextStyle, ViewStyle } from 'react-native';
 import { palettes, type Palette, type ThemeName } from './tokens';
 
 /**
@@ -29,4 +30,39 @@ export function useTheme(): Palette {
 export function useThemeName(): ThemeName {
   const scheme = useColorScheme();
   return scheme === 'dark' ? 'dark' : 'light';
+}
+
+type NamedStyles<T> = { [P in keyof T]: ViewStyle | TextStyle | ImageStyle };
+
+/**
+ * Builds a component's stylesheet once per palette, not once per instance.
+ *
+ * `StyleSheet.create` at module scope cannot see a hook, and calling it inside a component
+ * allocates a fresh sheet for every mounted row. This keys the result on the palette object
+ * itself — there are exactly two, and they are module constants — so every `ListRow` on a
+ * screen shares one sheet, the same as if it had been created at module scope.
+ *
+ *     const useStyles = createThemedStyles((t) => ({
+ *       card: { backgroundColor: t.surface, borderColor: t.border },
+ *     }));
+ *
+ *     function Card() {
+ *       const [s, t] = useStyles();   // sheet, plus the palette for inline one-offs
+ *       return <View style={s.card} />;
+ *     }
+ *
+ * The palette comes back alongside the sheet because colour that varies with a prop
+ * (a tone, a selected state) cannot live in a static sheet and has to be applied inline.
+ */
+export function createThemedStyles<T extends NamedStyles<T>>(factory: (t: Palette) => T) {
+  const cache = new WeakMap<Palette, T>();
+  return function useStyles(): [T, Palette] {
+    const t = useTheme();
+    let sheet = cache.get(t);
+    if (!sheet) {
+      sheet = StyleSheet.create(factory(t));
+      cache.set(t, sheet);
+    }
+    return [sheet, t];
+  };
 }

@@ -98,6 +98,21 @@ be installed under `$HOME` — `LD_LIBRARY_PATH` does not apply to absolute path
   teal) meaning *secured*; amber `Semantic.warning` means *unfinished*; red is a failed
   booking and almost never appears. New components take colours from `useTheme()`
   (`src/design/useTheme.ts`) so dark mode is a config flip rather than a second pass.
+- **UI primitives live in `src/ui/`** — twelve components (`Button`, `Chip`, `Badge`,
+  `ListRow`, `ItineraryRow`, `GapRow`, `PromptRow`, `SegmentedControl`, `ProgressBar`,
+  `Toggle`, `StopCard`, `StatStrip`) plus the photo seam. **Compose these; do not
+  re-implement them.** See every variant at `jernie://dev/ui`. They take colour from
+  `useTheme()`, never from `Core`, via `createThemedStyles()` — which exists because
+  `StyleSheet.create` at module scope cannot see a hook, and calling it in a component body
+  allocates a fresh sheet per row. It caches on the palette object and hands back
+  `[sheet, palette]`. `Palette` carries `warning*`/`error*` as well as the neutrals: dark
+  amber is `#E0A244`, a different colour, not `#B56B00` dimmed.
+- **Screens never hard-code an image URL.** Name the subject —
+  `resolvePhoto({ kind: 'place', place }, { enrichment })` in `src/lib/images.ts` — and
+  render the result through `<Photo>`, which falls back to `<ImagePlaceholder>` when there
+  is none. Resolved URLs are derived on read and never written back: enrichment lives in
+  Firestore, the RTDB record stays clean, and `trips/{tripId}` is immutable at the top level
+  anyway. `stop` and `trip` subjects return `undefined` until a provider is chosen.
 - **Reanimated v4** (not v3 as spec'd): API is backward-compatible. Use `useSharedValue`, `withSpring`, etc. as documented in v3 — all work in v4.
 
 ## Git rules

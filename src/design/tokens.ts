@@ -22,6 +22,8 @@ export type Palette = {
   border: string; borderSoft: string;
   text: string; textMuted: string; textFaint: string; textDisabled: string; textInverse: string;
   action: string; actionSoft: string; actionLine: string;
+  warning: string; warningSoft: string; warningLine: string; warningInk: string;
+  error: string; errorSoft: string;
 };
 
 const light: Palette = {
@@ -44,6 +46,15 @@ const light: Palette = {
   action:        '#0F7B6C',              // --accent
   actionSoft:    'rgba(15,123,108,0.09)',// --accent-soft   selected fill
   actionLine:    'rgba(15,123,108,0.22)',// --accent-line   selected border
+
+  // Amber is unfinished. Red is broken, and appears almost nowhere — a missing booking is
+  // amber, never red. There is no `success`: secured is `action`.
+  warning:       '#B56B00',              // --warning
+  warningSoft:   'rgba(181,107,0,0.06)', // --warning-soft
+  warningLine:   'rgba(181,107,0,0.40)', // --warning-line
+  warningInk:    '#8A6320',              // --warning-ink   text on a warning fill
+  error:         '#A3485F',              // --error         cancelled or failed booking only
+  errorSoft:     '#F5E8EB',              // --error-soft
 };
 
 const dark: Palette = {
@@ -62,6 +73,16 @@ const dark: Palette = {
   action:        '#5CCBB4',
   actionSoft:    'rgba(92,203,180,0.13)',
   actionLine:    'rgba(92,203,180,0.28)',
+
+  // Dark amber is lighter and less saturated than light amber — #B56B00 on a charcoal
+  // surface reads as brown, not as a warning. `warningInk` collapses onto `warning`
+  // because there is no darker ink that stays legible on a 11%-amber fill.
+  warning:       '#E0A244',
+  warningSoft:   'rgba(224,162,68,0.11)',
+  warningLine:   'rgba(224,162,68,0.38)',
+  warningInk:    '#E0A244',
+  error:         '#D98098',
+  errorSoft:     'rgba(217,128,152,0.12)',
 };
 
 export const palettes = { light, dark };
@@ -87,16 +108,17 @@ export const Scrim = {
   bottom: 'rgba(20,32,27,0.90)',  // --scrim-bottom    dark: rgba(14,12,11,0.94)
 } as const;
 
-// Amber is unfinished. Red is broken, and appears almost nowhere — a missing booking is
-// amber, never red. There is no `success`: secured is `Core.action`.
+// The static half of the amber/red story, for the screens that predate the redesign.
+// Same relationship as `Core` has to `palettes`: identical values, no hook required.
+// Anything written from Session 3 onward reads `warning*` / `error*` off `useTheme()`
+// instead, because dark amber is a different colour, not the same one dimmed.
 export const Semantic = {
-  warning:     '#B56B00',                 // --warning
-  warningSoft: 'rgba(181,107,0,0.06)',    // --warning-soft
-  warningLine: 'rgba(181,107,0,0.40)',    // --warning-line
-  warningInk:  '#8A6320',                 // --warning-ink   text on a warning fill
-
-  error:       '#A3485F',                 // --error         cancelled or failed booking only
-  errorSoft:   '#F5E8EB',                 // --error-soft
+  warning:     light.warning,
+  warningSoft: light.warningSoft,
+  warningLine: light.warningLine,
+  warningInk:  light.warningInk,
+  error:       light.error,
+  errorSoft:   light.errorSoft,
 } as const;
 
 // One colour per item category — the closed set of 10 from docs/redesign-plan.md §8.

@@ -20,7 +20,8 @@ with hand-rolled code limited to the register in
 | Session 2a — fonts | **Done, gate green.** Six static faces; variable fonts deleted; weight now comes from the family name. Awaiting device check at `jernie://dev/fonts`. |
 | Session 2b — tokens + sweep | **Done, gate green.** `tokens.ts` regenerated; 54 files re-pointed; `Brand` deleted; three deps installed. Awaiting Jeremy's screen-by-screen look. |
 | Session 2c — icons | **Done, verified on device.** Zero emoji in `app/` and `src/`; `src/design/icons.ts` registry; `Stop.emoji` deprecated, not removed. Needed an `eas.json` build-flag fix — see Known repo facts. |
-| Sessions 3–12 | Not started |
+| Session 3 — primitives | **Done, gate green.** Twelve components in `src/ui/`, all theme-aware via `useTheme()`. Photo seam split across `src/lib/images.ts` and `src/ui/Photo.tsx`. Gallery at `jernie://dev/ui`. Two deps added (`expo-haptics`, `@shopify/flash-list`) — **needs a dev build**. |
+| Sessions 4–12 | Not started |
 
 ---
 
@@ -123,13 +124,13 @@ is a working app Jeremy can open.
 
 ## Blocking decisions
 
-Settle the first three before Session 3.
+Settle the first three before Session 3. **All three are now settled** — taxonomy in `docs/redesign-plan.md` §8, date semantics disproved as a conflict, photo seam in §6d.
 
 | Decision | Blocks | The conflict |
 | --- | --- | --- |
 | **Date semantics** — is `Stop.dates.end` inclusive? nights vs days? | 5 | End-*exclusive* in `getActiveStopId` ([src/domain/trip.ts:173](src/domain/trip.ts#L173)), end-*inclusive* in `syncItineraryDaysForRange` ([src/domain/itinerary.ts:70](src/domain/itinerary.ts#L70)), checkout-inclusive in `isTodayBooking`. "7 of 8 nights covered" is uncomputable until settled. |
 | **Unified item taxonomy** | 5, 6 | Four competing sets: `TypeColors` (9), `ItineraryItemCategory` (a different 9), `CustomItemSheet`'s picker (7), Explore's `FilterId` (6). `stay` and `shopping` have no data-model representation; `TypeColors.bars/.stay/.shopping` are dead tokens. Session 5's four groups need a clean 9→4 mapping. |
-| **Photo seam shape** | 4, 7, 8, 9 | Resolver signature and where the resolved URL is stored on the record. |
+| ~~**Photo seam shape**~~ | ~~4, 7, 8, 9~~ | **Settled in Session 3.** `resolvePhoto(subject, ctx)` in `src/lib/images.ts`, generalising the existing `resolvePlacePhoto()`. Resolved URLs are **derived, never stored** — no schema change, no staleness, and the only legal option for trips. See `docs/redesign-plan.md` §6d. |
 | Draft expiry | 10 | Exit sheet promises 30 days; nothing enforces it. |
 | Paste-a-confirmation for v1 | 10 | Appears twice in the wizard and once on first-run home; parser undesigned. Build it or hide the entry points. |
 | Gap dismissal scope | 5 | Per-trip agreed; per-person not ruled out. |
@@ -176,10 +177,17 @@ the two `href` links to it are dead by design. It remains in Claude Design.
   role must resolve to a bundled face. 42 inline `fontFamily`+`fontWeight` pairs across 16
   files still ask by number and still render Regular; 2b and 6 sweep them. See
   `docs/redesign-plan.md` §3.
-- **`src/ui/` does not exist.** `Button`, `SegmentedControl`, `ProgressBar`, `Toggle` and
-  `GapRow` have no implementation anywhere; `Button` is 13 inline style blocks with four
-  different disabled opacities. Closest existing primitive is
-  [SettingsRow.tsx](src/features/jernie/profile/SettingsRow.tsx) ≈ `ListRow` at ~95%.
+- **`src/ui/` is the primitives, as of Session 3.** Twelve components plus the photo seam,
+  exported from `src/ui/index.ts`, every one theme-aware through `useTheme()`. Sessions 4–12
+  compose these and re-implement none of them. They have **no call sites yet** — adopting
+  them into existing screens is each later session's job, not a sweep:
+  [SettingsRow.tsx](src/features/jernie/profile/SettingsRow.tsx) (≈ `ListRow` at ~95%) is
+  Session 9's, the 7-file sheet scaffold is Session 6's. Gallery: `jernie://dev/ui`.
+- **Colour that varies by theme needs `createThemedStyles`.** `StyleSheet.create` at module
+  scope cannot see a hook, and calling it in a component body allocates a sheet per instance.
+  The helper in [useTheme.ts](src/design/useTheme.ts) caches on the palette object and
+  returns `[sheet, palette]`. `Palette` now carries `warning*` and `error*` too — dark amber
+  is `#E0A244`, a different colour, not `#B56B00` dimmed.
 - **Agenda is a 17-line stub.** `src/domain/gaps.ts` does not exist; there is no gap or
   coverage concept anywhere in the codebase.
 - **Drafts are in-memory only** and `trips/{tripId}` is create-once and immutable at the top
