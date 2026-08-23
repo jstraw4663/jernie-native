@@ -11,7 +11,6 @@ import Animated, { interpolate, interpolateColor, useAnimatedStyle, useDerivedVa
 import { Animation, PRESSED_OPACITY, Radius, Shadow, Spacing } from '@/src/design/tokens';
 import { createThemedStyles } from '@/src/design/useTheme';
 import { hexWithAlpha } from '@/src/utils/colors';
-import { tap } from './haptics';
 
 export const STOP_CARD_WIDTH = 292;
 
@@ -43,7 +42,11 @@ export function StopCard({
   // plain function like `hexWithAlpha` from the UI thread throws. It is constant per render
   // anyway, so the worklet closes over the finished string.
   const ringOff = hexWithAlpha(toneColor, 0);
-  const handlePress = onPress ? () => { tap(); onPress(); } : undefined;
+  // No haptic here, unlike every other pressable primitive. Pressing a StopCard does not
+  // *do* something — it selects, and the same selection also arrives by swiping the rail
+  // and by tapping a dot. Whoever owns the selection fires the one buzz, or a tap gets two
+  // and a swipe gets one. See src/ui/haptics.ts.
+  const handlePress = onPress;
 
   // Becoming the selected stop is a state change, so it springs rather than cuts —
   // `spring-gentle`, the same one the Chip's selection uses. The rail's *scroll* is a

@@ -10,7 +10,7 @@ import Animated, { Extrapolation, interpolate, useAnimatedStyle } from 'react-na
 import type { SharedValue } from 'react-native-reanimated';
 import { Animation, Core, Gutter, Scrim, Spacing, Typography } from '@/src/design/tokens';
 import { createThemedStyles } from '@/src/design/useTheme';
-import { ImagePlaceholder, Photo, tap } from '@/src/ui';
+import { ImagePlaceholder, Photo } from '@/src/ui';
 import { HERO_MAX, PINNED_BAR_H, RANGE, heroMin } from './collapse';
 
 export interface HomeHeaderProps {
@@ -111,7 +111,7 @@ export function StopDots({
       {Array.from({ length: count }).map((_, i) => (
         <Pressable
           key={i}
-          onPress={() => { if (i !== index) tap(); onPress(i); }}
+          onPress={() => onPress(i)}
           accessibilityRole="button"
           accessibilityLabel={`Stop ${i + 1} of ${count}`}
           accessibilityState={{ selected: i === index }}

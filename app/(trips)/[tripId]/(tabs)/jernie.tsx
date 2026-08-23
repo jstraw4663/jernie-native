@@ -26,7 +26,7 @@ import { readSnooze, writeSnooze } from '@/src/lib/nudgeSnooze';
 import { resolvePhoto } from '@/src/lib/images';
 import { Animation, Core, Gutter } from '@/src/design/tokens';
 import { createThemedStyles } from '@/src/design/useTheme';
-import { Button } from '@/src/ui';
+import { Button, tap } from '@/src/ui';
 import { getDevNow } from '@/src/utils/devTime';
 import type { Booking, BookingType, ItineraryItem, StopWithColor } from '@/src/types';
 import { CtaRow, NUDGE_GLYPH, SETUP_GLYPH } from '@/src/features/jernie/home/CtaRow';
@@ -107,6 +107,9 @@ export default function JernieTab() {
   const activeStopId = getActiveStopId(stops, now);
   const initialIdx = Math.max(0, stops.findIndex(st => st.id === activeStopId));
   const [viewedIdx, setViewedIdx] = useState(initialIdx);
+  // Read inside handleSelectStop so the callback can stay identity-stable — it is passed to
+  // the rail, which re-creates its scroll handlers whenever it changes.
+  const viewedIdxRef = useRef(initialIdx);
   const [editingStop, setEditingStop] = useState<StopWithColor | null>(null);
   const [ctaDismissed, setCtaDismissed] = useState(false);
   const [snoozeTick, setSnoozeTick] = useState(0);
@@ -263,7 +266,14 @@ export default function JernieTab() {
 
   // Switching stop returns the header to full height — the new stop's photo is the point of
   // switching, and landing mid-collapse would hide it.
+  // Every way of changing stop lands here — rail swipe, card tap, rail dot, pinned-bar dot
+  // — which is why this is where the haptic lives. Putting it in any of the four would
+  // double up wherever two of them chain, and `react-native-mapping.md` names "stop change"
+  // as one Light impact, not one per component that noticed.
   const handleSelectStop = useCallback((i: number) => {
+    if (i === viewedIdxRef.current) return;
+    viewedIdxRef.current = i;
+    tap();
     setViewedIdx(i);
     // The animated scroll emits onScroll the whole way, so the handler carries scrollY back
     // to 0 on its own. Writing it here as well made the two fight over the same value.

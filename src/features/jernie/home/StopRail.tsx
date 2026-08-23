@@ -14,7 +14,7 @@ import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, useWindo
 import Animated, { Extrapolation, interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { createThemedStyles } from '@/src/design/useTheme';
-import { ImagePlaceholder, Photo, STOP_CARD_WIDTH, StopCard, tap } from '@/src/ui';
+import { ImagePlaceholder, Photo, STOP_CARD_WIDTH, StopCard } from '@/src/ui';
 import { RAIL_TOP, RANGE } from './collapse';
 import { StopDots } from './HomeHeader';
 
@@ -45,6 +45,13 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
   const { width } = useWindowDimensions();
   const railRef = useRef<ScrollView>(null);
   const settledRef = useRef(index);
+
+  // True while the rail is scrolling itself. An animated `scrollTo` from card 0 to card 1
+  // travels through every x in between, and the first half of that journey still rounds to
+  // 0 — so without this, a tap on card 1 made `commit` "detect" a change back to 0, select
+  // the wrong stop, and then change again on arrival. Two selections, two buzzes, content
+  // remounted twice, for one tap.
+  const selfScrollRef = useRef(false);
 
   // The snapped card is centred on the screen, which means the track's side inset is
   // whatever is left over either side of a 292 card — 49 on a 390pt phone. Without it the
@@ -77,6 +84,7 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
   });
 
   const scrollToIndex = useCallback((i: number, animated = true) => {
+    selfScrollRef.current = true;
     railRef.current?.scrollTo({ x: i * SNAP_INTERVAL, animated });
   }, []);
 
@@ -98,17 +106,10 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
   // this is not a setState per frame. It also keeps the sync effect below from yanking a
   // scroll that is still under the user's thumb.
   const commit = useCallback((x: number) => {
+    if (selfScrollRef.current) return;
     const i = Math.max(0, Math.min(Math.round(x / SNAP_INTERVAL), stops.length - 1));
     if (i !== settledRef.current) {
       settledRef.current = i;
-      // The detent. `react-native-mapping.md` names "stop change" as one of the three
-      // Light impacts, so this is the existing tap, not a new haptic. It fires at the
-      // crossover alongside the card lighting up — the buzz and the visual are the same
-      // event, and separating them would read as two things happening.
-      //
-      // At most one per gesture: `disableIntervalMomentum` caps a swipe at one interval,
-      // so a fast flick cannot machine-gun this.
-      tap();
       onSelect(i);
     }
   }, [stops.length, onSelect]);
@@ -126,19 +127,22 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
   // momentum-end finds nothing to fix.
   const handleMomentumEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
+    selfScrollRef.current = false;
     commit(x);
     const target = Math.max(0, Math.min(Math.round(x / SNAP_INTERVAL), stops.length - 1)) * SNAP_INTERVAL;
     if (Math.abs(x - target) > 1) railRef.current?.scrollTo({ x: target, animated: true });
   }, [commit, stops.length]);
 
-  // Deliberately silent: a card tap has already buzzed through StopCard's own press
-  // handling, and setting settledRef first means the resulting scroll's `commit` no-ops
-  // rather than firing a second one. Dots buzz in StopDots, which is their own press.
   const handleTap = useCallback((i: number) => {
     settledRef.current = i;
     scrollToIndex(i);
     onSelect(i);
   }, [scrollToIndex, onSelect]);
+
+  // Two ways out of the self-scroll flag, because relying on momentum-end alone would wedge
+  // the rail if a `scrollTo` landed where it already was and emitted no event. A touch
+  // always means the user is driving again.
+  const handleBeginDrag = useCallback(() => { selfScrollRef.current = false; }, []);
 
   return (
     <Animated.View
@@ -158,6 +162,7 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
         contentOffset={initialOffset}
         scrollEventThrottle={16}
         onScroll={handleScroll}
+        onScrollBeginDrag={handleBeginDrag}
         onMomentumScrollEnd={handleMomentumEnd}
       >
         {stops.map((stop, i) => (
