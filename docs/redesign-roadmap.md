@@ -106,7 +106,7 @@ Plus:
 | 2b | Tokens + migration sweep | App builds and launches. Every screen readable on the new palette, layouts unchanged from today. Inline `fontWeight` numbers converted to family names. Three deps installed, unused. | green |
 | 2c | Icons | Zero emoji anywhere in `app/` and `src/` — the partial sweep was abandoned, see below. Every glyph resolves through `iconFor()`. Requires a dev build with `react-native-svg`. | green |
 | 3 | Primitives | `src/ui/__gallery.tsx` on a dev route shows all twelve components, every variant and state. Dashed borders checked on **both** platforms. Photo seam stubbed. | green |
-| 4 | Jernie home | Collapse matches the 0–140 table exactly — hero 272→96 re-cropping, **no band above the photo at any scroll position**. Rail snaps at 302. Screen re-implements no row or card. | green |
+| 4 | Jernie home | **Hero photo comes from the stop's own places** — see below. Collapse matches the 0–140 table exactly — hero 272→96 re-cropping, **no band above the photo at any scroll position**. Rail snaps at 302. Screen re-implements no row or card. | green |
 | 5 | Agenda + gaps | `src/domain/gaps.ts` unit tested (this session *is* the ask that lifts the no-new-tests rule). Four groups; gap rows inline with their own Add; coverage grid only when a gap exists. | green |
 | 6 | Detail sheet | All four types render from one shell. Adding a fifth type is provably a list entry. Consolidates the 7-file duplicated sheet scaffold. | green |
 | 7 | Explore | Filter state lifted into a shared store. Stop defaults to current/next, never "anywhere" with a trip. | green |
@@ -119,6 +119,26 @@ Plus:
 **No red gate.** The source prompt's Session 2 ended non-compiling by design; splitting the
 tokens rewrite and the sweep into one session (2b) removes that, so every gate from here on
 is a working app Jeremy can open.
+
+---
+
+### Session 4's hero photo — decided 2026-08-23
+
+The design's home hero is a photograph, but `resolvePhoto({kind:'stop'})` returns `undefined`
+until Session 11 picks a provider — so the hero would have been a grey tile for the whole
+session, and the 272→96 re-crop is not judgeable on a tile.
+
+**Decided: a stop's hero is the first place in that stop that resolves a photo.** Not a dev
+stub, not vendored assets — real data on the real seam, and probably the right permanent
+default. `TripContext` already exposes the enrichment map
+([TripContext.tsx:114](../src/contexts/TripContext.tsx#L114)), so no plumbing is needed;
+`PhotoSubject`'s `stop` variant grows the stop's places and `resolvePhoto` walks them.
+
+**Caveat carried in:** there are zero curated `photoUrl` values in the fixtures or the dev
+seed, so every photo comes from Foursquare enrichment at runtime. Coverage is whatever
+Foursquare matched. A stop with no enriched places still renders `ImagePlaceholder`, and that
+has to stay a designed state, not an accident. Session 11 still owns the question of where a
+photo comes from when a *user* creates a trip.
 
 ---
 
