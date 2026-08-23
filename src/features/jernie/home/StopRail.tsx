@@ -10,7 +10,7 @@
 // ~30 lines — carousel libraries own their own scroll handler and would fight the collapse.
 // See reference/custom-components.md.
 import { useCallback, useEffect, useRef } from 'react';
-import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, View } from 'react-native';
+import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, useWindowDimensions, View } from 'react-native';
 import Animated, { Extrapolation, interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { createThemedStyles } from '@/src/design/useTheme';
@@ -42,8 +42,15 @@ export interface StopRailProps {
 
 export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: StopRailProps) {
   const [s, t] = useStyles();
+  const { width } = useWindowDimensions();
   const railRef = useRef<ScrollView>(null);
   const settledRef = useRef(index);
+
+  // The snapped card is centred on the screen, which means the track's side inset is
+  // whatever is left over either side of a 292 card — 49 on a 390pt phone. Without it the
+  // first card parks hard left and only the middle of a three-stop trip ever looks centred.
+  // Falls back to 14 (the canvas's flat padding) on anything too narrow to centre in.
+  const sideInset = Math.max(14, (width - STOP_CARD_WIDTH) / 2);
 
   // Gone by the halfway point, which is exactly where the pinned bar starts arriving.
   const fade = useAnimatedStyle(() => {
@@ -102,7 +109,7 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
         snapToInterval={SNAP_INTERVAL}
         decelerationRate="fast"
         disableIntervalMomentum
-        contentContainerStyle={s.track}
+        contentContainerStyle={[s.track, { paddingHorizontal: sideInset }]}
         contentOffset={{ x: index * SNAP_INTERVAL, y: 0 }}
         onMomentumScrollEnd={handleMomentumEnd}
       >
@@ -134,9 +141,9 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
 
 const useStyles = createThemedStyles(() => ({
   layer: { position: 'absolute', top: RAIL_TOP, left: 0, right: 0 },
-  // 14, not the 20 gutter: the card's own shadow needs room, and the rail is meant to run
-  // off both edges rather than sit inside the text column.
-  track: { gap: 10, paddingHorizontal: 14, paddingBottom: 4 },
+  // paddingHorizontal is applied inline — it depends on the screen width, so that the
+  // snapped card lands centred. Vertical padding leaves the card's shadow room to breathe.
+  track: { gap: 10, paddingBottom: 4, paddingTop: 2 },
   thumb: { width: '100%', height: '100%' },
   dotRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 11 },
 }));

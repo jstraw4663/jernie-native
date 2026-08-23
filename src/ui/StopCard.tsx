@@ -7,11 +7,15 @@
 // Reference: .claude/skills/jernie-design/components/travel/StopCard.{d.ts,jsx}
 import type { ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { PRESSED_OPACITY, Radius, Shadow, Spacing } from '@/src/design/tokens';
+import Animated, { interpolate, interpolateColor, useAnimatedStyle, useDerivedValue, withSpring } from 'react-native-reanimated';
+import { Animation, PRESSED_OPACITY, Radius, Shadow, Spacing } from '@/src/design/tokens';
 import { createThemedStyles } from '@/src/design/useTheme';
+import { hexWithAlpha } from '@/src/utils/colors';
 import { tap } from './haptics';
 
 export const STOP_CARD_WIDTH = 292;
+
+const AnimatedText = Animated.createAnimatedComponent(Text);
 
 export interface StopCardProps {
   name: string;
@@ -37,6 +41,27 @@ export function StopCard({
   const toneColor = statusTone === 'warning' ? t.warning : t.action;
   const handlePress = onPress ? () => { tap(); onPress(); } : undefined;
 
+  // Becoming the selected stop is a state change, so it springs rather than cuts —
+  // `spring-gentle`, the same one the Chip's selection uses. The rail's *scroll* is a
+  // different feel entirely and uses `spring-drag`; see react-native-mapping.md.
+  const p = useDerivedValue(() => withSpring(active ? 1 : 0, Animation.springs.gentle), [active]);
+
+  // Four things carry the weight together: the ring arrives, the card comes back to full
+  // opacity and full size, and it lifts further off the photo. Interpolating the ring from
+  // its own colour at zero alpha keeps it from darkening through grey on the way in.
+  const lift = useAnimatedStyle(() => ({
+    opacity: interpolate(p.value, [0, 1], [0.62, 1]),
+    transform: [{ scale: interpolate(p.value, [0, 1], [0.955, 1]) }],
+    borderColor: interpolateColor(p.value, [0, 1], [hexWithAlpha(toneColor, 0), toneColor]),
+    shadowOpacity: interpolate(p.value, [0, 1], [0.05, 0.14]),
+    shadowRadius: interpolate(p.value, [0, 1], [14, 30]),
+    elevation: interpolate(p.value, [0, 1], [3, 9]),
+  }));
+
+  const kickerInk = useAnimatedStyle(() => ({
+    color: interpolateColor(p.value, [0, 1], [t.textFaint, t.action]),
+  }));
+
   return (
     <Pressable
       testID={testID}
@@ -45,17 +70,12 @@ export function StopCard({
       accessibilityRole="button"
       accessibilityLabel={`${kicker}. ${name}. ${dates}. ${status}`}
       accessibilityState={{ selected: !!active }}
-      style={({ pressed }) => [
-        s.card,
-        // A ring, not a shadow change — selection never alters elevation. This is the one
-        // place the system pairs a border with a shadow, and the reference does the same.
-        { borderColor: active ? toneColor : 'transparent', opacity: active ? 1 : 0.62 },
-        pressed && handlePress && s.pressed,
-      ]}
+      style={({ pressed }) => pressed && handlePress ? s.pressed : undefined}
     >
+      <Animated.View style={[s.card, lift]}>
       <View style={s.top}>
         <View style={s.head}>
-          <Text style={[s.kicker, { color: active ? t.action : t.textFaint }]} numberOfLines={1}>{kicker}</Text>
+          <AnimatedText style={[s.kicker, kickerInk]} numberOfLines={1}>{kicker}</AnimatedText>
           <Text style={s.name} numberOfLines={1}>{name}</Text>
           <Text style={s.dates} numberOfLines={1}>{dates}</Text>
         </View>
@@ -66,6 +86,7 @@ export function StopCard({
         <Text style={[s.status, { color: toneColor }]} numberOfLines={1}>{status}</Text>
         {count ? <Text style={s.count} numberOfLines={1}>{count}</Text> : null}
       </View>
+      </Animated.View>
     </Pressable>
   );
 }
@@ -79,7 +100,10 @@ const useStyles = createThemedStyles((t) => ({
     borderWidth: 1.5,
     paddingVertical: Spacing.md,
     paddingHorizontal: 13,
-    ...Shadow.card,
+    // Colour and offset only — opacity, radius and elevation are animated above, so the
+    // card lifts further off the photo as it becomes the selected one.
+    shadowColor: Shadow.card.shadowColor,
+    shadowOffset: Shadow.card.shadowOffset,
   },
   top:  { flexDirection: 'row', gap: Spacing.rowPad },
   head: { flex: 1, minWidth: 0, gap: 5 },

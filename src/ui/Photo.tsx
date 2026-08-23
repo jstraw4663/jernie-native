@@ -20,11 +20,14 @@ export interface PhotoProps {
   glyphSize?: number;
   /** Size and radius live here; the photo fills whatever box it is given. */
   style?: StyleProp<ViewStyle>;
+  /** Crossfade in ms when the source changes. Defaults to `fast`; a hero deserves `slow`,
+   *  because swapping the biggest image on the screen at 175ms reads as a glitch. */
+  transition?: number;
   accessibilityLabel?: string;
   testID?: string;
 }
 
-export function Photo({ source, Glyph, glyphSize, style, accessibilityLabel, testID }: PhotoProps) {
+export function Photo({ source, Glyph, glyphSize, style, transition, accessibilityLabel, testID }: PhotoProps) {
   const [s] = useStyles();
 
   if (!source) {
@@ -38,7 +41,7 @@ export function Photo({ source, Glyph, glyphSize, style, accessibilityLabel, tes
         style={s.fill}
         contentFit="cover"
         cachePolicy="memory-disk"
-        transition={Animation.duration.fast}
+        transition={transition ?? Animation.duration.fast}
         accessibilityLabel={accessibilityLabel}
       />
     </View>

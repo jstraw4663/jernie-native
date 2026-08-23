@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { Extrapolation, interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
-import { Core, Gutter, Radius, Scrim, Spacing, Typography } from '@/src/design/tokens';
+import { Animation, Core, Gutter, Scrim, Spacing, Typography } from '@/src/design/tokens';
 import { createThemedStyles } from '@/src/design/useTheme';
 import { ImagePlaceholder, Photo } from '@/src/ui';
 import { HERO_MAX, PINNED_BAR_H, RANGE, heroMin } from './collapse';
@@ -60,7 +60,7 @@ export function HomeHeader({
   return (
     <Animated.View style={[s.hero, hero]} pointerEvents="box-none">
       {photo
-        ? <Photo source={photo} style={StyleSheet.absoluteFill} />
+        ? <Photo source={photo} style={StyleSheet.absoluteFill} transition={Animation.duration.slow} />
         : <ImagePlaceholder style={StyleSheet.absoluteFill} glyphSize={34} />}
 
       {/* Three stops, not two. The mid stop is what stops the gradient banding across a

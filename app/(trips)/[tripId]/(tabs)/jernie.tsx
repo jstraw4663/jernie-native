@@ -10,8 +10,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshControl, View } from 'react-native';
 import Animated, {
-  Extrapolation, interpolate, useAnimatedScrollHandler, useAnimatedStyle,
-  useSharedValue, withTiming,
+  Extrapolation, FadeInDown, interpolate, useAnimatedScrollHandler, useAnimatedStyle,
+  useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlusIcon } from 'phosphor-react-native/src/icons/Plus';
@@ -44,6 +44,24 @@ import { CustomItemSheet } from '@/src/features/jernie/sheets/CustomItemSheet';
 import type { CustomItemSheetRef } from '@/src/features/jernie/sheets/CustomItemSheet';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Changing stop changes almost everything below the header at once, which without this
+// reads as a hard cut. Each section rises 10px into place instead, one after the next, so
+// the eye is told what changed rather than left to notice. `FadeInDown` starts at
+// translateY 25 — too much travel for a section, hence the override.
+//
+// Keys carry the stop id, so a stop change remounts each section and re-fires its entrance;
+// scrolling does not. The stagger caps at 6 steps so a two-week stop does not spend most of
+// a second dealing itself out.
+const RISE = 10;
+const STEP = 55;
+const MAX_STEPS = 6;
+
+const rise = (step: number) =>
+  FadeInDown
+    .duration(300)
+    .delay(Math.min(step, MAX_STEPS) * STEP)
+    .withInitialValues({ opacity: 0, transform: [{ translateY: RISE }] });
 
 const SETUP_KEYS = ['stays', 'flights', 'car', 'restaurants'] as const;
 type SetupKey = (typeof SETUP_KEYS)[number];
@@ -244,9 +262,10 @@ export default function JernieTab() {
   // switching, and landing mid-collapse would hide it.
   const handleSelectStop = useCallback((i: number) => {
     setViewedIdx(i);
+    // The animated scroll emits onScroll the whole way, so the handler carries scrollY back
+    // to 0 on its own. Writing it here as well made the two fight over the same value.
     listRef.current?.scrollTo({ y: 0, animated: true });
-    scrollY.value = withTiming(0, { duration: 220 });
-  }, [scrollY]);
+  }, []);
 
   const handleItemPress = useCallback((item: ItineraryItem) => {
     const stop = visibleStop;
@@ -294,22 +313,27 @@ export default function JernieTab() {
       >
         <Animated.View style={spacer} />
 
-        {cta ? <CtaRow {...cta} /> : null}
+        {cta ? (
+          <Animated.View key={`${visibleStop.id}-cta`} entering={rise(0)}>
+            <CtaRow {...cta} />
+          </Animated.View>
+        ) : null}
 
-        {days.map(day => (
-          <DayGroup
-            key={day.id}
-            day={day}
-            places={places}
-            bookings={bookings}
-            enrichment={enrichment}
-            todayIso={todayIso}
-            nowMinutes={nowMinutes}
-            onItemPress={handleItemPress}
-          />
+        {days.map((day, i) => (
+          <Animated.View key={`${visibleStop.id}-${day.id}`} entering={rise(i + 1)}>
+            <DayGroup
+              day={day}
+              places={places}
+              bookings={bookings}
+              enrichment={enrichment}
+              todayIso={todayIso}
+              nowMinutes={nowMinutes}
+              onItemPress={handleItemPress}
+            />
+          </Animated.View>
         ))}
 
-        <View style={s.addZone}>
+        <Animated.View key={`${visibleStop.id}-add`} entering={rise(days.length + 1)} style={s.addZone}>
           {/* The primitive, not a bespoke bordered Text — the gate for this session is that
               the screen re-implements no row or card. */}
           <Button
@@ -320,7 +344,7 @@ export default function JernieTab() {
             icon={<PlusIcon size={15} color={t.textMuted} />}
             onPress={() => customItemSheetRef.current?.present({ stopId: visibleStop.id })}
           />
-        </View>
+        </Animated.View>
       </Animated.ScrollView>
 
       <HomeHeader
