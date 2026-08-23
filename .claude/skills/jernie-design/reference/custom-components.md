@@ -30,6 +30,7 @@ name without saying why first.
 | `GapRow` derivation | — | Business logic, not UI: compare each stop's date span against bookings of that type. Belongs in `src/domain/`, not in a component. |
 | Icon registry (`src/design/icons.ts`) | icon-pack wrappers | Not a component — a lookup table. `iconFor(category, subtype)` resolves the two-axis taxonomy to a Phosphor glyph. The icons themselves are all `phosphor-react-native`; this only decides which one. |
 | `Toggle` | React Native's `Switch` | `Switch` renders the platform control. iOS gives it the system green and will not take `--accent`; `trackColor` reaches the track but not the knob shadow or the 44×26 geometry. Ours is a `Pressable` + one `withSpring` progress driving translate and `interpolateColor` — 45 lines. Named in `react-native-mapping.md`'s primitive table, but never registered here. |
+| `StopMorph` | shared-element / hero-transition libraries | The card and the collapsed header bar are one object that changes shape on a scroll value. Every shared-element library drives its own timeline off a navigation event, and there is no navigation here. ~190 lines of `interpolate` on the collapse value we already have. |
 | `ProgressBar` | `react-native-progress`, `react-native-animated-progress` | Both are wrappers around the same thing this is: a `View` with an animated width. 15 lines against a dependency, an unmaintained one in the second case, and neither does the wizard's discrete-segment mode without fighting it. |
 
 <!-- Add new rows above this line. Include: what, the library you rejected, and why. -->
@@ -62,6 +63,14 @@ separates it, not the fill.
 trip completeness. The continuous mode animates a pixel width off an `onLayout` measurement
 rather than a percentage string — the string form works, but only once Reanimated has
 resolved the parent's layout, which shows as a jump on first paint.
+
+**`StopMorph`.** A second drawing of `StopCard`, laid out from the same exported
+`STOP_CARD_METRICS` so the two are pixel-identical at rest. The rail's real card is on screen
+at `scrollY === 0` and this one above it, both reading the same threshold in the same frame,
+so the handoff has no seam and no doubled shadow. It exists because the real card lives inside
+the rail's horizontal `ScrollView` and nothing in there can go full-bleed at the top of the
+screen. Change a number in `StopCard`'s sheet without changing the metrics and the handoff
+starts to flinch — that is the one way to break it.
 
 **`GapRow` derivation.** The *component* is a `Pressable` with `borderStyle: 'dashed'`
 (Android needs `borderRadius` ≤ 15 or the dash renders square). The *logic* — which gaps

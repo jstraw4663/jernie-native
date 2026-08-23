@@ -162,8 +162,50 @@ content velocity is ~1.9x over the collapse rather than 3.2x, and every other nu
 (272, 96, 140, 56, 62, the four opacity ramps, snap at 302) is the canvas's exactly.
 
 **`--header-collapsed: 96` is also adapted.** The mockup renders no status bar, so a flat 96
-would put the pinned bar's top third under the clock. Collapsed height is `insets.top + 62`
-— which *is* 96 on a device reporting a 34pt top inset, and grows correctly on a notch.
+would put the pinned bar's top third under the clock. Collapsed height is the inset plus the
+bar — which *is* 96 on a device reporting a 34pt top inset, and grows correctly on a notch.
+
+### The collapse, revised on device — 2026-08-23
+
+Two changes after Jeremy scrolled the built screen. Both are now recorded in
+`reference/collapse.md`; the numbers below are what the app does.
+
+**The collapsed header keeps the trip name and a strip of photograph.** Collapsing to
+navigation alone meant that two rows down the screen could be any trip. Collapsed height is
+now `inset + 50 + 62` — status bar, a 50px photo strip carrying the trip name at 59% scale,
+then the stop bar. 146 on a 34pt inset, against 96 before.
+
+The name is bottom-anchored inside the hero, so the shrinking container carries it 108 of the
+126px for free; only the residual 18px and the scale are animated, and it is `transform:
+scale` rather than `fontSize` because animating `fontSize` re-measures the text every frame.
+34px of Fraunces downsampled to 20 stays crisp — it is a downsample, not an upsample. The
+name is `numberOfLines={1}`: two lines under a bottom anchor would push the first line up
+under the status bar at full collapse.
+
+Two knock-ons. The list's leading spacer collapses to `spacerMin(inset)` (70 on a 34pt inset)
+rather than to zero, or the first card comes to rest behind the taller bar; net content
+velocity drops from ~1.9x to ~1.5x, which is calmer and no worse. And the resting scrim's mid
+stop is 12% — deliberately light so the photograph reads — which is not enough behind white
+serif once the photo is a 50px strip, and the strip is exactly where that gradient is
+thinnest. A second top-weighted gradient fades in over the last 45% of the collapse.
+
+**The stop card *becomes* the bar.** The spec cross-fades: card out, bar in. On device that
+read as two objects, one dying and one arriving. `StopMorph` is one object that changes
+shape — widens to the screen, squares its corners, walks its thumbnail from the card's right
+edge to the bar's left, sheds "Stop 2 of 3" and the status line, grows its dots.
+
+It is a *second drawing* of `StopCard`, not the card itself, because the real card lives
+inside the rail's horizontal `ScrollView` and nothing in there can travel to the top of the
+screen and go full-bleed. The two are laid out from the same exported `STOP_CARD_METRICS`,
+so at rest they are pixel-identical, and the handoff is a hard threshold both sides read off
+the same shared value in the same frame: `scrollY === 0` the rail's card is drawn,
+`scrollY > 0` the morph is. No window where both are drawn (a doubled shadow), none where
+neither is (a flash).
+
+One thing the bar does not reproduce: the name and dates keep the card's 16/11.5 rather than
+the reference bar's 14/10.5. There is no way to animate a type size that is not either
+re-measuring text every frame or scaling the line spacing with it, and the larger size reads
+fine at 62 tall.
 
 ### Carried into Session 5
 

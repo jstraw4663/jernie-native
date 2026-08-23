@@ -9,14 +9,14 @@
 // The card is custom; the scroll is not. A horizontal ScrollView with `snapToInterval` is
 // ~30 lines — carousel libraries own their own scroll handler and would fight the collapse.
 // See reference/custom-components.md.
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, useWindowDimensions, View } from 'react-native';
 import Animated, { Extrapolation, interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { createThemedStyles } from '@/src/design/useTheme';
 import { ImagePlaceholder, Photo, STOP_CARD_WIDTH, StopCard } from '@/src/ui';
-import { RAIL_TOP, RANGE } from './collapse';
-import { StopDots } from './HomeHeader';
+import { RAIL_PAD_TOP, RAIL_TOP, RANGE, cardLeft } from './collapse';
+import { StopDots } from './StopDots';
 
 /** Card width plus the 10px gap. The rail snaps on this, per react-native-mapping.md. */
 export const SNAP_INTERVAL = STOP_CARD_WIDTH + 10;   // 302
@@ -53,11 +53,8 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
   // remounted twice, for one tap.
   const selfScrollRef = useRef(false);
 
-  // The snapped card is centred on the screen, which means the track's side inset is
-  // whatever is left over either side of a 292 card — 49 on a 390pt phone. Without it the
-  // first card parks hard left and only the middle of a three-stop trip ever looks centred.
-  // Falls back to 14 (the canvas's flat padding) on anything too narrow to centre in.
-  const sideInset = Math.max(14, (width - STOP_CARD_WIDTH) / 2);
+  // Shared with StopMorph, which starts its journey from exactly this x — see collapse.ts.
+  const sideInset = cardLeft(width);
 
   // `contentOffset` is an INITIAL offset, not a controlled one. Now that the index changes
   // mid-scroll, re-rendering with a new value made RN re-apply it and yank the drag out from
@@ -166,21 +163,22 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
         onMomentumScrollEnd={handleMomentumEnd}
       >
         {stops.map((stop, i) => (
-          <StopCard
-            key={stop.id}
-            testID={`stop-card-${i}`}
-            kicker={stop.kicker}
-            name={stop.name}
-            dates={stop.dates}
-            status={stop.status}
-            statusTone={stop.statusTone}
-            count={stop.count}
-            active={i === index}
-            photo={stop.photo
-              ? <Photo source={stop.photo} style={s.thumb} />
-              : <ImagePlaceholder style={s.thumb} glyphSize={20} />}
-            onPress={() => handleTap(i)}
-          />
+          <RailSlot key={stop.id} active={i === index} scrollY={scrollY}>
+            <StopCard
+              testID={`stop-card-${i}`}
+              kicker={stop.kicker}
+              name={stop.name}
+              dates={stop.dates}
+              status={stop.status}
+              statusTone={stop.statusTone}
+              count={stop.count}
+              active={i === index}
+              photo={stop.photo
+                ? <Photo source={stop.photo} style={s.thumb} />
+                : <ImagePlaceholder style={s.thumb} glyphSize={20} />}
+              onPress={() => handleTap(i)}
+            />
+          </RailSlot>
         ))}
       </ScrollView>
 
@@ -191,11 +189,32 @@ export function StopRail({ stops, index, scrollY, onSelect, onLayoutHeight }: St
   );
 }
 
+/**
+ * The handoff to `StopMorph`.
+ *
+ * Above scroll zero the morph is drawing the active card full size and in the same place, so
+ * the real one steps out rather than sitting underneath it doubling the shadow. Both sides
+ * read this one threshold off the same shared value in the same frame — there is no window
+ * in which both are drawn, and none in which neither is.
+ *
+ * A component per card rather than one style handed to whichever card is active: a Reanimated
+ * style belongs to one view, and moving it between two of them mid-commit is how you get the
+ * "used in multiple components" warning and a frame of neither.
+ */
+function RailSlot({ active, scrollY, children }: { active: boolean; scrollY: SharedValue<number>; children: ReactNode }) {
+  const style = useAnimatedStyle(() => ({ opacity: active && scrollY.value > 0.5 ? 0 : 1 }));
+  // flexShrink: 0 for the same reason the card carries it — a wrapper that can shrink puts
+  // the cards off the snap grid, and every centring bug on this rail has started there.
+  return <Animated.View style={[SLOT, style]}>{children}</Animated.View>;
+}
+
+const SLOT = { flexShrink: 0 } as const;
+
 const useStyles = createThemedStyles(() => ({
   layer: { position: 'absolute', top: RAIL_TOP, left: 0, right: 0 },
   // paddingHorizontal is applied inline — it depends on the screen width, so that the
   // snapped card lands centred. Vertical padding leaves the card's shadow room to breathe.
-  track: { gap: 10, paddingBottom: 4, paddingTop: 2 },
+  track: { gap: 10, paddingBottom: 4, paddingTop: RAIL_PAD_TOP },
   thumb: { width: '100%', height: '100%' },
   dotRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 11 },
 }));

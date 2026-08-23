@@ -4,6 +4,7 @@
 //   1. the list        — scrolls under everything
 //   2. HomeHeader      — above the list, so content passes beneath the photo, never over it
 //   3. StopRail        — above the header, because the rail floats ON the photo at rest
+//   4. StopMorph       — above both: the active card, stretching into the collapsed bar
 //
 // The rail is an overlay rather than a list child, so a collapsing spacer reclaims its space
 // as it leaves. Everything animated reads one shared `scrollY`; see home/collapse.ts.
@@ -31,8 +32,9 @@ import { getDevNow } from '@/src/utils/devTime';
 import type { Booking, BookingType, ItineraryItem, StopWithColor } from '@/src/types';
 import { CtaRow, NUDGE_GLYPH, SETUP_GLYPH } from '@/src/features/jernie/home/CtaRow';
 import { DayGroup } from '@/src/features/jernie/home/DayGroup';
-import { HERO_MAX, RAIL_TOP, RANGE } from '@/src/features/jernie/home/collapse';
+import { HERO_MAX, RAIL_TOP, RANGE, spacerMin } from '@/src/features/jernie/home/collapse';
 import { HomeHeader } from '@/src/features/jernie/home/HomeHeader';
+import { StopMorph } from '@/src/features/jernie/home/StopMorph';
 import { StopRail, type RailStop } from '@/src/features/jernie/home/StopRail';
 import { EntityDetailSheet } from '@/src/features/jernie/sheets/EntityDetailSheet';
 import type { EntityDetailSheetRef } from '@/src/features/jernie/sheets/EntityDetailSheet';
@@ -137,8 +139,13 @@ export default function JernieTab() {
     }
   }, [railH]);
 
+  // Not to zero. The collapsed header keeps a strip of photo and the trip name now, so a
+  // spacer that vanished would park the first card 70px behind the bar. `spacerMin` is the
+  // height that lands it exactly on the header's bottom edge at y = RANGE; the card's own
+  // paddingTop supplies the gap. See collapse.ts.
+  const contentRest = spacerMin(insets.top);
   const spacer = useAnimatedStyle(() => ({
-    height: interpolate(scrollY.value, [0, RANGE], [railH.value, 0], Extrapolation.CLAMP),
+    height: interpolate(scrollY.value, [0, RANGE], [railH.value, contentRest], Extrapolation.CLAMP),
   }));
 
   // ── Save nudge ────────────────────────────────────────────────────────────
@@ -365,14 +372,8 @@ export default function JernieTab() {
         title={trip.name}
         sub={heroSub}
         photo={heroPhoto}
-        stopName={visibleStop.city}
-        stopDates={railStops[viewedIdx]?.dates ?? ''}
-        stopPhoto={heroPhoto}
-        stopCount={stops.length}
-        stopIndex={viewedIdx}
         insetTop={insets.top}
         scrollY={scrollY}
-        onStopPress={handleSelectStop}
       />
 
       <StopRail
@@ -382,6 +383,25 @@ export default function JernieTab() {
         onSelect={handleSelectStop}
         onLayoutHeight={onRailLayout}
       />
+
+      {/* The active card and the collapsed header bar are the same object. It takes over
+          from the rail's real card the instant the scroll leaves zero. */}
+      {railStops[viewedIdx] ? (
+        <StopMorph
+          name={railStops[viewedIdx].name}
+          dates={railStops[viewedIdx].dates}
+          kicker={railStops[viewedIdx].kicker}
+          status={railStops[viewedIdx].status}
+          statusTone={railStops[viewedIdx].statusTone}
+          count={railStops[viewedIdx].count}
+          photo={railStops[viewedIdx].photo}
+          stopCount={stops.length}
+          index={viewedIdx}
+          insetTop={insets.top}
+          scrollY={scrollY}
+          onStopPress={handleSelectStop}
+        />
+      ) : null}
 
       <EntityDetailSheet ref={entitySheetRef} />
       <StopFormSheet ref={stopFormSheetRef} tripId={trip.id} editingStop={editingStop ?? undefined} onSaved={refetch} />

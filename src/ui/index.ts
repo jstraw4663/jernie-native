@@ -20,6 +20,6 @@ export { ProgressBar, type ProgressBarProps } from './ProgressBar';
 export { PromptRow, type PromptRowProps } from './PromptRow';
 export { SegmentedControl, type SegmentedControlProps, type SegmentedOption } from './SegmentedControl';
 export { StatStrip, type Stat, type StatStripProps } from './StatStrip';
-export { STOP_CARD_WIDTH, StopCard, type StopCardProps } from './StopCard';
+export { STOP_CARD_HEIGHT, STOP_CARD_METRICS, STOP_CARD_WIDTH, StopCard, type StopCardProps } from './StopCard';
 export { Toggle, type ToggleProps } from './Toggle';
 export { tap } from './haptics';

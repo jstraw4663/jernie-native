@@ -14,6 +14,39 @@ import { hexWithAlpha } from '@/src/utils/colors';
 
 export const STOP_CARD_WIDTH = 292;
 
+// Every number the card's own sheet lays out with, named once so a second component can
+// reproduce the card exactly. `StopMorph` draws this card and then stretches it into the
+// pinned header bar; the swap between the two at scroll zero is only invisible because
+// both are laid out from these. Change one here and the morph moves with it — change one
+// in the sheet below instead and the swap starts to flinch.
+const BORDER = 1.5;
+const PAD_V  = Spacing.md;
+const PAD_H  = 13;
+const THUMB  = 54;
+const KICKER_LINE = 9.5;
+const HEAD_GAP = 5;
+/** marginTop + paddingTop + the hairline + one line of status. */
+const FOOT_H = 10 + 9 + 1 + 11;
+
+export const STOP_CARD_HEIGHT = BORDER * 2 + PAD_V * 2 + THUMB + FOOT_H;   // 112
+
+export const STOP_CARD_METRICS = {
+  width: STOP_CARD_WIDTH,
+  height: STOP_CARD_HEIGHT,
+  border: BORDER,
+  padH: PAD_H,
+  padV: PAD_V,
+  /** Between the head and the thumb. */
+  gap: Spacing.rowPad,
+  thumb: THUMB,
+  thumbRadius: 14,
+  radius: Radius.card,
+  /** Top of the name, from just inside the top border — the kicker sits above it. */
+  headTop: PAD_V + KICKER_LINE + HEAD_GAP,
+  /** Top of the status row, from just inside the top border. */
+  footTop: PAD_V + THUMB + 10,
+} as const;
+
 const AnimatedText = Animated.createAnimatedComponent(Text);
 
 export interface StopCardProps {
@@ -104,22 +137,22 @@ const useStyles = createThemedStyles((t) => ({
     flexShrink: 0,
     backgroundColor: t.surface,
     borderRadius: Radius.card,
-    borderWidth: 1.5,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: 13,
+    borderWidth: BORDER,
+    paddingVertical: PAD_V,
+    paddingHorizontal: PAD_H,
     // Colour and offset only — opacity, radius and elevation are animated above, so the
     // card lifts further off the photo as it becomes the selected one.
     shadowColor: Shadow.card.shadowColor,
     shadowOffset: Shadow.card.shadowOffset,
   },
   top:  { flexDirection: 'row', gap: Spacing.rowPad },
-  head: { flex: 1, minWidth: 0, gap: 5 },
+  head: { flex: 1, minWidth: 0, gap: HEAD_GAP },
 
-  kicker: { fontSize: 9.5,  lineHeight: 9.5, fontFamily: 'DMSans-Bold',     fontWeight: '700' as const, letterSpacing: 1.14, textTransform: 'uppercase' as const },
+  kicker: { fontSize: 9.5,  lineHeight: KICKER_LINE, fontFamily: 'DMSans-Bold',     fontWeight: '700' as const, letterSpacing: 1.14, textTransform: 'uppercase' as const },
   name:   { fontSize: 16,   lineHeight: 17.6, fontFamily: 'DMSans-Bold',    fontWeight: '700' as const, letterSpacing: -0.35, color: t.text },
   dates:  { fontSize: 11.5, lineHeight: 11.5, fontFamily: 'DMSans',         fontWeight: '400' as const, color: t.textMuted },
 
-  photo: { width: 54, height: 54, borderRadius: 14, overflow: 'hidden', flexShrink: 0 },
+  photo: { width: THUMB, height: THUMB, borderRadius: 14, overflow: 'hidden', flexShrink: 0 },
 
   foot: {
     flexDirection: 'row',
