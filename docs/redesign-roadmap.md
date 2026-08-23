@@ -271,8 +271,53 @@ Settle the first three before Session 3. **All three are now settled** — taxon
 
 | Decision | Blocks | The conflict |
 | --- | --- | --- |
-| **Date semantics** — is `Stop.dates.end` inclusive? nights vs days? | 5 | End-*exclusive* in `getActiveStopId` ([src/domain/trip.ts:173](src/domain/trip.ts#L173)), end-*inclusive* in `syncItineraryDaysForRange` ([src/domain/itinerary.ts:70](src/domain/itinerary.ts#L70)), checkout-inclusive in `isTodayBooking`. "7 of 8 nights covered" is uncomputable until settled. |
-| **Item taxonomy — REOPENED** | 5, 6 | **Jeremy flagged 2026-08-23: "I need a smarter hierarchy."** §8's two-axis model (10 categories + open subtypes) was decided in Session 1 and is what `src/design/icons.ts` implements, but it has never been used to set up real items. Revisit **before Session 5** — Agenda's four groups and the gap rules both derive from category, so a change lands there. Session 4 does not touch it. |
+| ~~**Date semantics**~~ | 5 | **SETTLED 2026-08-23 — see below.** |
+| ~~**Item taxonomy**~~ | 5, 6 | **SETTLED 2026-08-23 — see below.** |
+
+### Both Session 5 blockers, settled 2026-08-23
+
+**`Stop.dates.end` is the departure date.** May 21 – 24 is **3 nights**: you are in that stop
+on the 21st, 22nd and 23rd, and the 24th is the morning you leave. Consequences:
+
+- `nights = end - start`. This is already what the rail card prints.
+- "Am I at this stop today" is end-**exclusive** — `getActiveStopId` is correct as written.
+- "What days does this stop cover" is end-**inclusive** — the 24th still gets an itinerary
+  day, because you are there for part of it. `syncItineraryDaysForRange` is also correct as
+  written. The two were never in conflict; they answer different questions and neither said
+  which. Session 5 names them rather than changing them.
+- A booking's checkout is the same convention, so `isTodayBooking` stands.
+- "7 of 8 nights covered" is now computable: denominator is `end - start` summed over stops,
+  numerator is the nights a stay booking overlaps.
+
+**The taxonomy gets a derived role layer.** Two levels above the open subtype, and
+**nothing stored changes** — no migration, no schema edit, no rules change:
+
+| Role | Kinds | Generates gaps |
+| --- | --- | --- |
+| `sleep` | hotel, rental, camp | **yes** |
+| `move` | flight, train, ferry, bus, car, transfer | **yes** |
+| `eat` | restaurant, cafe, bar | no — counted only |
+| `do` | hike, sight, activity, shop, event | no — counted only |
+
+Role is a pure lookup from kind (`roleOf(kind)`), living in a new `src/domain/taxonomy.ts`.
+It falls straight out of the design's own gap rule — *"only stays and transport generate
+gaps; eating and doing are preferences and only ever count"* is literally these four, which
+is the evidence the shape is right rather than invented.
+
+What reads what, so the five competing sets stop competing:
+
+- **Agenda** groups by **role**.
+- **`src/domain/gaps.ts`** reads **role** — it never needs to know a kind.
+- **Explore** filters by **kind**.
+- **Icons** resolve **subtype** first, then kind, then role (the existing `iconFor` fallback
+  chain, one level deeper).
+- **Colour** keys off **kind**, and the design's `TypeColors` is the map — including
+  `stay`/`shopping`, which stop being dead entries.
+
+The five existing sets become *inputs* to the lookup rather than rivals: `PlaceCategory` and
+`ItineraryItemCategory` are what is stored and keep their spellings, and the mapping absorbs
+`food`/`restaurant` and `bars`/`bar` rather than picking a winner. An unknown kind falls back
+to `do`, so old and hand-entered data degrades instead of throwing.
 | ~~Unified item taxonomy~~ | ~~5, 6~~ | Four competing sets: `TypeColors` (9), `ItineraryItemCategory` (a different 9), `CustomItemSheet`'s picker (7), Explore's `FilterId` (6). `stay` and `shopping` have no data-model representation; `TypeColors.bars/.stay/.shopping` are dead tokens. Session 5's four groups need a clean 9→4 mapping. |
 | ~~**Photo seam shape**~~ | ~~4, 7, 8, 9~~ | **Settled in Session 3.** `resolvePhoto(subject, ctx)` in `src/lib/images.ts`, generalising the existing `resolvePlacePhoto()`. Resolved URLs are **derived, never stored** — no schema change, no staleness, and the only legal option for trips. See `docs/redesign-plan.md` §6d. |
 | Draft expiry | 10 | Exit sheet promises 30 days; nothing enforces it. |
