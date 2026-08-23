@@ -24,7 +24,7 @@ interface StopFormSheetProps {
 }
 
 /**
- * Bottom-sheet wrapper around the shared `StopForm`, presented from `StopsStrip`'s trailing "+"
+ * Bottom-sheet wrapper around the shared `StopForm`. Presented from the stop rail's add affordance
  * pill (add mode) or from an existing stop (edit mode, via `editingStop`). Mirrors
  * `EntityDetailSheet.tsx`'s `BottomSheetModal` + imperative ref pattern (including participating
  * in `SheetContext`'s open-sheet count), but deliberately does NOT plumb into

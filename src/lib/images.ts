@@ -24,7 +24,7 @@ export interface PhotoContext {
 /** The thing a photo is *of*. Adding a kind here is how a new surface joins the seam. */
 export type PhotoSubject =
   | { kind: 'place'; place: Pick<Place, 'name' | 'lat' | 'lon' | 'photoUrl'> }
-  | { kind: 'stop';  stop:  Pick<Stop, 'city' | 'region' | 'lat' | 'lon'> }
+  | { kind: 'stop';  stop:  Pick<Stop, 'id'>; places: Place[] }
   | { kind: 'trip';  trip:  Pick<Trip, 'id' | 'name'> };
 
 /**
@@ -35,16 +35,27 @@ export type PhotoSubject =
  * Coverage today:
  * - `place` — real. Curated `photoUrl` first, then the first Foursquare photo from the
  *   Firestore enrichment cache.
- * - `stop` and `trip` — always undefined. Neither has a photo field and neither has a
- *   provider yet; destination photography is Session 11's decision (`docs/imagery.md`).
- *   Home, Explore, Map and Profile therefore render placeholders until then, which is the
- *   intended state — a placeholder is a design surface, not a defect.
+ * - `stop` — **a stop looks like the places in it.** The first place at that stop which
+ *   resolves a photo wins, in the order the caller supplies. Not a placeholder for a real
+ *   implementation: this is probably the right permanent answer, since a destination photo
+ *   that is actually somewhere the traveller is going beats a stock city shot. Coverage is
+ *   whatever Foursquare matched — a stop whose places are all unenriched still resolves to
+ *   undefined and renders `ImagePlaceholder`, which is a designed state, not a defect.
+ * - `trip` — always undefined. A trip has no photo field and no provider. Session 11
+ *   decides where a photo comes from when a *user* creates a trip (`docs/imagery.md`).
  */
 export function resolvePhoto(subject: PhotoSubject, ctx: PhotoContext): string | undefined {
   switch (subject.kind) {
     case 'place':
       return resolvePlacePhoto(subject.place, ctx.enrichment);
-    case 'stop':
+    case 'stop': {
+      for (const place of subject.places) {
+        if (place.stopId !== subject.stop.id) continue;
+        const hit = resolvePlacePhoto(place, ctx.enrichment);
+        if (hit) return hit;
+      }
+      return undefined;
+    }
     case 'trip':
       return undefined;
   }

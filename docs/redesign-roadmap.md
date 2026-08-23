@@ -21,7 +21,8 @@ with hand-rolled code limited to the register in
 | Session 2b — tokens + sweep | **Done, gate green.** `tokens.ts` regenerated; 54 files re-pointed; `Brand` deleted; three deps installed. Awaiting Jeremy's screen-by-screen look. |
 | Session 2c — icons | **Done, verified on device.** Zero emoji in `app/` and `src/`; `src/design/icons.ts` registry; `Stop.emoji` deprecated, not removed. Needed an `eas.json` build-flag fix — see Known repo facts. |
 | Session 3 — primitives | **Done, gate green.** Twelve components in `src/ui/`, all theme-aware via `useTheme()`. Photo seam split across `src/lib/images.ts` and `src/ui/Photo.tsx`. Gallery at `jernie://dev/ui`. Two deps added (`expo-haptics`, `@shopify/flash-list`) — **needs a dev build**. |
-| Sessions 4–12 | Not started |
+| Session 4 — Jernie home | **Done, gate green.** One vertical scroll; hero, collapse, rail, CTA row, day groups. Pager, accordion and `CTACardZone`'s phase router removed. 84 suites / 900 tests. |
+| Sessions 5–12 | Not started |
 
 ---
 
@@ -139,6 +140,46 @@ seed, so every photo comes from Foursquare enrichment at runtime. Coverage is wh
 Foursquare matched. A stop with no enriched places still renders `ImagePlaceholder`, and that
 has to stay a designed state, not an accident. Session 11 still owns the question of where a
 photo comes from when a *user* creates a trip.
+
+---
+
+### Session 4's one deliberate deviation from the canvas
+
+`Jernie Screen.dc.html` moves content **3.2x faster than the finger** during the collapse:
+its hero is `position:sticky` and in flow, so shrinking it from 272 to 96 reclaims 176px from
+the layout, and the rail's `margin-top` reclaims another 136 — 312px of content movement on
+top of 140px of scroll.
+
+`reference/collapse.md` says the opposite, twice: *"content stays still"* and *"Only the
+header layer animates; the list below it stays where it is."* The spec wins. The canvas
+number is an artifact of a sticky-in-flow header, and 3.2x would read as the page bolting
+away from the thumb.
+
+The build puts the header in an **overlay above the scroll view**, so its 176px of shrink is
+absorbed by the layer rather than charged to the list. The rail's own ~128px is still
+reclaimed — a collapsing spacer does it, because otherwise the rail leaves a hole. Net
+content velocity is ~1.9x over the collapse rather than 3.2x, and every other number
+(272, 96, 140, 56, 62, the four opacity ramps, snap at 302) is the canvas's exactly.
+
+**`--header-collapsed: 96` is also adapted.** The mockup renders no status bar, so a flat 96
+would put the pinned bar's top third under the clock. Collapsed height is `insets.top + 62`
+— which *is* 96 on a device reporting a 34pt top inset, and grows correctly on a notch.
+
+### Carried into Session 5
+
+- **Bookings not on the itinerary are invisible on home.** `StopSection`'s "Flights / Stays /
+  Rental cars / Restaurants" listing is gone; the design's home is day-by-day only. Agenda's
+  four type groups are where they belong. `TravelCard` and `ItineraryDayRow` are orphaned but
+  **deliberately not deleted** — both are tested, and Session 5 needs booking rendering.
+- **The day group has no title.** The canvas sets an editorial one per day ("Arrival day",
+  "Cadillac and the pond") that no field can produce. The slot is omitted rather than filled
+  with a derivation nobody asked for. Needs a product answer, not a code one.
+- **Stop status is a placeholder.** The rail card says "Stay booked" / "Nowhere to sleep"
+  from a single `type === 'hotel'` check. Real statuses ("2 gaps to fix") need `gaps.ts`.
+- **No blur on the hero.** `expo-blur` is named in the mapping for on-photo chips but is not
+  installed, and it is native. The hero's top-right control is omitted entirely for now —
+  the canvas puts a notification bell there and notifications are Session 10, so shipping a
+  dead button was the worse option.
 
 ---
 

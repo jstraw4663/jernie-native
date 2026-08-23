@@ -80,8 +80,6 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { Text } from 'react-native';
 import JernieTab from '@/app/(trips)/[tripId]/(tabs)/jernie';
-import { CTACardZone } from '@/src/features/jernie/CTACardZone';
-import { ItineraryDayRow } from '@/src/features/jernie/components/ItineraryDayRow';
 import type { Trip, StopWithColor } from '@/src/types';
 
 const TRIP: Trip = {
@@ -92,7 +90,9 @@ const TRIP: Trip = {
   pills: [],
   inviteToken: 'tok',
   colorPack: { id: 'pack', stopColors: ['#2C5880', '#1E7B8C'], heroGradient: ['#111111', '#222222'] },
-  setupIntent: { flights: false, stays: false, car: false, restaurants: false },
+  // flights:true = "I still need to book this". The CTA row is silent on a false intent,
+  // unlike the deleted checklist card, which rendered all four rows regardless.
+  setupIntent: { flights: true, stays: false, car: false, restaurants: false },
 };
 
 const STOP_A: StopWithColor = { id: 'stop-a', tripId: 'trip-1', city: 'Portland', region: 'ME', emoji: '🦞', lat: 0, lon: 0, dates: { start: '2026-08-10', end: '2026-08-14' }, order: 0, color: '#2C5880' };
@@ -131,30 +131,42 @@ beforeEach(() => {
   mockUserTripsState = { trips: [], status: 'ready' };
 });
 
-describe('JernieTab — CTA zone', () => {
-  test('renders the real, data-driven CTA card rather than the hardcoded mock carousel', () => {
+// Session 4 replaced CTACardZone's three-card phase router with ONE row whose content is
+// chosen by priority: save nudge > unmet setup > (Session 5: gap) > nothing. The four-row
+// pre-trip checklist is gone by design — a row cannot hold four setup rows — so these
+// assert the surviving behaviour: the row appears, acts, and dismisses.
+describe('JernieTab — CTA row', () => {
+  test('renders the real, data-driven CTA rather than the hardcoded mock carousel', () => {
     const tree = renderScreen();
     const t = texts(tree);
-    // The real card is driven by trip.setupIntent and carries pressable setup rows.
+    // Driven by trip.setupIntent, and its action targets the unmet intent by name.
     expect(tree.root.findAllByProps({ testID: 'setup-row-flights' }).length).toBeGreaterThan(0);
     expect(t).toContain('New England');
     // Text unique to the deleted mock carousel's fixed cards must never come back.
     expect(t).not.toContain('Dinner Reservation');
   });
 
-  test('mounts exactly one CTACardZone', () => {
+  test('mounts exactly one CTA row', () => {
     const tree = renderScreen();
-    expect(tree.root.findAllByType(CTACardZone)).toHaveLength(1);
+    // Host nodes only — findAllByProps also matches the composite that passed the prop down.
+    const hosts = tree.root.findAll(n => n.props.testID === 'cta-setup' && typeof n.type === 'string');
+    expect(hosts).toHaveLength(1);
   });
 
-  test('a setup row opens the booking form for that type', () => {
+  test('the CTA action opens the booking form for the unmet intent', () => {
     const tree = renderScreen();
     act(() => { tree.root.findByProps({ testID: 'setup-row-flights' }).props.onPress(); });
     // The booking sheet is now presenting a flight form.
     expect(tree.root.findAllByProps({ testID: 'booking-form-leg-0-airline' }).length).toBeGreaterThan(0);
   });
 
-  test('dismissing the pre-trip card hides it', () => {
+  test('a met intent silences the row', () => {
+    mockContextValue.trip = { ...TRIP, setupIntent: { flights: false, stays: false, car: false, restaurants: false } };
+    const tree = renderScreen();
+    expect(tree.root.findAllByProps({ testID: 'cta-setup' })).toHaveLength(0);
+  });
+
+  test('dismissing the setup row hides it', () => {
     const tree = renderScreen();
     expect(tree.root.findAllByProps({ testID: 'cta-dismiss' }).length).toBeGreaterThan(0);
     act(() => { tree.root.findByProps({ testID: 'cta-dismiss' }).props.onPress(); });
@@ -225,10 +237,10 @@ describe('JernieTab — save nudge', () => {
     expect(tree.root.findAllByProps({ testID: 'save-nudge-card' })).toHaveLength(0);
   });
 
-  // I5: snoozing swaps the rendered CTA card from the nudge (short) to the pre-trip setup
-  // checklist (tall) — the exact identity change the CTA wrapper must re-measure for
-  // instead of reusing a height frozen on the nudge card, or the checklist renders clipped.
-  test('snoozing swaps the card identity from the nudge to the pre-trip checklist (I5)', () => {
+  // I5: snoozing hands the single CTA row from the nudge down to the next-highest thing
+  // that has something to say. The row is one component now, so the height-remeasure bug
+  // this originally guarded cannot recur — but the priority handover still has to work.
+  test('snoozing hands the row from the nudge down to the setup content (I5)', () => {
     mockAuthState = {
       status: 'anonymous', user: { uid: 'u' }, anonCreatedAt: eightDaysAgo(), signInWithApple: jest.fn(),
     };
@@ -239,8 +251,7 @@ describe('JernieTab — save nudge', () => {
     act(() => { tree.root.findByProps({ testID: 'save-nudge-dismiss' }).props.onPress(); });
 
     expect(tree.root.findAllByProps({ testID: 'save-nudge-card' })).toHaveLength(0);
-    // The trip fixture's now (Aug 1) is before STOP_A's dates (Aug 10-14), so the phase
-    // router underneath falls through to the pre-trip checklist once the nudge steps aside.
+    // With the nudge snoozed, the unmet flights intent is the highest-priority thing left.
     expect(tree.root.findAllByProps({ testID: 'setup-row-flights' }).length).toBeGreaterThan(0);
   });
 
