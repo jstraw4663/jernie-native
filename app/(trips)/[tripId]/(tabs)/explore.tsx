@@ -8,15 +8,14 @@ import {
 } from '@/src/domain/explore';
 import type { FilterId, SortKey } from '@/src/domain/explore';
 import { addPlaceToItinerary } from '@/src/lib/itineraryWrites';
-import { getPlaceEnrichment, resolvePlacePhoto } from '@/src/domain/placeEnrichment';
+import { resolvePlacePhoto } from '@/src/domain/placeEnrichment';
 import { SearchBar } from '@/src/features/jernie/explore/SearchBar';
 import type { Icon } from 'phosphor-react-native';
 import { iconFor, PLACE_ICON } from '@/src/design/icons';
 import { FilterPillRow } from '@/src/features/jernie/explore/FilterPillRow';
 import { PlaceCarouselRow } from '@/src/features/jernie/explore/PlaceCarouselRow';
 import { PlaceList } from '@/src/features/jernie/explore/PlaceList';
-import { EntityDetailSheet } from '@/src/features/jernie/sheets/EntityDetailSheet';
-import type { EntityDetailSheetRef } from '@/src/features/jernie/sheets/EntityDetailSheet';
+import { DetailSheet, useDetailSheet } from '@/src/features/jernie/sheets/detail';
 import { DayPickerSheet } from '@/src/features/jernie/sheets/DayPickerSheet';
 import type { DayPickerSheetRef } from '@/src/features/jernie/sheets/DayPickerSheet';
 import { Core, Spacing, Typography } from '@/src/design/tokens';
@@ -37,7 +36,7 @@ export default function ExploreTab() {
   const [activeStopId, setActiveStopId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('rating');
-  const entitySheetRef = useRef<EntityDetailSheetRef>(null);
+  const detail = useDetailSheet();
   const dayPickerRef = useRef<DayPickerSheetRef>(null);
 
   const shuffleSeed = useMemo(() => getShuffleSeed(Date.now()), []);
@@ -75,19 +74,12 @@ export default function ExploreTab() {
   const isSearching = searchQuery.trim().length > 0;
 
   const handlePlacePress = useCallback((place: Place) => {
-    const stop = stops.find(s => s.id === place.stopId);
-    entitySheetRef.current?.present({
-      kind: place.category === 'hike' ? 'hike' : 'place',
-      name: place.name,
-      stopLabel: stop?.city ?? '',
-      stopColor: stop?.color ?? Core.action,
-      place,
-      enrichment: getPlaceEnrichment(enrichment, place),
+    detail.openPlace(place, {
       isAdded: addedPlaceIds.has(place.id),
-      // Previously this auto-picked the stop's first day and silently did nothing when the
-      // stop had none. The picker gives the user the choice and makes the empty case visible.
+      // The picker rather than the stop's first day: auto-picking silently did nothing when
+      // the stop had no days, which made the empty case invisible.
       onAdd: () => {
-        entitySheetRef.current?.dismiss();
+        detail.dismiss();
         dayPickerRef.current?.present({
           stopId: place.stopId,
           onPick: day => {
@@ -96,7 +88,7 @@ export default function ExploreTab() {
         });
       },
     });
-  }, [stops, enrichment, addedPlaceIds, trip.id, refetch]);
+  }, [detail, addedPlaceIds, trip.id, refetch]);
 
   const stopFilterItems = useMemo(() => [
     { id: 'all', label: 'All Stops' },
@@ -137,7 +129,7 @@ export default function ExploreTab() {
         />
       </ScrollView>
 
-      <EntityDetailSheet ref={entitySheetRef} />
+      <DetailSheet ref={detail.sheet} />
       <DayPickerSheet ref={dayPickerRef} />
     </View>
   );

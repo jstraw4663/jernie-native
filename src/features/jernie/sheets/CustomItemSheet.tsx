@@ -9,8 +9,12 @@ import { confirmDelete } from '@/src/utils/confirmDelete';
 import { formatDayLabel } from '@/src/utils/dates';
 import { DayPickerSheet } from './DayPickerSheet';
 import type { DayPickerSheetRef } from './DayPickerSheet';
-import { Core, Radius, Semantic, Spacing, Typography } from '@/src/design/tokens';
-import type { ItineraryDay, ItineraryItem, ItineraryItemCategory } from '@/src/types';
+import { iconFor, type ItemCategory } from '@/src/design/icons';
+import { ROLE_ORDER } from '@/src/domain/agenda';
+import { normalizeCategory, ROLE_OF_CATEGORY } from '@/src/domain/taxonomy';
+import { Animation, Core, Radius, Semantic, Spacing, Typography } from '@/src/design/tokens';
+import { Chip } from '@/src/ui';
+import type { ItineraryDay, ItineraryItem } from '@/src/types';
 
 export interface CustomItemPayload {
   stopId: string;
@@ -31,25 +35,36 @@ interface CustomItemSheetProps {
   onSaved: () => void;
 }
 
-// Same values StopFormSheet uses. @gorhom/bottom-sheet's SpringConfig type omits the two
-// rest thresholds even though the runtime honors them; the assertion keeps the values.
-const SHEET_SPRING = {
-  damping: 60,
-  stiffness: 180,
-  mass: 1.2,
-  restDisplacementThreshold: 0.01,
-  restSpeedThreshold: 0.01,
-} as Parameters<typeof useBottomSheetSpringConfigs>[0];
+// `spring-drag` is the token for a sheet detent, and the same one StopFormSheet and the
+// detail sheet use. It replaces a hand-tuned config carrying two keys Reanimated 4's
+// `SpringConfig` does not have, kept alive by an `as` cast.
+const SHEET_SPRING = Animation.springs.drag;
 
-const CATEGORIES: Array<{ value: ItineraryItemCategory; label: string }> = [
-  { value: 'activity',   label: 'Activity'   },
-  { value: 'restaurant', label: 'Food'       },
-  { value: 'sight',      label: 'Sight'      },
-  { value: 'hike',       label: 'Hike'       },
-  { value: 'bar',        label: 'Drinks'     },
-  { value: 'transport',  label: 'Transport'  },
-  { value: 'other',      label: 'Other'      },
-];
+/**
+ * **The canonical ten, ordered by role.**
+ *
+ * This picker used to offer seven legacy spellings — `restaurant`, `bar`, `transport`,
+ * `other` — none of which are what the rest of the app reasons in. Session 5 widened
+ * `ItineraryItemCategory` to reach the canonical set but left no writer offering it; this is
+ * that writer. Two of the additions matter beyond tidiness: `stay` is how you say *staying
+ * with friends* and `car` is how you say *driving my own car*, and without them
+ * `src/domain/gaps.ts` reports a permanent stay gap and a permanent transport gap on stops
+ * that are perfectly well covered.
+ *
+ * There is no "Other" chip: pressing the selected chip clears the category, which is the
+ * same thing and one fewer value in the data.
+ */
+const CATEGORY_LABEL: Record<ItemCategory, string> = {
+  flight: 'Flight', transit: 'Transit', car: 'Car',
+  stay: 'Stay',
+  food: 'Food', bars: 'Drinks',
+  hike: 'Hike', activity: 'Activity', sight: 'Sight', shopping: 'Shopping',
+};
+
+// Grouped the way Agenda groups: how you get there, where you sleep, where you eat, what
+// you do. A flat alphabetical list of ten put Shopping between Sight and Stay.
+const CATEGORIES: ItemCategory[] = ROLE_ORDER.flatMap(role =>
+  (Object.keys(CATEGORY_LABEL) as ItemCategory[]).filter(c => ROLE_OF_CATEGORY[c] === role));
 
 /**
  * Add/edit sheet for free-text itinerary items — the UI over Phase 1's `itineraryWrites`.
@@ -69,7 +84,7 @@ export const CustomItemSheet = React.forwardRef<CustomItemSheetRef, CustomItemSh
   const [day, setDay] = useState<ItineraryDay | null>(null);
   const [label, setLabel] = useState('');
   const [time, setTime] = useState('');
-  const [category, setCategory] = useState<ItineraryItemCategory | null>(null);
+  const [category, setCategory] = useState<ItemCategory | null>(null);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -88,7 +103,9 @@ export const CustomItemSheet = React.forwardRef<CustomItemSheetRef, CustomItemSh
       setDay(next.day ?? null);
       setLabel(next.editingItem?.label ?? '');
       setTime(next.editingItem?.time ?? '');
-      setCategory(next.editingItem?.category ?? null);
+      // Normalised on the way in, so an item stored as `restaurant` shows the Food chip
+      // selected rather than nothing, and saving migrates it to the canonical spelling.
+      setCategory(normalizeCategory(next.editingItem?.category));
       setNotes(next.editingItem?.notes ?? '');
       setSubmitError(null);
       modalRef.current?.present();
@@ -206,19 +223,20 @@ export const CustomItemSheet = React.forwardRef<CustomItemSheetRef, CustomItemSh
 
               <Text style={[s.label, s.spacedLabel]}>Category</Text>
               <View style={s.chipRow}>
-                {CATEGORIES.map(c => {
-                  const selected = category === c.value;
+                {CATEGORIES.map(value => {
+                  const selected = category === value;
+                  const Glyph = iconFor(value);
                   return (
-                    <TouchableOpacity
-                      key={c.value}
-                      testID={`custom-item-category-${c.value}`}
-                      style={[s.chip, selected && s.chipSelected]}
+                    <Chip
+                      key={value}
+                      testID={`custom-item-category-${value}`}
+                      label={CATEGORY_LABEL[value]}
+                      icon={<Glyph size={13} color={selected ? Core.white : Core.textMuted} weight="fill" />}
+                      selected={selected}
                       // Pressing the selected chip clears it — category is optional and
                       // there is no other way back to "none" once one is chosen.
-                      onPress={() => setCategory(selected ? null : c.value)}
-                    >
-                      <Text style={[s.chipText, selected && s.chipTextSelected]}>{c.label}</Text>
-                    </TouchableOpacity>
+                      onPress={() => setCategory(selected ? null : value)}
+                    />
                   );
                 })}
               </View>
@@ -323,22 +341,6 @@ const s = StyleSheet.create({
     flexWrap: 'wrap',
     gap: Spacing.sm,
   },
-  chip: {
-    borderWidth: 1,
-    borderColor: Core.border,
-    borderRadius: Radius.full,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  chipSelected: {
-    backgroundColor: Core.action,
-    borderColor: Core.action,
-  },
-  chipText: {
-    ...Typography.roles.chip,
-    color: Core.textMuted,
-  },
-  chipTextSelected: { color: Core.white },
   errorText: {
     ...Typography.roles.sub,
     color: Semantic.error,

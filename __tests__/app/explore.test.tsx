@@ -118,7 +118,7 @@ describe('app/(trips)/[tripId]/(tabs)/explore', () => {
     expect(t).not.toContain('Eventide');
   });
 
-  test('tapping a place card, then "Add to Portland", opens the day picker without writing yet', () => {
+  test('tapping a place card, then the footer action, opens the day picker without writing yet', () => {
     const tree = renderScreen();
 
     // Open the detail sheet for Eventide (stop-a → Portland) via its list card.
@@ -129,12 +129,10 @@ describe('app/(trips)/[tripId]/(tabs)/explore', () => {
     act(() => { findAncestorOnPress(eventideNode)(); });
 
     // The sheet is now rendered (BottomSheetModal is mocked as a plain View, so its
-    // children render unconditionally once payload state is set) — find the Add button.
-    const addNode = tree.root.findAllByType(Text).find(t => {
-      const c = t.props.children;
-      return (Array.isArray(c) ? c.join('') : String(c)) === 'Add to Portland';
-    })!;
-    act(() => { findAncestorOnPress(addNode)(); });
+    // children render unconditionally once payload state is set) — press its footer action.
+    // Addressed by testID rather than by copy: Session 6's footer says "Add to itinerary"
+    // for every type, because the shell's one action is not per-stop any more.
+    act(() => { tree.root.findByProps({ testID: 'detail-footer-action' }).props.onPress(); });
 
     // The picker is up and nothing has been written — the user still has to choose a day.
     expect(tree.root.findAllByProps({ testID: `day-picker-row-${EMPTY_DAY.id}` }).length).toBeGreaterThan(0);
@@ -150,11 +148,7 @@ describe('app/(trips)/[tripId]/(tabs)/explore', () => {
     })!;
     act(() => { findAncestorOnPress(eventideNode)(); });
 
-    const addNode = tree.root.findAllByType(Text).find(t => {
-      const c = t.props.children;
-      return (Array.isArray(c) ? c.join('') : String(c)) === 'Add to Portland';
-    })!;
-    act(() => { findAncestorOnPress(addNode)(); });
+    act(() => { tree.root.findByProps({ testID: 'detail-footer-action' }).props.onPress(); });
 
     await act(async () => {
       tree.root.findByProps({ testID: `day-picker-row-${EMPTY_DAY.id}` }).props.onPress();
@@ -174,11 +168,7 @@ describe('app/(trips)/[tripId]/(tabs)/explore', () => {
     })!;
     act(() => { findAncestorOnPress(beehiveNode)(); });
 
-    const addNode = tree.root.findAllByType(Text).find(t => {
-      const c = t.props.children;
-      return (Array.isArray(c) ? c.join('') : String(c)) === 'Add to Bar Harbor';
-    })!;
-    act(() => { findAncestorOnPress(addNode)(); });
+    act(() => { tree.root.findByProps({ testID: 'detail-footer-action' }).props.onPress(); });
 
     // Beehive Trail lives on stop-b, so only stop-b's day is offered by default.
     expect(tree.root.findAllByProps({ testID: 'day-picker-row-day-2' }).length).toBeGreaterThan(0);

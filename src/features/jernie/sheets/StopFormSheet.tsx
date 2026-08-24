@@ -7,7 +7,7 @@ import { useAddStop } from '@/src/hooks/useAddStop';
 import { useEditStop } from '@/src/hooks/useEditStop';
 import { confirmDelete } from '@/src/utils/confirmDelete';
 import { StopForm, type ResolvedStop } from '@/src/features/jernie/StopForm';
-import { Core, Radius, Semantic, Spacing, Typography } from '@/src/design/tokens';
+import { Animation, Core, Radius, Semantic, Spacing, Typography } from '@/src/design/tokens';
 import type { StopWithColor } from '@/src/types';
 
 export type StopFormSheetRef = {
@@ -26,9 +26,9 @@ interface StopFormSheetProps {
 /**
  * Bottom-sheet wrapper around the shared `StopForm`. Presented from the stop rail's add affordance
  * pill (add mode) or from an existing stop (edit mode, via `editingStop`). Mirrors
- * `EntityDetailSheet.tsx`'s `BottomSheetModal` + imperative ref pattern (including participating
+ * `DetailSheet.tsx`'s `BottomSheetModal` + imperative ref pattern (including participating
  * in `SheetContext`'s open-sheet count), but deliberately does NOT plumb into
- * `EntityDetailSheet`'s multi-kind payload system — that system is for viewing place/hike/hotel/
+ * `DetailSheet`'s multi-kind payload system — that system is for viewing place/hike/hotel/
  * flight details, a different concern from a data-entry form. Uses dynamic sizing (no fixed
  * `snapPoints`) since the form's content height is small and fixed, unlike the detail sheets.
  *
@@ -43,13 +43,10 @@ export const StopFormSheet = React.forwardRef<StopFormSheetRef, StopFormSheetPro
   const { addStop } = useAddStop();
   const { updateStop, removeStop } = useEditStop();
 
-  const animationConfigs = useBottomSheetSpringConfigs({
-    damping: 60,
-    stiffness: 180,
-    mass: 1.2,
-    restDisplacementThreshold: 0.01,
-    restSpeedThreshold: 0.01,
-  });
+  // `spring-drag` is the token for a sheet detent. The hand-tuned config this replaced
+  // carried two keys Reanimated 4's `SpringConfig` does not have, which is what the
+  // long-standing tsc error in this file was.
+  const animationConfigs = useBottomSheetSpringConfigs(Animation.springs.drag);
 
   useImperativeHandle(ref, () => ({
     present() { modalRef.current?.present(); },

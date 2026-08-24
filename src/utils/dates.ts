@@ -28,3 +28,13 @@ export function formatDayLabel(iso: string): string {
   const d = new Date(iso + 'T12:00:00');
   return `${WEEKDAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
+
+/**
+ * A single ISO date as "May 24" — no weekday, no year. The short form for anywhere a date
+ * sits inside a sentence or a figure. Four sheet files carried a private copy of this before
+ * Session 6; there is one now.
+ */
+export function formatShortDate(iso: string): string {
+  const d = new Date(iso + 'T12:00:00');
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+}

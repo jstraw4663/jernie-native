@@ -55,7 +55,7 @@ function toFormValues(booking: Booking): BookingFormValues {
 /**
  * Bottom-sheet wrapper around `BookingForm`. Unlike `StopFormSheet` — whose mode is fixed by a
  * prop — the type/stop/booking here varies per invocation, so the payload rides on `present()`,
- * matching `EntityDetailSheet`'s pattern. Everything else (backdrop, spring configs, the
+ * matching `DetailSheet`'s pattern. Everything else (backdrop, spring configs, the
  * `SheetContext` open-count, dynamic sizing) is `StopFormSheet`'s chrome unchanged.
  *
  * All RTDB-write logic lives in `useBooking()`; `BookingForm` itself has no RTDB or bottom-sheet

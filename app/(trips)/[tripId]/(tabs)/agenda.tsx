@@ -42,8 +42,7 @@ import { BookingFormSheet } from '@/src/features/jernie/sheets/BookingFormSheet'
 import type { BookingFormSheetRef } from '@/src/features/jernie/sheets/BookingFormSheet';
 import { CustomItemSheet } from '@/src/features/jernie/sheets/CustomItemSheet';
 import type { CustomItemSheetRef } from '@/src/features/jernie/sheets/CustomItemSheet';
-import { EntityDetailSheet } from '@/src/features/jernie/sheets/EntityDetailSheet';
-import type { EntityDetailSheetRef } from '@/src/features/jernie/sheets/EntityDetailSheet';
+import { DetailSheet, useDetailSheet } from '@/src/features/jernie/sheets/detail';
 
 type Lens = 'type' | 'day' | 'stop';
 
@@ -101,7 +100,7 @@ export default function AgendaTab() {
     });
   }, []);
 
-  const entitySheetRef = useRef<EntityDetailSheetRef>(null);
+  const detail = useDetailSheet();
   const bookingSheetRef = useRef<BookingFormSheetRef>(null);
   const customItemSheetRef = useRef<CustomItemSheetRef>(null);
 
@@ -122,24 +121,14 @@ export default function AgendaTab() {
   // Every row opens the same detail sheet Session 6 rebuilds; nothing here is a new surface.
 
   const openBooking = useCallback((booking: Booking) => {
-    const stop = stops.find(st => st.id === booking.stopId);
-    const base = {
-      stopLabel: stop?.city ?? trip.name,
-      stopColor: stop?.color ?? t.action,
+    detail.openBooking(booking, {
       onEdit: () => bookingSheetRef.current?.present({
         type: booking.type, stopId: booking.stopId, editingBooking: booking,
       }),
-    };
-    switch (booking.type) {
-      case 'flight':     entitySheetRef.current?.present({ kind: 'flight',     booking, ...base }); break;
-      case 'hotel':      entitySheetRef.current?.present({ kind: 'hotel',      booking, ...base }); break;
-      case 'rental':     entitySheetRef.current?.present({ kind: 'rental',     booking, ...base }); break;
-      case 'restaurant': entitySheetRef.current?.present({ kind: 'restaurant', booking, ...base }); break;
-    }
-  }, [stops, trip.name, t.action]);
+    });
+  }, [detail]);
 
   const openEntry = useCallback((entry: AgendaEntry) => {
-    const stop = stops.find(st => st.id === entry.stopId);
     // Bound to a local so the union narrows inside the `find` callbacks — a narrowing on
     // `entry.source` does not survive the closure.
     const source = entry.source;
@@ -152,16 +141,8 @@ export default function AgendaTab() {
 
     if (source.kind === 'place') {
       const place = places.find(p => p.id === source.placeId);
-      if (!place) return;
-      entitySheetRef.current?.present({
-        kind: place.category === 'hike' ? 'hike' : 'place',
-        name: place.name,
-        stopLabel: stop?.city ?? trip.name,
-        stopColor: stop?.color ?? t.action,
-        place,
-        // Trivially true — a row on the agenda is already in the plan.
-        isAdded: true,
-      });
+      // Trivially added — a row on the agenda is already in the plan.
+      if (place) detail.openPlace(place, { isAdded: true });
       return;
     }
 
@@ -171,7 +152,7 @@ export default function AgendaTab() {
     if (day && editingItem) {
       customItemSheetRef.current?.present({ stopId: entry.stopId, day, editingItem });
     }
-  }, [stops, bookings, places, itinerary, trip.name, t.action, openBooking]);
+  }, [bookings, places, itinerary, detail, openBooking]);
 
   const fixGap = useCallback((gap: Gap) => {
     bookingSheetRef.current?.present({
@@ -364,7 +345,7 @@ export default function AgendaTab() {
         />
       </Animated.View>
 
-      <EntityDetailSheet ref={entitySheetRef} />
+      <DetailSheet ref={detail.sheet} />
       <BookingFormSheet ref={bookingSheetRef} tripId={trip.id} onSaved={refetch} />
       <CustomItemSheet ref={customItemSheetRef} tripId={trip.id} onSaved={refetch} />
     </View>

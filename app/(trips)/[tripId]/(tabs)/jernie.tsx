@@ -18,7 +18,6 @@ import { PlusIcon } from 'phosphor-react-native/src/icons/Plus';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { bookingBelongsToStop } from '@/src/domain/bookings';
-import { getPlaceEnrichment } from '@/src/domain/placeEnrichment';
 import { shouldShowNudge, snoozeMsFor } from '@/src/domain/saveNudge';
 import { getActiveStopId } from '@/src/domain/trip';
 import { useCollisionSignIn } from '@/src/hooks/useCollisionSignIn';
@@ -36,8 +35,7 @@ import { HERO_MAX, RAIL_TOP, RANGE, spacerMin } from '@/src/features/jernie/home
 import { HomeHeader } from '@/src/features/jernie/home/HomeHeader';
 import { StopMorph } from '@/src/features/jernie/home/StopMorph';
 import { StopRail, type RailStop } from '@/src/features/jernie/home/StopRail';
-import { EntityDetailSheet } from '@/src/features/jernie/sheets/EntityDetailSheet';
-import type { EntityDetailSheetRef } from '@/src/features/jernie/sheets/EntityDetailSheet';
+import { DetailSheet, useDetailSheet } from '@/src/features/jernie/sheets/detail';
 import { StopFormSheet } from '@/src/features/jernie/sheets/StopFormSheet';
 import type { StopFormSheetRef } from '@/src/features/jernie/sheets/StopFormSheet';
 import { BookingFormSheet } from '@/src/features/jernie/sheets/BookingFormSheet';
@@ -105,7 +103,7 @@ export default function JernieTab() {
 
   const visibleStop = stops[viewedIdx] ?? stops[0];
 
-  const entitySheetRef = useRef<EntityDetailSheetRef>(null);
+  const detail = useDetailSheet();
   const stopFormSheetRef = useRef<StopFormSheetRef>(null);
   const bookingSheetRef = useRef<BookingFormSheetRef>(null);
   const customItemSheetRef = useRef<CustomItemSheetRef>(null);
@@ -283,25 +281,24 @@ export default function JernieTab() {
     }
     const place = item.placeId ? places.find(p => p.id === item.placeId) : undefined;
     if (place) {
-      entitySheetRef.current?.present({
-        kind: place.category === 'hike' ? 'hike' : 'place',
-        name: place.name,
-        stopLabel: stop.city,
-        stopColor: stop.color,
-        place,
-        enrichment: getPlaceEnrichment(enrichment, place),
-        // Trivially true — an item opened from the itinerary is already in it.
-        isAdded: true,
-      });
+      // Trivially added — an item opened from the itinerary is already in it.
+      detail.openPlace(place, { isAdded: true });
       return;
     }
-    const label = item.label ?? '';
-    if (item.category === 'restaurant') {
-      entitySheetRef.current?.present({ kind: 'place', name: label, stopLabel: stop.city, stopColor: stop.color });
-    } else if (item.category === 'hike') {
-      entitySheetRef.current?.present({ kind: 'hike', name: label, stopLabel: stop.city, stopColor: stop.color });
+    // Booking rows did nothing here before Session 6: home knew how to open a place and a
+    // custom item and simply dropped the third kind. Same sheet, same wiring as Agenda.
+    const booking = item.bookingId ? bookings.find(b => b.id === item.bookingId) : undefined;
+    if (booking) {
+      detail.openBooking(booking, {
+        onEdit: () => bookingSheetRef.current?.present({
+          type: booking.type, stopId: booking.stopId, editingBooking: booking,
+        }),
+      });
     }
-  }, [visibleStop, itinerary, places, enrichment]);
+    // An item pointing at a place or booking that no longer exists opens nothing. It used to
+    // open a name-only sheet dressed in `mockEntityData`, which showed someone else's
+    // restaurant under this item's label.
+  }, [visibleStop, itinerary, places, bookings, detail]);
 
   const days = itinerary[visibleStop.id] ?? [];
 
@@ -390,7 +387,7 @@ export default function JernieTab() {
         />
       ) : null}
 
-      <EntityDetailSheet ref={entitySheetRef} />
+      <DetailSheet ref={detail.sheet} />
       <StopFormSheet ref={stopFormSheetRef} tripId={trip.id} editingStop={editingStop ?? undefined} onSaved={refetch} />
       <BookingFormSheet ref={bookingSheetRef} tripId={trip.id} onSaved={refetch} />
       <CustomItemSheet ref={customItemSheetRef} tripId={trip.id} onSaved={refetch} />
