@@ -40,6 +40,8 @@ name without saying why first.
 | Detail review rail | carousel libraries | A non-paginated horizontal `ScrollView` of quote cards. Carousel libraries add gesture and paging ownership to a simple overflow rail and would fight the containing bottom-sheet gesture. |
 | Detail travel timeline | `react-native-timeline-flatlist`, `ListRow` | The only dedicated package is stale, and `ListRow` cannot express a connected sequence. The custom view is a fixed mono lead column, a dot/line spine and text body. |
 
+| ItineraryTimeline spine | react-native-timeline-flatlist and timeline wrappers | FlashList keeps the maintained-list responsibility. Timeline packages own measurement and styling, cannot represent one date containing two stop segments, and cannot share the existing collapse scroll value. The spine, band ticks, stay context and handoff are presentation over a pure model using View; row content still composes approved primitives. |
+| ItineraryDateRail | react-native-calendars | The installed calendar is a month/range picker. This is a small horizontal scroll-position control with date chips, split stop dots, warnings, and two-way timeline synchronization. A Gesture Handler ScrollView plus Pressable chips preserves those semantics without adding a second calendar vocabulary. |
 <!-- Add new rows above this line. Include: what, the library you rejected, and why. -->
 
 ## Notes on the register
