@@ -152,6 +152,7 @@ pick the nearest and note it rather than drawing one.
 | `Jernie Spec.dc.html` | The decided screens, interactive, light + dark |
 | `Jernie Onboarding.dc.html` | The wizard, its sheets, and the first-run home |
 | `Jernie Redesign.dc.html` | Ten rounds of options, including rejected ones |
+| `Jernie Itinerary.dc.html` | The continuous timeline — the design source for the itinerary sprint |
 
 ### Intentional additions
 

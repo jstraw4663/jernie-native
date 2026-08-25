@@ -19,6 +19,7 @@ Read `README.md` first — it is the system. Then the file you need:
 | planning a session's scope | `reference/build-order.md` |
 | needing pixel truth — a screen | `docs/design/Jernie Screen.dc.html` — all five tabs and the detail sheet, light + dark, three trip states |
 | needing pixel truth — the wizard | `docs/design/Jernie Wizard.dc.html` — four steps, four sheets, first-run home |
+| needing pixel truth — the itinerary | `docs/design/Jernie Itinerary.dc.html` — the continuous timeline: bands, spine, date rail, stay context, handoff |
 | the reasoning behind a screen | `docs/design/Jernie Spec.dc.html`, `docs/design/Jernie Onboarding.dc.html` |
 
 Each component has three files: `.d.ts` is the prop contract, `.prompt.md` is when and how
