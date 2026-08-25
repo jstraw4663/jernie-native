@@ -42,6 +42,10 @@ name without saying why first.
 
 | ItineraryTimeline spine | react-native-timeline-flatlist and timeline wrappers | FlashList keeps the maintained-list responsibility. Timeline packages own measurement and styling, cannot represent one date containing two stop segments, and cannot share the existing collapse scroll value. The spine, band ticks, stay context and handoff are presentation over a pure model using View; row content still composes approved primitives. |
 | ItineraryDateRail | react-native-calendars | The installed calendar is a month/range picker. This is a small horizontal scroll-position control with date chips, split stop dots, warnings, and two-way timeline synchronization. A Gesture Handler ScrollView plus Pressable chips preserves those semantics without adding a second calendar vocabulary. |
+| Timeline reorder | `react-native-reanimated-dnd` v2 | Version-compatible, but its `Sortable` owns a scroll container and its own list state, while this timeline already owns one animated scroll surface with nested day/band structure and live external updates. Built on the Gesture Handler + Reanimated already here: `Gesture.Pan().activateAfterLongPress(280)`, drops constrained to the same persisted `stopId + dayId`. |
+| Timeline swipe actions | — | `ReanimatedSwipeable` (Gesture Handler) owns the gesture, the thresholds and the close; only the action tiles behind the row are app-owned. Not a custom gesture — listed so the reorder row above is not read as covering both. |
+| `ItineraryUndoToast` | `react-native-toast-message`, `burnt`, Material Snackbar | Not a notification. Its dismissal **is** the database commit, and it carries a busy / failed / retry lifecycle that outlives any fire-and-forget queue. It also has to sit above the tab bar inside the trip shell, on the safe-area inset the screen already measures. |
+| `DecisionSheet` | detail-screen and dialog generators | `@gorhom/bottom-sheet` owns the modal, detents, drag and backdrop; the app-owned part is the template inside — icon tile, title, message, two `Button`s. Same split as the Detail-sheet template row above. It replaced `MoveEntrySheet` and `RemoveEntrySheet`, which were the same 140 lines with a different tint. |
 <!-- Add new rows above this line. Include: what, the library you rejected, and why. -->
 
 ## Notes on the register
@@ -88,6 +92,12 @@ the rail's horizontal `ScrollView` and nothing in there can go full-bleed at the
 screen. Change a number in `StopCard`'s sheet without changing the metrics and the handoff
 starts to flinch — that is the one way to break it.
 
+Horizontal rail movement temporarily reverses that ownership: the morph hides and the real
+active card remains in the ScrollView for the complete drag, deceleration and snap. Once the
+selected card is centred, the rail and morph exchange visibility in the same frame. Never let
+the fixed morph remain visible over a moving rail; the background cards will move while the
+active one appears detached from the gesture.
+
 **`GapRow` derivation.** The *component* is a `Pressable` with `borderStyle: 'dashed'`
 (Android needs `borderRadius` ≤ 15 or the dash renders square). The *logic* — which gaps
 exist — is a pure function over stops and bookings and belongs in `src/domain/`. Only stays
@@ -103,6 +113,17 @@ view would let the header and the two rows fall out of alignment. The label colu
 the slack while the stops fit, exactly as the canvas's `flex:1` does, and holds a 96px floor
 past that, at which point the grid scrolls sideways as a single piece. On a 393pt phone that
 is five stops before it scrolls.
+
+**`ItineraryUndoToast`.** Red is the `failed` state only. Resting and busy are an inverse ink
+bar (`--ink` background, `--surface` label), because "Removed Eventide" is a completed action,
+not a failure. The failed bar carries a dismiss as well as a Retry — a commit that keeps failing
+would otherwise pin a permanent bar over the itinerary, since the auto-dismiss timer is skipped
+whenever `failed` is set.
+
+**`DecisionSheet`.** Two instances stay mounted on the Jernie tab rather than one shared one, so
+a queued move can never overwrite a remove confirmation already on screen. `onConfirm` rejecting
+with a `DecisionSheetError` replaces the request's generic sentence — that is how a stacked
+removal reports the item that actually failed rather than the one just confirmed.
 
 **`AgendaSection`.** The caret is real: the section collapses, and collapse state is keyed by
 section rather than by index, so it survives a lens switch. A caret that does nothing is the

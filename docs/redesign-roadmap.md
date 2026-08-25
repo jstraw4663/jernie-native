@@ -22,10 +22,37 @@ with hand-rolled code limited to the register in
 | Session 2c — icons | **Done, verified on device.** Zero emoji in `app/` and `src/`; `src/design/icons.ts` registry; `Stop.emoji` deprecated, not removed. Needed an `eas.json` build-flag fix — see Known repo facts. |
 | Session 3 — primitives | **Done, gate green.** Twelve components in `src/ui/`, all theme-aware via `useTheme()`. Photo seam split across `src/lib/images.ts` and `src/ui/Photo.tsx`. Gallery at `jernie://dev/ui`. Two deps added (`expo-haptics`, `@shopify/flash-list`) — **needs a dev build**. |
 | Session 4 — Jernie home | **Done, gate green.** One vertical scroll; hero, collapse, rail, CTA row, day groups. Pager, accordion and `CTACardZone`'s phase router removed. Revised on device: the card *becomes* the bar, the header keeps the trip name, range stretched to 165, hero photo bug fixed. |
-| Session 5 — Agenda + gaps | **Done, awaiting device check.** Three lenses, four type groups, derived gap rows, coverage grid. `taxonomy.ts` / `gaps.ts` / `agenda.ts` new and unit tested. 87 suites / 951 tests. |
-| Sessions 6–12 | Not started |
+| Session 5 — Agenda + gaps | **Done, gate green.** Three lenses, four type groups, derived gap rows, coverage grid. `taxonomy.ts` / `gaps.ts` / `agenda.ts` new and unit tested. Revised on device: wider coverage columns, one shared motion vocabulary. |
+| Session 6 — Detail sheet | **Done, gate green** (`4a704e0`). One data-driven shell in `src/features/jernie/sheets/detail/`; all four types render from it and a fifth is a list entry. Replaced the seven-file duplicated sheet scaffold. |
+| **Itinerary timeline** (inserted) | **Tasks 1–7 done.** A sprint between Sessions 6 and 7 with its own plan and spec — continuous timeline, date rail, maps chooser, swipe actions with delayed-commit Undo, long-press reorder. See `docs/superpowers/plans/2026-08-24-itinerary-timeline.md`. Awaiting the device review in Task 7. |
+| Sessions 7–12 | Not started. **Next: Session 7 — Explore.** |
 
 ---
+
+### The jest gate was never actually green — fixed 2026-08-25
+
+`npx jest` printed *"89 suites passed, 1033 tests passed"* and then exited **1**, on every run,
+going back well before this branch. No suite failed, and every suite passed when run alone, so
+the failure had been read as harmless noise. It was not: `CLAUDE.md`'s rule is "npm test must
+pass before any PR to main", and there was no `test` script in `package.json` at all.
+
+Two independent teardown leaks, both of which only appear in multi-suite runs:
+
+1. **jest-expo's lazy `fetch` global.** The first property read pulls in `expo-modules-core`,
+   whose JS logger cannot resolve its native module under Node and calls `console.warn`. When
+   that first read landed in an async continuation *after* a test file finished, Jest reported
+   "Cannot log after tests are done" and failed the run. `jest.setup.js` now reads it once
+   during setup, where a console write is legal.
+2. **Gesture Handler's `setImmediate`.** `createHandler` pushes its config down inside an
+   immediate. A test file that ends before it runs leaves it to fire post-teardown, where it
+   reads `Platform` off a dead module registry and hard-crashes the worker. The three suites
+   that mount Gesture Handler now unmount after each test.
+
+Fixing them uncovered a third thing worth knowing: `TripLoadingScreen`'s and `TripErrorScreen`'s
+snapshots were both `null`. Neither test wrapped its render in `act`, so `toJSON()` ran before
+the first render flushed and the snapshot recorded nothing. Both now assert the real tree.
+
+`npm test` exists, and exits 0.
 
 ## Three corrections to the source prompts
 
@@ -116,7 +143,7 @@ Plus:
 | 9 | Profile | **Zero state reviewed first.** Four zeros must read as intentional before the populated version ships. Companions is a screen. | green |
 | 10 | Onboarding | Draft survives app kill (force-quit and relaunch mid-wizard). Sign-in asked once. Close opens the exit sheet, never acts. Notifications fire *after* first booking, not in the wizard. | green |
 | 11 | Images | `docs/imagery.md` recommendation approved **before** implementation. No screen file changes. | green |
-| 12 | Skeletons + states | Every list has a shimmer. Red appears in exactly one place — failed booking sync. | green |
+| 12 | Skeletons + states | Every list has a shimmer. Red appears in exactly two places — failed booking sync, and a confirmed destructive control. Never on a success or progress state. | green |
 
 **No red gate.** The source prompt's Session 2 ended non-compiling by design; splitting the
 tokens rewrite and the sweep into one session (2b) removes that, so every gate from here on

@@ -2,10 +2,16 @@ import React from 'react';
 import renderer from 'react-test-renderer';
 import { TripErrorScreen } from '@/src/features/jernie/TripErrorScreen';
 
+// Without `act` the first render has not flushed when `toJSON()` runs, so the snapshot
+// records `null` and the assertion proves nothing.
 test('TripErrorScreen renders without crashing', () => {
   const onRetry = jest.fn();
-  const tree = renderer.create(<TripErrorScreen onRetry={onRetry} />).toJSON();
-  expect(tree).toMatchSnapshot();
+  let tree!: renderer.ReactTestRenderer;
+  renderer.act(() => { tree = renderer.create(<TripErrorScreen onRetry={onRetry} />); });
+
+  expect(tree.toJSON()).toMatchSnapshot();
+
+  renderer.act(() => { tree.unmount(); });
 });
 
 test('TripErrorScreen calls onRetry when button is pressed', () => {

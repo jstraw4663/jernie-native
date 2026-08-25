@@ -35,7 +35,7 @@ jest.mock('@/src/contexts/AdminUnlockContext', () => ({
 }));
 jest.mock('@/src/features/jernie/profile/AdminPanel', () => ({ AdminPanel: () => null }));
 jest.mock('@/src/utils/devTime', () => ({ getDevNow: () => new Date('2026-07-11T12:00:00Z') }));
-let mockProfileState: { displayName: string | null; email: string | null; plan: string | undefined; status: string; refetch: jest.Mock };
+let mockProfileState: { displayName: string | null; email: string | null; plan: string | undefined; preferredMapsApp?: 'apple' | 'google' | 'waze' | 'system'; status: string; refetch: jest.Mock };
 jest.mock('@/src/hooks/useUserProfile', () => ({ useUserProfile: () => mockProfileState }));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -47,6 +47,7 @@ jest.mock('@/src/lib/userProfile', () => ({ updateDisplayName: (...args: unknown
 // has no reason to set up, and their behaviour is not what this suite is about.
 jest.mock('@/src/features/jernie/sheets/MemberSheet', () => ({ MemberSheet: () => null }));
 jest.mock('@/src/features/jernie/sheets/FeedbackSheet', () => ({ FeedbackSheet: () => null }));
+jest.mock('@/src/features/jernie/sheets/MapAppSheet', () => ({ MapAppSheet: () => null }));
 
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
@@ -134,6 +135,13 @@ describe('app/(trips)/[tripId]/(tabs)/profile', () => {
   test('renders the trip invite link', () => {
     const tree = renderScreen();
     expect(JSON.stringify(tree.toJSON())).toContain('jernie://join/tok-abc123');
+  });
+
+  test('shows the saved maps preference', () => {
+    mockProfileState.preferredMapsApp = 'google';
+    const tree = renderScreen();
+    expect(texts(tree)).toContain('Maps app');
+    expect(texts(tree)).toContain('Google Maps');
   });
 
   test('pressing "Share invite link" shares a message containing the trip name and invite link', () => {

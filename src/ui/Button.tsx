@@ -6,12 +6,16 @@ import { PRESSED_OPACITY, Radius, Spacing, Typography } from '@/src/design/token
 import { createThemedStyles } from '@/src/design/useTheme';
 import { tap } from './haptics';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'accent' | 'dark';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'accent' | 'dark' | 'danger';
 export type ButtonSize = 'lg' | 'md' | 'sm';
 
 export interface ButtonProps {
   label: string;
-  /** `primary` is the screen's single commit action. `dark` is Apple sign-in only. */
+  /**
+   * `primary` is the screen's single commit action. `dark` is Apple sign-in only.
+   * `danger` is the confirmed destructive control — the Remove button in a confirmation
+   * sheet. It is one of the only two places red is allowed; see README's Colour rule.
+   */
   variant?: ButtonVariant;
   /** `lg` 52px for footers · `md` 44px inline · `sm` 30px inside a row. */
   size?: ButtonSize;
@@ -38,6 +42,7 @@ export function Button({
     ghost:     { bg: 'transparent', fg: t.textMuted, border: 'transparent' },
     accent:    { bg: t.action,    fg: t.textInverse, border: 'transparent' },
     dark:      { bg: '#000',      fg: '#FFF',    border: 'transparent' },
+    danger:    { bg: t.error,     fg: t.textInverse, border: 'transparent' },
   }[variant];
 
   const handlePress = onPress

@@ -2,6 +2,22 @@ jest.mock('expo-linear-gradient', () => {
   const { View } = require('react-native');
   return { LinearGradient: View };
 });
+jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
+  const ReactLib = require('react');
+  const RN = require('react-native');
+  return function MockSwipeable(props: { children?: React.ReactNode; testID?: string }) {
+    return ReactLib.createElement(RN.View, { testID: props.testID }, props.children);
+  };
+});
+jest.mock('react-native-gesture-handler', () => {
+  const actual = jest.requireActual('react-native-gesture-handler');
+  const ReactLib = require('react');
+  return {
+    ...actual,
+    GestureDetector: ({ children }: { children?: React.ReactNode }) =>
+      ReactLib.createElement(ReactLib.Fragment, null, children),
+  };
+});
 // jernie.tsx pulls in nudgeSnooze.ts (createMMKV at module-eval time) even though useAuth
 // is mocked below — same mock shape as __tests__/nudgeSnooze.test.ts.
 // Stateful (not just a no-op stub): the save-nudge snooze tests need a write from onSnooze
@@ -26,6 +42,7 @@ jest.mock('@gorhom/bottom-sheet', () => {
   });
   return {
     BottomSheetScrollView: RN.ScrollView,
+    BottomSheetView: RN.View,
     BottomSheetModal: MockBottomSheetModal,
     BottomSheetBackdrop: RN.View,
     useBottomSheetSpringConfigs: () => ({}),
@@ -45,6 +62,18 @@ jest.mock('@/src/lib/firebase', () => ({
   auth: () => ({}),
   database: () => ({ ref: () => ({ set: jest.fn(), update: jest.fn(), once: jest.fn() }) }),
   firestore: () => ({}),
+}));
+const mockRemoveItineraryItemById = jest.fn();
+const mockReorderItineraryDayItems = jest.fn();
+jest.mock('@/src/lib/itineraryWrites', () => ({
+  ...jest.requireActual('@/src/lib/itineraryWrites'),
+  removeItineraryItemById: (...args: unknown[]) => mockRemoveItineraryItemById(...args),
+  reorderItineraryDayItems: (...args: unknown[]) => mockReorderItineraryDayItems(...args),
+}));
+const mockRemoveBooking = jest.fn();
+jest.mock('@/src/lib/bookingWrites', () => ({
+  ...jest.requireActual('@/src/lib/bookingWrites'),
+  removeBooking: (...args: unknown[]) => mockRemoveBooking(...args),
 }));
 // Pinned so the trip's phase (and therefore which CTA card renders) is deterministic.
 jest.mock('@/src/utils/devTime', () => ({
@@ -75,12 +104,25 @@ const mockAdoptOnCollision = jest.fn();
 jest.mock('@/src/hooks/useCollisionSignIn', () => ({
   useCollisionSignIn: () => mockAdoptOnCollision,
 }));
+jest.mock('@/src/hooks/useUserProfile', () => ({
+  useUserProfile: () => ({ preferredMapsApp: undefined, refetch: jest.fn(), status: 'ready' }),
+}));
+jest.mock('@/src/features/jernie/sheets/MapAppSheet', () => {
+  const ReactLib = require('react');
+  return {
+    MapAppSheet: ReactLib.forwardRef((_props: unknown, ref: React.Ref<unknown>) => {
+      ReactLib.useImperativeHandle(ref, () => ({ present: jest.fn(), dismiss: jest.fn() }));
+      return null;
+    }),
+  };
+});
 
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { Text } from 'react-native';
 import JernieTab from '@/app/(trips)/[tripId]/(tabs)/jernie';
-import type { Trip, StopWithColor } from '@/src/types';
+import type { TimelineEntry } from '@/src/domain/itineraryTimeline';
+import type { ItineraryItem, RestaurantBooking, Trip, StopWithColor } from '@/src/types';
 
 const TRIP: Trip = {
   id: 'trip-1',
@@ -107,11 +149,22 @@ function texts(tree: renderer.ReactTestRenderer): string {
   }).join(' | ');
 }
 
+// Gesture Handler's `createHandler` schedules a `setImmediate` to push its config down. Left
+// mounted, that immediate fires after Jest tears the environment down, reads `Platform` off a
+// dead module registry and hard-crashes the worker — a green run that still exits non-zero.
+// Unmounting every screen after each test cancels it.
+const mounted: renderer.ReactTestRenderer[] = [];
+
 function renderScreen() {
   let tree!: renderer.ReactTestRenderer;
   act(() => { tree = renderer.create(<JernieTab />); });
+  mounted.push(tree);
   return tree;
 }
+
+afterEach(() => {
+  act(() => { mounted.splice(0).forEach(tree => tree.unmount()); });
+});
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -129,6 +182,270 @@ beforeEach(() => {
   };
   mockAuthState = { status: 'authenticated', user: { uid: 'u' }, anonCreatedAt: null, signInWithApple: jest.fn() };
   mockUserTripsState = { trips: [], status: 'ready' };
+  mockRemoveItineraryItemById.mockReset().mockResolvedValue(undefined);
+  mockReorderItineraryDayItems.mockReset().mockResolvedValue(undefined);
+  mockRemoveBooking.mockReset().mockResolvedValue(undefined);
+});
+
+describe('JernieTab — itinerary reorder', () => {
+  const itineraryItems: ItineraryItem[] = [
+    { id: 'coffee', type: 'custom', label: 'Coffee', time: 'morning', order: 0 },
+    { id: 'museum', type: 'custom', label: 'Museum', time: 'afternoon', order: 1 },
+  ];
+
+  function configureDay(items = itineraryItems) {
+    mockContextValue.itinerary = {
+      'stop-a': [{
+        id: 'day-1', stopId: 'stop-a', dateIso: '2026-08-10', items,
+      }],
+    };
+  }
+
+  test('persists a loose-item drop immediately through the atomic writer', async () => {
+    configureDay();
+    const tree = renderScreen();
+    const day = tree.root.findAll(node =>
+      node.props.day && typeof node.props.onEntryDrop === 'function',
+    )[0];
+    const coffee = day.props.day.bands
+      .flatMap((band: { entries: TimelineEntry[] }) => band.entries)
+      .find((entry: TimelineEntry) => entry.id === 'item:coffee');
+
+    await act(async () => {
+      day.props.onEntryDrop({
+        entry: coffee,
+        placement: { stopId: 'stop-a', dayId: 'day-1', itemId: 'coffee' },
+        targetItemId: 'museum',
+        afterTarget: true,
+        time: 'afternoon',
+        destinationLabel: 'Afternoon',
+      });
+      await Promise.resolve();
+    });
+
+    expect(mockReorderItineraryDayItems).toHaveBeenCalledWith(
+      'trip-1', 'stop-a', 'day-1',
+      { itemId: 'coffee', toIndex: 1, time: 'afternoon' },
+    );
+  });
+
+  test('does not write when a long press is released in its original slot', () => {
+    configureDay();
+    const tree = renderScreen();
+    const day = tree.root.findAll(node =>
+      node.props.day && typeof node.props.onEntryDrop === 'function',
+    )[0];
+    const coffee = day.props.day.bands
+      .flatMap((band: { entries: TimelineEntry[] }) => band.entries)
+      .find((entry: TimelineEntry) => entry.id === 'item:coffee');
+
+    act(() => {
+      day.props.onEntryDrop({
+        entry: coffee,
+        placement: { stopId: 'stop-a', dayId: 'day-1', itemId: 'coffee' },
+        targetItemId: 'coffee',
+        afterTarget: false,
+        destinationLabel: 'Morning',
+      });
+    });
+
+    expect(mockReorderItineraryDayItems).not.toHaveBeenCalled();
+  });
+
+  test('does not persist a booking-backed move until Move it is approved', async () => {
+    const booking: RestaurantBooking = {
+      id: 'booking-1', tripId: 'trip-1', stopId: 'stop-a', type: 'restaurant',
+      restaurantName: 'Jordan Pond House', date: '2026-08-10', time: '3:30 PM',
+      partySize: 4, confirmationCode: 'ABC123',
+    };
+    configureDay([
+      { id: 'popovers', type: 'booking', bookingId: booking.id, order: 0 },
+      { id: 'dinner', type: 'custom', label: 'Dinner', time: '5:30 PM', order: 1 },
+    ]);
+    mockContextValue.bookings = [booking];
+    const tree = renderScreen();
+    const day = tree.root.findAll(node =>
+      node.props.day && typeof node.props.onEntryDrop === 'function',
+    )[0];
+    const popovers = day.props.day.bands
+      .flatMap((band: { entries: TimelineEntry[] }) => band.entries)
+      .find((entry: TimelineEntry) => entry.id === 'item:popovers');
+
+    act(() => {
+      day.props.onEntryDrop({
+        entry: popovers,
+        placement: { stopId: 'stop-a', dayId: 'day-1', itemId: 'popovers' },
+        targetItemId: 'dinner',
+        afterTarget: false,
+        time: '5:30 PM',
+        destinationLabel: '5:30 PM',
+      });
+    });
+
+    expect(mockReorderItineraryDayItems).not.toHaveBeenCalled();
+    expect(texts(tree)).toContain('Move Jordan Pond House to 5:30 PM?');
+    expect(texts(tree)).toContain('booked for 3:30 PM with 4 guests');
+
+    const confirm = tree.root.findAll(node =>
+      node.props.testID === 'move-entry-confirm' && typeof node.props.onPress === 'function',
+    )[0];
+    await act(async () => { confirm.props.onPress(); await Promise.resolve(); });
+
+    expect(mockReorderItineraryDayItems).toHaveBeenCalledWith(
+      'trip-1', 'stop-a', 'day-1',
+      { itemId: 'popovers', toIndex: 0, time: '5:30 PM' },
+    );
+  });
+});
+
+describe('JernieTab — itinerary removal', () => {
+  const entriesInRenderedDay = (tree: renderer.ReactTestRenderer): TimelineEntry[] => {
+    const renderedDay = tree.root.findAll(node =>
+      node.props.day && typeof node.props.onEntryRemove === 'function',
+    )[0].props.day;
+    return [
+      ...renderedDay.bands.flatMap((band: { entries: TimelineEntry[] }) => band.entries),
+      ...renderedDay.unscheduled,
+    ];
+  };
+
+  test('hides a confirmed custom row locally and Undo cancels without any database write', async () => {
+    const item: ItineraryItem = {
+      id: 'item-1', type: 'custom', label: 'Museum', time: '10:00', order: 0,
+    };
+    mockContextValue.itinerary = {
+      'stop-a': [{
+        id: 'day-1', stopId: 'stop-a', dateIso: '2026-08-10', items: [item],
+      }],
+    };
+    const tree = renderScreen();
+    const day = tree.root.findAll(node =>
+      node.props.day && typeof node.props.onEntryRemove === 'function',
+    )[0];
+    const entry: TimelineEntry = {
+      id: 'item:item-1', dateIso: '2026-08-10', stopId: 'stop-a', title: 'Museum',
+      category: 'activity',
+      time: { raw: '10:00', label: '10:00 AM', precision: 'hard', band: 'morning', sortMinutes: 600 },
+      source: { kind: 'custom', itemId: 'item-1' }, order: 0,
+      secured: false, confirmed: false, requiresMoveConfirmation: false,
+      past: false, next: false,
+    };
+
+    act(() => { day.props.onEntryRemove(entry); });
+    expect(texts(tree)).toContain('Remove Museum?');
+
+    const confirm = tree.root.findAll(node =>
+      node.props.testID === 'remove-entry-confirm' && typeof node.props.onPress === 'function',
+    )[0];
+    await act(async () => { confirm.props.onPress(); await Promise.resolve(); });
+
+    expect(mockRemoveItineraryItemById).not.toHaveBeenCalled();
+    expect(entriesInRenderedDay(tree).some(entry => entry.id === 'item:item-1')).toBe(false);
+    expect(texts(tree)).toContain('Removed Museum');
+
+    const undo = tree.root.findAll(node =>
+      node.props.testID === 'itinerary-undo-action' && typeof node.props.onPress === 'function',
+    )[0];
+    act(() => { undo.props.onPress(); });
+
+    expect(mockRemoveItineraryItemById).not.toHaveBeenCalled();
+    expect(entriesInRenderedDay(tree).some(entry => entry.id === 'item:item-1')).toBe(true);
+    expect(tree.root.findAllByProps({ testID: 'itinerary-undo-toast' })).toHaveLength(0);
+  });
+
+  test('commits the queued removal only when the Undo window expires', async () => {
+    const item: ItineraryItem = {
+      id: 'item-1', type: 'custom', label: 'Museum', time: '10:00', order: 0,
+    };
+    mockContextValue.itinerary = {
+      'stop-a': [{
+        id: 'day-1', stopId: 'stop-a', dateIso: '2026-08-10', items: [item],
+      }],
+    };
+    const tree = renderScreen();
+    const day = tree.root.findAll(node =>
+      node.props.day && typeof node.props.onEntryRemove === 'function',
+    )[0];
+    const entry = entriesInRenderedDay(tree).find(candidate => candidate.id === 'item:item-1')!;
+
+    act(() => { day.props.onEntryRemove(entry); });
+    const confirm = tree.root.findAll(node =>
+      node.props.testID === 'remove-entry-confirm' && typeof node.props.onPress === 'function',
+    )[0];
+    await act(async () => { confirm.props.onPress(); await Promise.resolve(); });
+    expect(mockRemoveItineraryItemById).not.toHaveBeenCalled();
+
+    const toast = tree.root.findAll(node =>
+      node.props.title === 'Museum' && typeof node.props.onDismiss === 'function',
+    )[0];
+    await act(async () => { toast.props.onDismiss(); await Promise.resolve(); });
+
+    expect(mockRemoveItineraryItemById).toHaveBeenCalledWith(
+      'trip-1', 'stop-a', 'day-1', 'item-1',
+    );
+  });
+
+  test('delays a booking cascade until expiry and then commits by booking id', async () => {
+    const booking: RestaurantBooking = {
+      id: 'booking-1', tripId: 'trip-1', stopId: 'stop-a', type: 'restaurant',
+      restaurantName: 'Eventide', date: '2026-08-10', time: '19:00',
+    };
+    mockContextValue.bookings = [booking];
+    const tree = renderScreen();
+    const day = tree.root.findAll(node =>
+      node.props.day && typeof node.props.onEntryRemove === 'function',
+    )[0];
+    const entry = entriesInRenderedDay(tree).find(candidate =>
+      candidate.source.kind === 'booking' && candidate.source.bookingId === booking.id)!;
+
+    act(() => { day.props.onEntryRemove(entry); });
+    const confirm = tree.root.findAll(node =>
+      node.props.testID === 'remove-entry-confirm' && typeof node.props.onPress === 'function',
+    )[0];
+    await act(async () => { confirm.props.onPress(); await Promise.resolve(); });
+
+    expect(mockRemoveBooking).not.toHaveBeenCalled();
+    expect(entriesInRenderedDay(tree).some(candidate =>
+      candidate.source.kind === 'booking' && candidate.source.bookingId === booking.id)).toBe(false);
+
+    const toast = tree.root.findAll(node =>
+      node.props.title === 'Eventide' && typeof node.props.onDismiss === 'function',
+    )[0];
+    await act(async () => { toast.props.onDismiss(); await Promise.resolve(); });
+
+    expect(mockRemoveBooking).toHaveBeenCalledWith('trip-1', 'booking-1');
+  });
+
+  test('re-shows the row and offers Retry if the delayed commit fails', async () => {
+    const item: ItineraryItem = {
+      id: 'item-1', type: 'custom', label: 'Museum', time: '10:00', order: 0,
+    };
+    mockContextValue.itinerary = {
+      'stop-a': [{
+        id: 'day-1', stopId: 'stop-a', dateIso: '2026-08-10', items: [item],
+      }],
+    };
+    mockRemoveItineraryItemById.mockRejectedValueOnce(new Error('offline'));
+    const tree = renderScreen();
+    const day = tree.root.findAll(node =>
+      node.props.day && typeof node.props.onEntryRemove === 'function',
+    )[0];
+    const entry = entriesInRenderedDay(tree).find(candidate => candidate.id === 'item:item-1')!;
+
+    act(() => { day.props.onEntryRemove(entry); });
+    const confirm = tree.root.findAll(node =>
+      node.props.testID === 'remove-entry-confirm' && typeof node.props.onPress === 'function',
+    )[0];
+    await act(async () => { confirm.props.onPress(); await Promise.resolve(); });
+    const toast = tree.root.findAll(node =>
+      node.props.title === 'Museum' && typeof node.props.onDismiss === 'function',
+    )[0];
+    await act(async () => { toast.props.onDismiss(); await Promise.resolve(); });
+
+    expect(entriesInRenderedDay(tree).some(candidate => candidate.id === 'item:item-1')).toBe(true);
+    expect(texts(tree)).toContain("Couldn't remove Museum");
+    expect(texts(tree)).toContain('Retry');
+  });
 });
 
 // Session 4 replaced CTACardZone's three-card phase router with ONE row whose content is

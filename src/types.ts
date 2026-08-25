@@ -4,6 +4,7 @@
 export type PlaceCategory = 'restaurant' | 'activity' | 'sight' | 'hike' | 'bar' | 'flight' | 'other';
 export type BugPriority = 'high' | 'medium' | 'low';
 export type UserPlan = 'anonymous' | 'free' | 'pro';
+export type MapsAppId = 'apple' | 'google' | 'waze' | 'system';
 export type TripMemberRole = 'organizer' | 'traveler';
 export type PlaceSuggestionStatus = 'pending' | 'approved' | 'rejected';
 export type ExploreSuggestionStatus = 'pending' | 'added' | 'dismissed';
@@ -21,6 +22,8 @@ export interface UserProfile {
   // Denormalized read index only — the authoritative role always lives at
   // trips/{tripId}/members/{uid}.role.
   trips: Record<string, { role: TripMemberRole; joinedAt: number }>;
+  /** Omitted means ask on every navigation handoff. */
+  preferredMapsApp?: MapsAppId;
 }
 
 // ── Trip ────────────────────────────────────────────────────────────────────

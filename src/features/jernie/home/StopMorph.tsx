@@ -12,12 +12,13 @@
 // screen and go full-bleed. The two are laid out from the same `STOP_CARD_METRICS`, so at
 // rest they are pixel-identical — which is what lets the swap between them be invisible:
 //
-//   scrollY === 0   the rail's real card is on screen, this is not
-//   scrollY  >  0   this is on screen, the rail's real card is not
+//   scrollY === 0                    the rail's real card is on screen, this is not
+//   scrollY  >  0                    this is on screen, the rail's real card is not
+//   horizontal rail transition      the moving rail card owns the gesture, this is not
 //
-// Both sides read that one threshold off the same shared value in the same frame, so there
-// is never a gap and never a doubled shadow. The rail keeps the swipe; this keeps the shape.
-import { useWindowDimensions } from 'react-native';
+// Both sides read the collapse and rail-ownership values in the same frame, so there is never
+// a gap or doubled shadow. The rail keeps the swipe; this keeps the collapsing shape.
+import { Pressable, useWindowDimensions } from 'react-native';
 import Animated, { Extrapolation, interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { Shadow, Spacing } from '@/src/design/tokens';
@@ -61,12 +62,15 @@ export interface StopMorphProps {
   index: number;
   insetTop: number;
   scrollY: SharedValue<number>;
+  railTransitionActive: SharedValue<number>;
   onStopPress: (i: number) => void;
+  /** First tap aligns the visible day; a second tap returns to the trip top. */
+  onReturnPress?: () => void;
 }
 
 export function StopMorph({
   name, dates, kicker, status, statusTone, count, photo,
-  stopCount, index, insetTop, scrollY, onStopPress,
+  stopCount, index, insetTop, scrollY, railTransitionActive, onStopPress, onReturnPress,
 }: StopMorphProps) {
   const [s, t] = useStyles();
   const { width } = useWindowDimensions();
@@ -90,7 +94,7 @@ export function StopMorph({
     const p = interpolate(scrollY.value, [0, RANGE], [0, 1], Extrapolation.CLAMP);
     return {
       // Off entirely while the rail owns the card, so the two are never both drawn.
-      opacity: scrollY.value > 0.5 ? 1 : 0,
+      opacity: scrollY.value > 0.5 && railTransitionActive.value === 0 ? 1 : 0,
       width: interpolate(p, [0, 1], [cardW, width]),
       height: interpolate(p, [0, 1], [M.height, PINNED_BAR_H]),
       borderRadius: interpolate(p, [0, 1], [M.radius, 0]),
@@ -105,7 +109,7 @@ export function StopMorph({
       shadowRadius: interpolate(p, [0, 0.8], [30, 8], Extrapolation.CLAMP),
       elevation: interpolate(p, [0, 0.8], [9, 0], Extrapolation.CLAMP),
       // Only the dots are interactive, and only once they exist.
-      pointerEvents: p > 0.62 ? 'box-none' : 'none',
+      pointerEvents: p > 0.62 && railTransitionActive.value === 0 ? 'box-none' : 'none',
     };
   });
 
@@ -183,6 +187,16 @@ export function StopMorph({
         <Animated.Text style={s.count} numberOfLines={1}>{count}</Animated.Text>
       </Animated.View>
 
+      {onReturnPress ? (
+        <Pressable
+          testID="stop-bar-return"
+          accessibilityRole="button"
+          accessibilityLabel="Return to this day, then the top of the trip"
+          onPress={onReturnPress}
+          style={[s.returnTarget, { right: BAR_PAD + dotsWidth(stopCount) + BAR_GAP }]}
+        />
+      ) : null}
+
       <Animated.View style={[s.dots, arriveDots]}>
         <StopDots count={stopCount} index={index} onPress={onStopPress} tint={t.action} idle={t.textDisabled} />
       </Animated.View>
@@ -245,4 +259,5 @@ const useStyles = createThemedStyles((t) => ({
     height: 1,
     backgroundColor: t.border,
   },
+  returnTarget: { position: 'absolute', left: 0, top: 0, bottom: 0 },
 }));

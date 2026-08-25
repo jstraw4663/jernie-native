@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, Share, TextInput, TouchableOpacity 
 import { useRouter } from 'expo-router';
 import { EnvelopeSimpleIcon } from 'phosphor-react-native/src/icons/EnvelopeSimple';
 import { LockSimpleIcon } from 'phosphor-react-native/src/icons/LockSimple';
+import { MapPinIcon } from 'phosphor-react-native/src/icons/MapPin';
 import { SignOutIcon } from 'phosphor-react-native/src/icons/SignOut';
 import { TrashIcon } from 'phosphor-react-native/src/icons/Trash';
 import { UserCircleIcon } from 'phosphor-react-native/src/icons/UserCircle';
@@ -17,6 +18,7 @@ import { useCollisionSignIn } from '@/src/hooks/useCollisionSignIn';
 import { useUserProfile } from '@/src/hooks/useUserProfile';
 import { confirmDelete } from '@/src/utils/confirmDelete';
 import { updateDisplayName } from '@/src/lib/userProfile';
+import { mapsAppLabel } from '@/src/lib/maps';
 import { getActiveStopId } from '@/src/domain/trip';
 import { getDevNow } from '@/src/utils/devTime';
 import { getCacheStatus, getMemberRole } from '@/src/domain/profile';
@@ -30,6 +32,7 @@ import { VersionRow } from '@/src/features/jernie/profile/VersionRow';
 import { AdminPanel } from '@/src/features/jernie/profile/AdminPanel';
 import { MemberSheet, type MemberSheetRef } from '@/src/features/jernie/sheets/MemberSheet';
 import { FeedbackSheet, type FeedbackSheetRef } from '@/src/features/jernie/sheets/FeedbackSheet';
+import { MapAppSheet, type MapAppSheetRef } from '@/src/features/jernie/sheets/MapAppSheet';
 
 export default function ProfileTab() {
   const router = useRouter();
@@ -52,6 +55,7 @@ export default function ProfileTab() {
 
   const memberSheetRef = useRef<MemberSheetRef>(null);
   const feedbackSheetRef = useRef<FeedbackSheetRef>(null);
+  const mapAppSheetRef = useRef<MapAppSheetRef>(null);
 
   // `user` from useAuth(), not auth().currentUser read directly — the latter is
   // non-reactive (no re-render on change) and reads stale/false during the brief window a
@@ -255,6 +259,14 @@ export default function ProfileTab() {
             testID="share-invite-button"
           />
 
+          <SettingsRow
+            Glyph={MapPinIcon}
+            label="Maps app"
+            sublabel={mapsAppLabel(profile.preferredMapsApp)}
+            onPress={() => mapAppSheetRef.current?.present()}
+            testID="profile-maps-app"
+          />
+
           {status === 'authenticated' ? (
             <SettingsRow
               Glyph={SignOutIcon}
@@ -318,6 +330,12 @@ export default function ProfileTab() {
 
       <MemberSheet ref={memberSheetRef} groups={groups} currentUid={currentUid} accentColor={accentColor} />
       <FeedbackSheet ref={feedbackSheetRef} tripId={trip.id} />
+      <MapAppSheet
+        ref={mapAppSheetRef}
+        uid={currentUid}
+        preferredApp={profile.preferredMapsApp}
+        onPreferenceChanged={profile.refetch}
+      />
 
       <AdminPanel
         visible={unlocked}

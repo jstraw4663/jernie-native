@@ -184,6 +184,46 @@ describe('row truth', () => {
     });
   });
 
+  test('navigation eligibility comes only from a source address field', () => {
+    const addressedPlace: Place = {
+      id: 'trail', tripId: 'trip-1', stopId: 'stop-a', name: 'Ocean Path',
+      category: 'hike', must: true, source: 'curator', addedBy: 'uid-1', addr: 'Park Loop Rd',
+    };
+    const custom = item('custom', { notes: 'Meet outside 119 Exchange St' });
+    const model = build({
+      places: [addressedPlace],
+      itinerary: {
+        'stop-a': [day('stop-a', '2026-05-22', [
+          item('trail-item', { type: 'place', placeId: 'trail', time: '9:00 AM' }),
+          custom,
+        ])],
+      },
+    });
+    const entries = model.days[0].bands.flatMap(band => band.entries).concat(model.days[0].unscheduled);
+    expect(entries.find(entry => entry.source.kind === 'place')?.address).toBe('Park Loop Rd');
+    expect(entries.find(entry => entry.source.kind === 'custom')?.address).toBeUndefined();
+  });
+
+  test('hotel and rental records expose their event-specific locations; flights do not', () => {
+    const hotel = { ...HOTEL_A, address: '119 Exchange St' } as Booking;
+    const rental: Booking = {
+      id: 'rental-addressed', tripId: 'trip-1', stopId: 'stop-a', dropoffStopId: 'stop-b', type: 'rental',
+      company: 'Hertz', pickupDate: '2026-05-22', dropoffDate: '2026-05-27',
+      pickupLocation: 'PWM Airport', dropoffLocation: 'BHB Airport',
+    };
+    const flight: Booking = {
+      id: 'flight-no-address', tripId: 'trip-1', stopId: 'stop-a', type: 'flight',
+      legs: [{ flightNumber: '1', airline: 'Jernie Air', origin: 'PWM', destination: 'BOS', departureDate: '2026-05-22', departureTime: '8:00 AM', arrivalTime: '9:00 AM' }],
+    };
+    const entries = build({ bookings: [hotel, rental, flight] }).days
+      .flatMap(d => [...d.bands.flatMap(b => b.entries), ...d.unscheduled]);
+
+    expect(entries.find(entry => entry.source.kind === 'booking' && entry.source.bookingId === 'hotel-a')?.address).toBe('119 Exchange St');
+    expect(entries.find(entry => entry.source.kind === 'booking' && entry.source.event === 'pickup')?.address).toBe('PWM Airport');
+    expect(entries.find(entry => entry.source.kind === 'booking' && entry.source.event === 'dropoff')?.address).toBe('BHB Airport');
+    expect(entries.find(entry => entry.source.kind === 'booking' && entry.source.bookingId === 'flight-no-address')?.address).toBeUndefined();
+  });
+
   test('locked custom plans require move confirmation; ordinary loose plans do not', () => {
     const model = build({
       itinerary: {

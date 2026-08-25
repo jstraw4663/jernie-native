@@ -61,6 +61,8 @@ export function Gallery() {
               <Button label="Ghost" variant="ghost" size="md" />
               <Button label="Accent" variant="accent" size="md" />
               <Button label="Sign in with Apple" variant="dark" size="md" />
+              {/* One of only two places red is allowed — see the Colour rule in the README. */}
+              <Button label="Remove" variant="danger" size="md" />
             </View>
           </Row>
           <Row label="sm · in a row">

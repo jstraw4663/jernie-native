@@ -51,6 +51,26 @@ pacing is set.
 Everything else here still holds — one scroll value, the photo re-cropping in place, no
 second animation clock.
 
+## Quick return
+
+Reversing through the itinerary does not progressively reopen a fully collapsed header. A
+slow reverse drag leaves the header pinned so the user can browse earlier days without losing
+vertical space. Reopen it only when the end-drag velocity toward the beginning of the list is
+at least **1.2 points/ms**; restore the full 272px hero, stop cards and CTA together over
+**320ms ease-out**.
+
+The threshold is intentionally velocity-based, not distance-based. React Native reports this
+unit on both platforms, but Android's velocity sign follows the finger while iOS's follows the
+content, so normalize direction at the event boundary. The lock is interaction state, not a
+second animation coordinate: every structural element must continue to derive from the same
+collapse shared value.
+
+The absolute top of the itinerary is the exception to the velocity gate. Once native scroll
+offset reaches zero there is no earlier content left to reveal, so the lock hands the remaining
+pull back to the hero. Negative overscroll expands it directly where the platform exposes that
+distance; releasing at the boundary completes the same 320ms ease-out. This keeps slow browsing
+compact without trapping the compact header at the beginning of the trip.
+
 ## Why this is hand-built
 
 This is one of the four entries in `custom-components.md`. Every "collapsing header"

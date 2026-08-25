@@ -38,6 +38,7 @@ module.exports = {
       googleServicesFile:
         process.env.GOOGLE_SERVICES_IOS ?? "./GoogleService-Info.plist",
       infoPlist: {
+        LSApplicationQueriesSchemes: ["comgooglemaps", "waze"],
         NSLocationWhenInUseUsageDescription:
           "Jernie uses your location to show nearby places.",
         ITSAppUsesNonExemptEncryption: false,
@@ -54,6 +55,7 @@ module.exports = {
         process.env.GOOGLE_SERVICES_ANDROID ?? "./google-services.json",
     },
     plugins: [
+      "./plugins/withMapsAppQueries",
       "expo-apple-authentication",
       "expo-router",
       "expo-font",

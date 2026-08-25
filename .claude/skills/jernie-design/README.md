@@ -70,8 +70,11 @@ card lifted off the photo. Images are warm and natural — landscape and food ph
 no filters, no duotone, no grain.
 
 **Colour.** One accent (teal `#0F7B6C`) for anything secured — booked, checked in, now.
-One warning (amber `#B56B00`) for anything unfinished. Red (`#A3485F`) is reserved for
-a cancelled booking and appears almost never. Item types keep their own nine colours
+One warning (amber `#B56B00`) for anything unfinished. Red (`#A3485F`) has exactly two
+jobs: a cancelled or failed booking, and a **confirmed destructive control** — the Remove
+tile behind a swipe, the Remove button in a confirmation sheet. Never a success state and
+never a progress state: "Removed" is not a failure, so the bar that says so is ink, not
+red. Everywhere else red still appears almost never. Item types keep their own nine colours
 from the shipped build, used for icon glyphs and 10% tints only, never as row
 backgrounds. Two background colours per screen maximum: `--surface` and one photo.
 

@@ -10,8 +10,12 @@ const mockRemove = jest.fn().mockResolvedValue(undefined);
 const mockOff = jest.fn();
 const mockOnce = jest.fn();
 const mockOn = jest.fn();
-const mockRef = jest.fn(() => ({ once: mockOnce, on: mockOn, off: mockOff, set: mockSet, update: mockUpdate, remove: mockRemove }));
+const mockTransaction = jest.fn();
+const mockRef = jest.fn(() => ({
+  once: mockOnce, on: mockOn, off: mockOff, set: mockSet, update: mockUpdate,
+  remove: mockRemove, transaction: mockTransaction,
+}));
 const mockDatabase = jest.fn(() => ({ ref: mockRef }));
 
-export { mockRef, mockOnce, mockOn, mockOff, mockSet, mockUpdate, mockRemove };
+export { mockRef, mockOnce, mockOn, mockOff, mockSet, mockUpdate, mockRemove, mockTransaction };
 export default mockDatabase;

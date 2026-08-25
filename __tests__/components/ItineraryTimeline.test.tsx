@@ -1,3 +1,19 @@
+jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
+  const ReactLib = require('react');
+  return function MockSwipeable({ children }: { children?: React.ReactNode }) {
+    return ReactLib.createElement(ReactLib.Fragment, null, children);
+  };
+});
+jest.mock('react-native-gesture-handler', () => {
+  const actual = jest.requireActual('react-native-gesture-handler');
+  const ReactLib = require('react');
+  return {
+    ...actual,
+    GestureDetector: ({ children }: { children?: React.ReactNode }) =>
+      ReactLib.createElement(ReactLib.Fragment, null, children),
+  };
+});
+
 import React from 'react';
 import { Text } from 'react-native';
 import renderer from 'react-test-renderer';
@@ -8,11 +24,22 @@ import type {
   TimelineBand, TimelineDay, TimelineEntry,
 } from '@/src/domain/itineraryTimeline';
 
+// Gesture Handler's `createHandler` pushes its config down inside a `setImmediate`. Left
+// mounted, that immediate fires after Jest tears the environment down, reads `Platform` off a
+// dead module registry and hard-crashes the worker — a green run that still exits non-zero.
+// Unmounting after each test cancels it.
+const mounted: renderer.ReactTestRenderer[] = [];
+
 function render(ui: React.ReactElement) {
   let tree!: renderer.ReactTestRenderer;
   renderer.act(() => { tree = renderer.create(ui); });
+  mounted.push(tree);
   return tree;
 }
+
+afterEach(() => {
+  renderer.act(() => { mounted.splice(0).forEach(tree => tree.unmount()); });
+});
 
 function entry(over: Partial<TimelineEntry> = {}): TimelineEntry {
   return {
@@ -183,5 +210,34 @@ describe('TimelineDayView', () => {
 
     expect(tree.root.findByProps({ testID: 'timeline-unscheduled-2026-05-24' })).toBeTruthy();
     expect(tree.root.findByProps({ testID: 'timeline-entry-weather-plan' })).toBeTruthy();
+  });
+
+  test('adds drag affordances only for rows backed by stored itinerary items', () => {
+    const synthetic = entry({
+      id: 'booking:restaurant-1:reservation',
+      source: { kind: 'booking', bookingId: 'restaurant-1', event: 'reservation' },
+      secured: true,
+      requiresMoveConfirmation: true,
+    });
+    const tree = render(
+      <TimelineDayView
+        day={timelineDay({
+          bands: bands().map(band => band.key === 'morning'
+            ? { ...band, entries: [entry(), synthetic] }
+            : band),
+          count: 2,
+        })}
+        stopColors={{ 'stop-a': '#123456' }}
+        dragPlacements={{
+          coffee: { stopId: 'stop-a', dayId: 'day-a', itemId: 'coffee' },
+        }}
+        onEntryDrop={() => {}}
+      />,
+    );
+
+    expect(tree.root.findByProps({ testID: 'timeline-entry-drag-handle-coffee' })).toBeTruthy();
+    expect(tree.root.findAllByProps({
+      testID: 'timeline-entry-drag-handle-booking:restaurant-1:reservation',
+    })).toHaveLength(0);
   });
 });

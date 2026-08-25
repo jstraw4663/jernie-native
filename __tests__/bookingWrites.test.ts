@@ -5,7 +5,9 @@ jest.mock('@/src/lib/firebase', () => ({
 }));
 
 import { mockRef, mockOnce, mockSet, mockUpdate } from '@react-native-firebase/database';
-import { addBooking, updateBooking, removeBooking } from '@/src/lib/bookingWrites';
+import {
+  addBooking, removeBooking, updateBooking,
+} from '@/src/lib/bookingWrites';
 import type { FlightBooking, HotelBooking, RentalBooking, RestaurantBooking, ItineraryItem } from '@/src/types';
 
 beforeEach(() => {

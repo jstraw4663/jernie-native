@@ -48,6 +48,18 @@ const STRETCH = 1.18;
  */
 export const RANGE = Math.round(Layout.collapseRange * STRETCH);   // 165
 
+/**
+ * Minimum release speed that deliberately restores a collapsed header.
+ *
+ * React Native reports end-drag velocity in density-independent points per millisecond on
+ * both platforms. Android's sign follows the finger while iOS's follows the content, so the
+ * screen normalizes direction before comparing against this value.
+ */
+export const QUICK_RETURN_VELOCITY = 1.2;
+
+/** The specimen's ease-out duration for restoring the complete hero and stop rail. */
+export const QUICK_RETURN_DURATION = 320;
+
 /** How far the stop rail floats up onto the photo at rest. */
 export const RAIL_LIFT = 56;
 

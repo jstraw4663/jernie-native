@@ -53,7 +53,9 @@ const light: Palette = {
   warningSoft:   'rgba(181,107,0,0.06)', // --warning-soft
   warningLine:   'rgba(181,107,0,0.40)', // --warning-line
   warningInk:    '#8A6320',              // --warning-ink   text on a warning fill
-  error:         '#A3485F',              // --error         cancelled or failed booking only
+  // Red is a cancelled/failed booking, or a confirmed destructive control (the Remove tile
+  // behind a swipe, the Remove button in a sheet). Never a success or progress state.
+  error:         '#A3485F',              // --error
   errorSoft:     '#F5E8EB',              // --error-soft
 };
 

@@ -52,8 +52,10 @@ replaced wholesale — do not preserve them, and do not merge old values into ne
 ## The short version of the system
 
 - **One accent** — teal `--accent` for anything secured (booked, checked in, now).
-  **One warning** — amber `--warning` for anything unfinished. Red is for a cancelled
-  booking and appears almost never.
+  **One warning** — amber `--warning` for anything unfinished. Red is for a cancelled or
+  failed booking, and for a confirmed destructive control (the Remove tile behind a swipe,
+  the Remove button in a confirmation sheet). Never a success or progress state — a
+  "Removed" bar is ink, not red. Otherwise it appears almost never.
 - **Three families, one job each.** Fraunces 400 names things (never labels or buttons,
   never below 20px). DM Sans runs the interface. DM Mono carries anything that lines up in
   a column — that mono column is why an itinerary reads as a timetable.

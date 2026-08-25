@@ -114,6 +114,8 @@ export interface TimelineEntry {
   category: ItemCategory | null;
   subtype?: string;
   photo?: string;
+  /** A destination copied only from an address/location field on the source record. */
+  address?: string;
   time: TimelineTime;
   source: TimelineSource;
   order: number;
@@ -217,6 +219,29 @@ function bookingTimeOn(booking: Booking, dateIso: string): string | undefined {
   }
 }
 
+function nonBlank(value?: string): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed || undefined;
+}
+
+function bookingAddressOn(
+  booking: Booking,
+  dateIso: string,
+  event: BookingEventKind | 'placed' = 'placed',
+): string | undefined {
+  switch (booking.type) {
+    case 'hotel':
+      return nonBlank(booking.address);
+    case 'rental':
+      if (event === 'pickup' || dateIso === booking.pickupDate) return nonBlank(booking.pickupLocation);
+      if (event === 'dropoff' || dateIso === booking.dropoffDate) return nonBlank(booking.dropoffLocation);
+      return undefined;
+    case 'flight':
+    case 'restaurant':
+      return undefined;
+  }
+}
+
 function placedEntry(
   item: ItineraryItem,
   day: ItineraryDay,
@@ -240,6 +265,7 @@ function placedEntry(
       title: item.label ?? display.label,
       meta: display.meta,
       category: bookingCategory(booking),
+      address: bookingAddressOn(booking, day.dateIso),
       time: timelineTime(rawTime),
       source: { kind: 'booking', bookingId: booking.id, itemId: item.id, event: 'placed' },
       order: item.order,
@@ -262,6 +288,7 @@ function placedEntry(
       category: normalizeCategory(place.category),
       subtype: place.subcategory,
       photo: resolvePlacePhoto(place, enrichment),
+      address: nonBlank(cached?.address) ?? nonBlank(place.addr),
       time: timelineTime(rawTime),
       source: { kind: 'place', placeId: place.id, itemId: item.id },
       order: item.order,
@@ -298,6 +325,7 @@ interface SyntheticBookingEvent {
   time?: string;
   title: string;
   meta?: string;
+  address?: string;
 }
 
 function bookingEvents(booking: Booking): SyntheticBookingEvent[] {
@@ -319,8 +347,8 @@ function bookingEvents(booking: Booking): SyntheticBookingEvent[] {
     }
     case 'hotel':
       return [
-        { kind: 'checkin', dateIso: booking.checkIn, stopId: booking.stopId, title: `Check in · ${booking.hotelName}`, meta: status },
-        { kind: 'checkout', dateIso: booking.checkOut, stopId: booking.stopId, title: `Check out · ${booking.hotelName}`, meta: status },
+        { kind: 'checkin', dateIso: booking.checkIn, stopId: booking.stopId, title: `Check in · ${booking.hotelName}`, meta: status, address: bookingAddressOn(booking, booking.checkIn, 'checkin') },
+        { kind: 'checkout', dateIso: booking.checkOut, stopId: booking.stopId, title: `Check out · ${booking.hotelName}`, meta: status, address: bookingAddressOn(booking, booking.checkOut, 'checkout') },
       ];
     case 'rental':
       return [
@@ -328,12 +356,14 @@ function bookingEvents(booking: Booking): SyntheticBookingEvent[] {
           kind: 'pickup', dateIso: booking.pickupDate, stopId: booking.stopId,
           time: booking.pickupTime, title: `Pick up rental · ${booking.company}`,
           meta: [booking.carType, booking.pickupLocation, status].filter(Boolean).join(' · '),
+          address: bookingAddressOn(booking, booking.pickupDate, 'pickup'),
         },
         {
           kind: 'dropoff', dateIso: booking.dropoffDate,
           stopId: booking.dropoffStopId ?? booking.stopId,
           time: booking.dropoffTime, title: `Return rental · ${booking.company}`,
           meta: [booking.dropoffLocation, status].filter(Boolean).join(' · '),
+          address: bookingAddressOn(booking, booking.dropoffDate, 'dropoff'),
         },
       ];
     case 'restaurant':
@@ -354,6 +384,7 @@ function syntheticEntries(booking: Booking): TimelineEntry[] {
     title: event.title,
     meta: event.meta,
     category: bookingCategory(booking),
+    address: event.address,
     time: timelineTime(event.time),
     source: { kind: 'booking', bookingId: booking.id, event: event.kind },
     order,
