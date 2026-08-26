@@ -13,7 +13,7 @@ import { createThemedStyles } from '@/src/design/useTheme';
 import { iconFor, PLACE_ICON } from '@/src/design/icons';
 import { ChipDropdown, type DropdownOption } from '@/src/ui/ChipDropdown';
 import { tap } from '@/src/ui/haptics';
-import { sheetFilterCount, type ExploreFilters, type FilterId, type SortKey } from '@/src/domain/explore';
+import { sheetFilterCount, type ExploreFilters, type FilterId } from '@/src/domain/explore';
 import type { Stop } from '@/src/types';
 
 // Moved from the screen (Task 7 rewrites that file) — the type dropdown's six options, each
@@ -35,12 +35,6 @@ export interface ExploreFilterBarProps {
   filters: ExploreFilters;
   setStop: (id: string | 'all') => void;
   setCategory: (id: FilterId) => void;
-  // Accepted, not called here: this bar's own controls don't touch search, must-do or sort,
-  // but the prop list mirrors `useExploreFilters()`'s full setter set so Task 7 can hand this
-  // component the resolved context wholesale, and so Session 8's Map can reuse the same shape.
-  setSearch: (q: string) => void;
-  setMustOnly: (on: boolean) => void;
-  setSort: (s: SortKey) => void;
   onOpenFilters: () => void;
 }
 
@@ -49,7 +43,7 @@ export function ExploreFilterBar({ stops, filters, setStop, setCategory, onOpenF
   const insets = useSafeAreaInsets();
 
   const stopOptions = useMemo<DropdownOption[]>(() => [
-    { id: 'all', label: 'All stops', icon: <PLACE_ICON size={12} color={t.textMuted} /> },
+    { id: 'all', label: 'All stops' },
     ...stops.map((stop) => ({
       id: stop.id,
       label: stop.city,

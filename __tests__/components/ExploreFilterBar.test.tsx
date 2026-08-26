@@ -43,9 +43,6 @@ function renderBar(overrides: Partial<ExploreFilterBarProps> = {}) {
         filters={BASE_FILTERS}
         setStop={jest.fn()}
         setCategory={jest.fn()}
-        setSearch={jest.fn()}
-        setMustOnly={jest.fn()}
-        setSort={jest.fn()}
         onOpenFilters={jest.fn()}
         {...overrides}
       />,
