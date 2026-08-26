@@ -39,23 +39,29 @@ export function getShuffleSeed(now: number): number {
  * Returns the default stop ID for the Explore tab.
  * 1. The stop whose span contains today
  * 2. Otherwise the earliest stop that starts after today
- * 3. Otherwise the last stop
+ * 3. Otherwise the chronologically last stop
  * 4. null only when stops is empty
+ *
+ * This function orders its own input by dates.start so it cannot depend on the caller
+ * having pre-sorted the stops array.
  */
 export function getExploreDefaultStopId(stops: Stop[], now: Date): string | null {
   if (stops.length === 0) return null;
   const todayIso = now.toISOString().split('T')[0];
 
-  // 1. Check if today is inside a stop's span
+  // 1. Check if today is inside a stop's span (order-independent)
   const current = stops.find(s => todayIso >= s.dates.start && todayIso < s.dates.end);
   if (current) return current.id;
 
+  // Sort by dates.start for steps 2–3; don't mutate the input
+  const sorted = [...stops].sort((a, b) => a.dates.start.localeCompare(b.dates.start));
+
   // 2. Find the earliest stop that starts after today
-  const next = stops.find(s => s.dates.start > todayIso);
+  const next = sorted.find(s => s.dates.start > todayIso);
   if (next) return next.id;
 
-  // 3. Return the last stop
-  return stops[stops.length - 1].id;
+  // 3. Return the chronologically last stop
+  return sorted[sorted.length - 1].id;
 }
 
 // ── Category filter ───────────────────────────────────────────────────────────

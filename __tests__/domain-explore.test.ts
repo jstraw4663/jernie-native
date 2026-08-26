@@ -111,6 +111,15 @@ describe('getExploreDefaultStopId', () => {
     ];
     expect(getExploreDefaultStopId(stops, new Date('2026-08-28'))).toBe('stop-2');
   });
+
+  test('handles unsorted input: returns earliest next stop even when array is reversed', () => {
+    const stops = [
+      stop({ id: 'stop-3', dates: { start: '2026-08-29', end: '2026-08-31' } }),
+      stop({ id: 'stop-2', dates: { start: '2026-08-25', end: '2026-08-27' } }),
+    ];
+    // Today is 2026-08-24 (gap before stop-2); stop-3 comes first in array but stop-2 is chronologically earlier
+    expect(getExploreDefaultStopId(stops, new Date('2026-08-24'))).toBe('stop-2');
+  });
 });
 
 describe('matchesCategoryFilter', () => {
