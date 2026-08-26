@@ -4,13 +4,16 @@ jest.mock('@/src/lib/firebase', () => ({
   database: require('@react-native-firebase/database').default,
 }));
 
-import { mockOnce, mockRef, mockSet, mockTransaction } from '@react-native-firebase/database';
+import {
+  mockKeepSynced, mockOnce, mockRef, mockSet, mockTransaction,
+} from '@react-native-firebase/database';
 import {
   addPlaceToItinerary,
   addCustomItineraryItem,
   updateItineraryItem,
   removeItineraryItem,
   removeItineraryItemById,
+  moveItineraryItemBetweenDays,
   reorderItineraryDayItems,
 } from '@/src/lib/itineraryWrites';
 import type { Place, ItineraryDay, ItineraryItem } from '@/src/types';
@@ -20,6 +23,7 @@ beforeEach(() => {
   (mockSet as jest.Mock).mockResolvedValue(undefined);
   (mockOnce as jest.Mock).mockResolvedValue({ val: () => null });
   (mockTransaction as jest.Mock).mockReset();
+  (mockKeepSynced as jest.Mock).mockResolvedValue(undefined);
 });
 
 const place: Place = {
@@ -177,6 +181,8 @@ describe('removeItineraryItemById', () => {
     await removeItineraryItemById('trip-1', 'stop-a', 'day-1', 'item-1');
 
     expect(mockRef).toHaveBeenCalledWith('trips/trip-1/itinerary/stop-a/day-1/items');
+    expect(mockKeepSynced).toHaveBeenNthCalledWith(1, true);
+    expect(mockKeepSynced).toHaveBeenLastCalledWith(false);
     const update = (mockTransaction as jest.Mock).mock.calls[0][0];
     expect(update([target, other])).toEqual([other]);
   });
@@ -270,14 +276,45 @@ describe('reorderItineraryDayItems', () => {
   });
 
   test('aborts rather than resurrecting an item removed during the transaction', async () => {
-    (mockOnce as jest.Mock).mockResolvedValue({ val: () => [a, b] });
+    (mockOnce as jest.Mock)
+      .mockResolvedValueOnce({ val: () => [a, b] })
+      .mockResolvedValueOnce({ val: () => [b] });
     (mockTransaction as jest.Mock).mockImplementation(async (update: (raw: unknown) => unknown) => ({
       committed: update([b]) !== undefined,
     }));
 
     await expect(reorderItineraryDayItems('trip-1', 'stop-a', 'day-1', {
       itemId: 'a', toIndex: 1,
-    })).rejects.toThrow('Itinerary changed before the move could be saved');
+    })).rejects.toMatchObject({ reason: 'item-missing' });
+  });
+
+  test('retries a null-cache abort after confirming the item still exists', async () => {
+    (mockOnce as jest.Mock).mockResolvedValue({ val: () => [a, b, c] });
+    (mockTransaction as jest.Mock)
+      .mockResolvedValueOnce({ committed: false, snapshot: { val: () => null } })
+      .mockImplementationOnce(async (update: (raw: unknown) => unknown) => {
+        const value = update([a, b, c]);
+        return { committed: value !== undefined, snapshot: { val: () => value } };
+      });
+
+    await reorderItineraryDayItems('trip-1', 'stop-a', 'day-1', {
+      itemId: 'a', toIndex: 2, time: 'afternoon',
+    });
+
+    expect(mockTransaction).toHaveBeenCalledTimes(2);
+    expect(mockOnce).toHaveBeenCalledTimes(2);
+  });
+
+  test('classifies repeated cache aborts without claiming another device changed the item', async () => {
+    (mockOnce as jest.Mock).mockResolvedValue({ val: () => [a, b] });
+    (mockTransaction as jest.Mock).mockResolvedValue({
+      committed: false, snapshot: { val: () => null },
+    });
+
+    await expect(reorderItineraryDayItems('trip-1', 'stop-a', 'day-1', {
+      itemId: 'a', toIndex: 1,
+    })).rejects.toMatchObject({ reason: 'not-committed' });
+    expect(mockTransaction).toHaveBeenCalledTimes(2);
   });
 
   test('propagates transaction failures', async () => {
@@ -287,5 +324,80 @@ describe('reorderItineraryDayItems', () => {
     await expect(reorderItineraryDayItems('trip-1', 'stop-a', 'day-1', {
       itemId: 'a', toIndex: 1,
     })).rejects.toThrow('database/network-error');
+  });
+});
+
+describe('moveItineraryItemBetweenDays', () => {
+  const coffee: ItineraryItem = {
+    id: 'coffee', type: 'custom', label: 'Coffee', time: 'morning', order: 0,
+  };
+  const museum: ItineraryItem = {
+    id: 'museum', type: 'custom', label: 'Museum', time: 'afternoon', order: 0,
+  };
+  const root = {
+    'stop-a': {
+      'day-1': { id: 'day-1', stopId: 'stop-a', dateIso: '2026-08-10', items: [coffee] },
+    },
+    'stop-b': {
+      'day-2': { id: 'day-2', stopId: 'stop-b', dateIso: '2026-08-11', items: [museum] },
+    },
+  };
+
+  test('atomically removes from one stop/day and inserts into another', async () => {
+    (mockOnce as jest.Mock).mockResolvedValue({ val: () => root });
+    (mockTransaction as jest.Mock).mockImplementation(async (update: (raw: unknown) => unknown) => {
+      const value = update(root);
+      return { committed: value !== undefined, snapshot: { val: () => value } };
+    });
+
+    await moveItineraryItemBetweenDays(
+      'trip-1',
+      { stopId: 'stop-a', dayId: 'day-1' },
+      { stopId: 'stop-b', dayId: 'day-2' },
+      { itemId: 'coffee', targetItemId: 'museum', afterTarget: true, time: 'afternoon' },
+    );
+
+    expect(mockRef).toHaveBeenCalledWith('trips/trip-1/itinerary');
+    const update = (mockTransaction as jest.Mock).mock.calls[0][0];
+    const result = update(root);
+    expect(result['stop-a']['day-1'].items).toEqual([]);
+    expect(result['stop-b']['day-2'].items).toEqual([
+      { ...museum, order: 0 },
+      { ...coffee, time: 'afternoon', order: 1 },
+    ]);
+    expect(root['stop-a']['day-1'].items).toEqual([coffee]);
+  });
+
+  test('aborts safely when the destination day was removed', async () => {
+    const missingDestination = { 'stop-a': root['stop-a'] };
+    (mockOnce as jest.Mock).mockResolvedValue({ val: () => missingDestination });
+
+    await expect(moveItineraryItemBetweenDays(
+      'trip-1',
+      { stopId: 'stop-a', dayId: 'day-1' },
+      { stopId: 'stop-b', dayId: 'day-2' },
+      { itemId: 'coffee', afterTarget: false },
+    )).rejects.toMatchObject({ reason: 'destination-missing' });
+    expect(mockTransaction).not.toHaveBeenCalled();
+  });
+
+  test('never recreates an item removed during the cross-day transaction', async () => {
+    const removed = {
+      ...root,
+      'stop-a': { 'day-1': { ...root['stop-a']['day-1'], items: [] } },
+    };
+    (mockOnce as jest.Mock)
+      .mockResolvedValueOnce({ val: () => root })
+      .mockResolvedValueOnce({ val: () => removed });
+    (mockTransaction as jest.Mock).mockImplementation(async (update: (raw: unknown) => unknown) => ({
+      committed: update(removed) !== undefined,
+    }));
+
+    await expect(moveItineraryItemBetweenDays(
+      'trip-1',
+      { stopId: 'stop-a', dayId: 'day-1' },
+      { stopId: 'stop-b', dayId: 'day-2' },
+      { itemId: 'coffee', afterTarget: false },
+    )).rejects.toMatchObject({ reason: 'item-missing' });
   });
 });

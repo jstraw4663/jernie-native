@@ -1,10 +1,12 @@
 import { database, getAuthedUser } from '@/src/lib/firebase';
+import type { FirebaseDatabaseTypes } from '@react-native-firebase/database';
 import { generateId } from '@/src/utils/id';
 import { stripUndefined } from '@/src/utils/stripUndefined';
 import { buildAddToItineraryItem } from '@/src/domain/explore';
 import {
-  buildCustomItineraryItem, reorderItineraryItems,
-  type CustomItineraryItemInput, type ItineraryItemMove,
+  buildCustomItineraryItem, moveItineraryItemBetweenDays as moveItemsBetweenDays,
+  reorderItineraryItems,
+  type CustomItineraryItemInput, type ItineraryItemDrop, type ItineraryItemMove,
 } from '@/src/domain/itinerary';
 import type { ItineraryDay, ItineraryItem, Place } from '@/src/types';
 
@@ -58,6 +60,73 @@ function itemsFromSnapshot(raw: unknown): ItineraryItem[] {
   return Object.values((raw ?? {}) as Record<string, ItineraryItem>);
 }
 
+const EXISTING_ITEM_TRANSACTION_ATTEMPTS = 2;
+
+class ItineraryItemsTransactionAbortedError extends Error {
+  constructor() {
+    super('Firebase repeatedly aborted an existing-item transaction');
+    this.name = 'ItineraryItemsTransactionAbortedError';
+  }
+}
+
+/** A user-actionable classification; arbitrary Firebase messages stay out of the UI. */
+export class ItineraryMoveWriteError extends Error {
+  constructor(readonly reason: 'item-missing' | 'destination-missing' | 'not-committed') {
+    super(reason === 'item-missing'
+      ? 'Itinerary item no longer exists'
+      : reason === 'destination-missing'
+        ? 'Itinerary destination day no longer exists'
+        : 'Itinerary move could not be committed');
+    this.name = 'ItineraryMoveWriteError';
+  }
+}
+
+/**
+ * Runs an item transform without ever treating an uncached `null` as permission to recreate a
+ * deleted day. RTDB may call a transaction updater with `null` before its server value reaches
+ * the local cache. Returning `undefined` is the only safe response in that pass, but it reports
+ * `committed: false`; a fresh existence check distinguishes that cache abort from a real delete.
+ */
+async function transactOnExistingItem(
+  itemsRef: FirebaseDatabaseTypes.Reference,
+  itemId: string,
+  transform: (items: ItineraryItem[]) => ItineraryItem[],
+): Promise<'committed' | 'item-missing'> {
+  let keepingSynced = false;
+  try {
+    // Keep the native cache warm for the complete transaction window. `once()` alone returns
+    // the right snapshot but does not guarantee the transaction's first native callback has it.
+    await itemsRef.keepSynced(true);
+    keepingSynced = true;
+
+    const initial = itemsFromSnapshot((await itemsRef.once('value')).val());
+    if (!initial.some(item => item.id === itemId)) return 'item-missing';
+
+    for (let attempt = 0; attempt < EXISTING_ITEM_TRANSACTION_ATTEMPTS; attempt += 1) {
+      const result = await itemsRef.transaction((raw: unknown) => {
+        if (raw === null || raw === undefined) return undefined;
+        const current = itemsFromSnapshot(raw);
+        if (!current.some(item => item.id === itemId)) return undefined;
+        return transform(current);
+      });
+      if (result.committed) return 'committed';
+
+      // A real deletion stays deleted. If the item still exists, this was an empty-cache abort;
+      // the read also primes the native cache before the bounded retry.
+      const latest = itemsFromSnapshot((await itemsRef.once('value')).val());
+      if (!latest.some(item => item.id === itemId)) return 'item-missing';
+    }
+
+    throw new ItineraryItemsTransactionAbortedError();
+  } finally {
+    if (keepingSynced) {
+      // Cache retention is scoped to the write. A cleanup failure must not turn a committed move
+      // into a visible save failure, so this best-effort release deliberately does not rethrow.
+      await itemsRef.keepSynced(false).catch(() => undefined);
+    }
+  }
+}
+
 /**
  * Idempotently removes one item from the latest server day. This is the delayed-commit
  * delete path: it never writes a potentially visibility-filtered UI copy of the day.
@@ -75,19 +144,12 @@ export async function removeItineraryItemById(
 ): Promise<void> {
   await getAuthedUser();
   const itemsRef = database().ref(`trips/${tripId}/itinerary/${stopId}/${dayId}/items`);
-  const initial = itemsFromSnapshot((await itemsRef.once('value')).val());
   // Already gone is success, not a race: Retry after a failed commit lands here.
-  if (!initial.some(item => item.id === itemId)) return;
-
-  // The only abort this transform can produce is "the item is already gone", which is the
-  // outcome we wanted. A genuine retry exhaustion rejects the promise instead, so nothing is
-  // swallowed by returning normally here.
-  await itemsRef.transaction((raw: unknown) => {
-    if (raw === null || raw === undefined) return undefined;
-    const current = itemsFromSnapshot(raw);
-    if (!current.some(item => item.id === itemId)) return undefined;
-    return current.filter(item => item.id !== itemId);
-  });
+  await transactOnExistingItem(
+    itemsRef,
+    itemId,
+    current => current.filter(item => item.id !== itemId),
+  );
 }
 
 /**
@@ -103,16 +165,127 @@ export async function reorderItineraryDayItems(
 ): Promise<void> {
   await getAuthedUser();
   const itemsRef = database().ref(`trips/${tripId}/itinerary/${stopId}/${dayId}/items`);
-  const initial = itemsFromSnapshot((await itemsRef.once('value')).val());
-  if (!initial.some(item => item.id === move.itemId)) {
-    throw new Error('Itinerary item no longer exists');
+  try {
+    const result = await transactOnExistingItem(
+      itemsRef,
+      move.itemId,
+      current => reorderItineraryItems(current, move),
+    );
+    if (result === 'item-missing') throw new ItineraryMoveWriteError('item-missing');
+  } catch (error) {
+    if (error instanceof ItineraryMoveWriteError) throw error;
+    if (error instanceof ItineraryItemsTransactionAbortedError) {
+      throw new ItineraryMoveWriteError('not-committed');
+    }
+    throw error;
+  }
+}
+
+export interface ItineraryDayLocation {
+  stopId: string;
+  dayId: string;
+}
+
+type RawItineraryDay = Record<string, unknown> & { items?: unknown };
+type RawItineraryRoot = Record<string, Record<string, RawItineraryDay>>;
+
+function rawDayAt(
+  root: RawItineraryRoot,
+  location: ItineraryDayLocation,
+): RawItineraryDay | undefined {
+  return root[location.stopId]?.[location.dayId];
+}
+
+function crossDayState(
+  raw: unknown,
+  source: ItineraryDayLocation,
+  destination: ItineraryDayLocation,
+  itemId: string,
+): 'ready' | 'item-missing' | 'destination-missing' {
+  const root = (raw ?? {}) as RawItineraryRoot;
+  const sourceDay = rawDayAt(root, source);
+  if (!sourceDay || !itemsFromSnapshot(sourceDay.items).some(item => item.id === itemId)) {
+    return 'item-missing';
+  }
+  return rawDayAt(root, destination) ? 'ready' : 'destination-missing';
+}
+
+function applyCrossDayMove(
+  raw: unknown,
+  source: ItineraryDayLocation,
+  destination: ItineraryDayLocation,
+  drop: ItineraryItemDrop,
+): RawItineraryRoot | undefined {
+  if (raw === null || raw === undefined) return undefined;
+  const root = raw as RawItineraryRoot;
+  const sourceDay = rawDayAt(root, source);
+  const destinationDay = rawDayAt(root, destination);
+  if (!sourceDay || !destinationDay) return undefined;
+  const sourceItems = itemsFromSnapshot(sourceDay.items);
+  if (!sourceItems.some(item => item.id === drop.itemId)) return undefined;
+
+  const moved = moveItemsBetweenDays(
+    sourceItems,
+    itemsFromSnapshot(destinationDay.items),
+    drop,
+  );
+  const nextRoot = { ...root };
+  const nextSourceStop = { ...root[source.stopId] };
+  nextSourceStop[source.dayId] = { ...sourceDay, items: moved.sourceItems };
+  nextRoot[source.stopId] = nextSourceStop;
+
+  const nextDestinationStop = source.stopId === destination.stopId
+    ? nextSourceStop
+    : { ...root[destination.stopId] };
+  nextDestinationStop[destination.dayId] = {
+    ...destinationDay,
+    items: moved.destinationItems,
+  };
+  nextRoot[destination.stopId] = nextDestinationStop;
+  return nextRoot;
+}
+
+/**
+ * Moves an item between two persisted days in one transaction at their common itinerary root.
+ * The source removal and destination insert therefore commit together, including when the days
+ * belong to different stops. Destination anchors are resolved again against the latest server
+ * arrays so a companion edit cannot silently duplicate or discard an item.
+ */
+export async function moveItineraryItemBetweenDays(
+  tripId: string,
+  source: ItineraryDayLocation,
+  destination: ItineraryDayLocation,
+  drop: ItineraryItemDrop,
+): Promise<void> {
+  await getAuthedUser();
+  if (source.stopId === destination.stopId && source.dayId === destination.dayId) {
+    throw new Error('Cross-day move requires two different itinerary days');
   }
 
-  const result = await itemsRef.transaction((raw: unknown) => {
-    if (raw === null || raw === undefined) return undefined;
-    const current = itemsFromSnapshot(raw);
-    if (!current.some(item => item.id === move.itemId)) return undefined;
-    return reorderItineraryItems(current, move);
-  });
-  if (!result.committed) throw new Error('Itinerary changed before the move could be saved');
+  const itineraryRef = database().ref(`trips/${tripId}/itinerary`);
+  let keepingSynced = false;
+  try {
+    await itineraryRef.keepSynced(true);
+    keepingSynced = true;
+    const initialRaw = (await itineraryRef.once('value')).val();
+    const initialState = crossDayState(initialRaw, source, destination, drop.itemId);
+    if (initialState !== 'ready') throw new ItineraryMoveWriteError(initialState);
+
+    for (let attempt = 0; attempt < EXISTING_ITEM_TRANSACTION_ATTEMPTS; attempt += 1) {
+      const result = await itineraryRef.transaction((raw: unknown) => (
+        applyCrossDayMove(raw, source, destination, drop)
+      ));
+      if (result.committed) return;
+
+      const latestRaw = (await itineraryRef.once('value')).val();
+      const latestState = crossDayState(latestRaw, source, destination, drop.itemId);
+      if (latestState !== 'ready') throw new ItineraryMoveWriteError(latestState);
+    }
+    throw new ItineraryMoveWriteError('not-committed');
+  } catch (error) {
+    if (error instanceof ItineraryMoveWriteError) throw error;
+    throw error;
+  } finally {
+    if (keepingSynced) await itineraryRef.keepSynced(false).catch(() => undefined);
+  }
 }

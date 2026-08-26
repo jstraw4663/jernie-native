@@ -1,5 +1,6 @@
 import {
-  buildCustomItineraryItem, itineraryMoveForDrop, reorderItineraryItems,
+  buildCustomItineraryItem, itineraryMoveForDrop, moveItineraryItemBetweenDays,
+  reorderItineraryItems,
 } from '@/src/domain/itinerary';
 import type { ItineraryItem } from '@/src/types';
 
@@ -97,6 +98,51 @@ describe('reorderItineraryItems', () => {
   test('rejects a stale item id instead of silently rewriting the day', () => {
     expect(() => reorderItineraryItems([a, b], { itemId: 'missing', toIndex: 0 }))
       .toThrow('Itinerary item no longer exists');
+  });
+});
+
+describe('moveItineraryItemBetweenDays', () => {
+  test('removes from the source, inserts at the destination anchor, and normalizes both days', () => {
+    const source = [
+      { id: 'coffee', type: 'custom', label: 'Coffee', time: 'morning', order: 4 },
+      { id: 'walk', type: 'custom', label: 'Walk', order: 8 },
+    ] as ItineraryItem[];
+    const destination = [
+      { id: 'museum', type: 'custom', label: 'Museum', time: 'afternoon', order: 3 },
+      { id: 'dinner', type: 'custom', label: 'Dinner', time: 'evening', order: 7 },
+    ] as ItineraryItem[];
+
+    const result = moveItineraryItemBetweenDays(source, destination, {
+      itemId: 'coffee', targetItemId: 'dinner', afterTarget: false, time: 'evening',
+    });
+
+    expect(result.sourceItems).toEqual([{ ...source[1], order: 0 }]);
+    expect(result.destinationItems).toEqual([
+      { ...destination[0], order: 0 },
+      { ...source[0], time: 'evening', order: 1 },
+      { ...destination[1], order: 2 },
+    ]);
+    expect(source).toHaveLength(2);
+    expect(destination).toHaveLength(2);
+  });
+
+  test('uses band ordering for an empty destination band and can make the item unscheduled', () => {
+    const source = [
+      { id: 'coffee', type: 'custom', label: 'Coffee', time: 'morning', order: 0 },
+    ] as ItineraryItem[];
+    const destination = [
+      { id: 'museum', type: 'custom', label: 'Museum', time: 'afternoon', order: 0 },
+    ] as ItineraryItem[];
+
+    const result = moveItineraryItemBetweenDays(source, destination, {
+      itemId: 'coffee', afterTarget: false, time: null,
+    });
+
+    expect(result.sourceItems).toEqual([]);
+    expect(result.destinationItems).toEqual([
+      { ...destination[0], order: 0 },
+      { id: 'coffee', type: 'custom', label: 'Coffee', order: 1 },
+    ]);
   });
 });
 

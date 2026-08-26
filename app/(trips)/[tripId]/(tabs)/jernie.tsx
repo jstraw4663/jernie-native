@@ -24,7 +24,8 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { bookingBelongsToStop } from '@/src/domain/bookings';
 import {
-  itineraryMoveForDrop, reorderItineraryItems, type ItineraryItemMove,
+  itineraryMoveForDrop, moveItineraryItemBetweenDays as moveItemsBetweenDays,
+  reorderItineraryItems, type ItineraryItemDrop,
 } from '@/src/domain/itinerary';
 import { shouldShowNudge, snoozeMsFor } from '@/src/domain/saveNudge';
 import { buildItineraryTimeline } from '@/src/domain/itineraryTimeline';
@@ -35,7 +36,10 @@ import { useCollisionSignIn } from '@/src/hooks/useCollisionSignIn';
 import { useUserProfile } from '@/src/hooks/useUserProfile';
 import { openMapsApp } from '@/src/lib/maps';
 import { removeBooking } from '@/src/lib/bookingWrites';
-import { removeItineraryItemById, reorderItineraryDayItems } from '@/src/lib/itineraryWrites';
+import {
+  ItineraryMoveWriteError, moveItineraryItemBetweenDays, removeItineraryItemById,
+  reorderItineraryDayItems,
+} from '@/src/lib/itineraryWrites';
 import { readSnooze, writeSnooze } from '@/src/lib/nudgeSnooze';
 import { resolvePhoto } from '@/src/lib/images';
 import { Core, Gutter, Spacing } from '@/src/design/tokens';
@@ -52,10 +56,11 @@ import { StopMorph } from '@/src/features/jernie/home/StopMorph';
 import { StopRail, type RailStop } from '@/src/features/jernie/home/StopRail';
 import { DetailSheet, useDetailSheet } from '@/src/features/jernie/sheets/detail';
 import {
-  ItineraryDateRail, ItineraryUndoToast, TimelineDayView, TIMELINE_DAY_BAR_HEIGHT,
+  createTimelineDragCoordinator, ItineraryDateRail, ItineraryUndoToast, TimelineDayView,
+  TIMELINE_DAY_BAR_HEIGHT,
 } from '@/src/features/jernie/itinerary';
 import type {
-  TimelineDragPlacement, TimelineDropRequest,
+  TimelineDayPlacement, TimelineDragPlacement, TimelineDragPreview, TimelineDropRequest,
 } from '@/src/features/jernie/itinerary';
 import { StopFormSheet } from '@/src/features/jernie/sheets/StopFormSheet';
 import type { StopFormSheetRef } from '@/src/features/jernie/sheets/StopFormSheet';
@@ -88,9 +93,8 @@ interface UndoNotice {
 
 interface OptimisticTimelineMove {
   base: Record<string, ItineraryDay[]>;
-  stopId: string;
-  dayId: string;
-  move: ItineraryItemMove;
+  value: Record<string, ItineraryDay[]>;
+  itemId: string;
 }
 
 function isTimelineRemoval(value: unknown): value is TimelineRemoval {
@@ -159,6 +163,28 @@ function isoDayDistance(a: string, b: string): number {
   ));
 }
 
+function moveFailureMessage(cause: unknown): string {
+  if (cause instanceof ItineraryMoveWriteError) {
+    if (cause.reason === 'item-missing') {
+      return 'This item is no longer in the itinerary. Refresh and try again.';
+    }
+    if (cause.reason === 'destination-missing') {
+      return 'That itinerary day is no longer available. Refresh and choose another day.';
+    }
+    return "Jernie couldn't finish saving the move. Your original itinerary is unchanged.";
+  }
+  const code = cause && typeof cause === 'object' && 'code' in cause
+    ? String(cause.code).toLowerCase()
+    : '';
+  if (code.includes('permission')) {
+    return 'You no longer have permission to change this trip.';
+  }
+  if (code.includes('network') || code.includes('unavailable') || code.includes('disconnected')) {
+    return "Jernie couldn't reach the trip. Check your connection and try again.";
+  }
+  return "Jernie couldn't save this move. Your original itinerary is unchanged.";
+}
+
 function headerBottomAt(collapseY: number, insetTop: number, railHeight: number): number {
   const progress = Math.max(0, Math.min(1, collapseY / RANGE));
   const expanded = RAIL_TOP + railHeight;
@@ -182,6 +208,8 @@ export default function JernieTab() {
   const [committedRemovals, setCommittedRemovals] = useState<TimelineRemoval[]>([]);
   const [optimisticMove, setOptimisticMove] = useState<OptimisticTimelineMove | null>(null);
   const [moveBusy, setMoveBusy] = useState(false);
+  const [timelineDragCoordinator] = useState(createTimelineDragCoordinator);
+  const [timelineDragPreview, setTimelineDragPreview] = useState<TimelineDragPreview | null>(null);
   const undoIdRef = useRef(0);
 
   // Fast Refresh can preserve a pre-migration restore snapshot in local component state.
@@ -215,19 +243,8 @@ export default function JernieTab() {
   }, [hiddenRemovals, itinerary]);
 
   const renderedItinerary = useMemo(() => {
-    if (!optimisticMove) return timelineItinerary;
-    const days = timelineItinerary[optimisticMove.stopId];
-    const day = days?.find(candidate => candidate.id === optimisticMove.dayId);
-    if (!day || !day.items.some(item => item.id === optimisticMove.move.itemId)) {
-      return timelineItinerary;
-    }
-    return {
-      ...timelineItinerary,
-      [optimisticMove.stopId]: days.map(candidate => candidate.id === optimisticMove.dayId
-        ? { ...candidate, items: reorderItineraryItems(candidate.items, optimisticMove.move) }
-        : candidate),
-    };
-  }, [optimisticMove, timelineItinerary]);
+    return optimisticMove?.base === itinerary ? optimisticMove.value : timelineItinerary;
+  }, [itinerary, optimisticMove, timelineItinerary]);
 
   useEffect(() => {
     if (optimisticMove && optimisticMove.base !== itinerary) setOptimisticMove(null);
@@ -248,6 +265,18 @@ export default function JernieTab() {
     }
     return result;
   }, [renderedItinerary]);
+  const dragDayPlacements = useMemo(() => {
+    const result: Record<string, TimelineDayPlacement[]> = {};
+    for (const timelineDay of timeline.days) {
+      result[timelineDay.dateIso] = timelineDay.segments.flatMap(segment => {
+        const itineraryDay = renderedItinerary[segment.stopId]?.find(
+          candidate => candidate.dateIso === timelineDay.dateIso,
+        );
+        return itineraryDay ? [{ stopId: segment.stopId, dayId: itineraryDay.id }] : [];
+      });
+    }
+    return result;
+  }, [renderedItinerary, timeline.days]);
   const stopColors = useMemo(
     () => Object.fromEntries(stops.map(stop => [stop.id, stop.color])),
     [stops],
@@ -330,6 +359,50 @@ export default function JernieTab() {
   const dateRailY = useSharedValue(0);
   const dateRailH = useSharedValue(0);
   const bottomRunwayH = useSharedValue(0);
+  const dragAutoScrollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const dragAutoScrollDirectionRef = useRef<-1 | 0 | 1>(0);
+  const dragLastAbsoluteYRef = useRef(0);
+
+  const stopDragAutoScroll = useCallback(() => {
+    dragAutoScrollDirectionRef.current = 0;
+    if (dragAutoScrollTimerRef.current) clearInterval(dragAutoScrollTimerRef.current);
+    dragAutoScrollTimerRef.current = null;
+  }, []);
+
+  const handleTimelineDragPosition = useCallback((absoluteY: number) => {
+    dragLastAbsoluteYRef.current = absoluteY;
+    const viewportHeight = viewportHeightRef.current;
+    if (viewportHeight <= 0) return;
+    const topEdge = Math.max(insets.top + 130, viewportHeight * 0.2);
+    const bottomEdge = viewportHeight - Math.max(insets.bottom + 72, viewportHeight * 0.12);
+    const direction: -1 | 0 | 1 = absoluteY < topEdge ? -1 : absoluteY > bottomEdge ? 1 : 0;
+    dragAutoScrollDirectionRef.current = direction;
+    if (direction === 0) {
+      stopDragAutoScroll();
+      return;
+    }
+    if (dragAutoScrollTimerRef.current) return;
+    dragAutoScrollTimerRef.current = setInterval(() => {
+      const currentDirection = dragAutoScrollDirectionRef.current;
+      if (currentDirection === 0) return;
+      const maximum = Math.max(0, contentHeightRef.current - viewportHeightRef.current);
+      const requested = contentScrollY.value + currentDirection * 14;
+      const next = Math.max(0, Math.min(requested, maximum));
+      if (Math.abs(next - contentScrollY.value) < 0.5) return;
+      listRef.current?.scrollTo({ y: next, animated: false });
+      setTimeout(() => {
+        Object.values(timelineDragCoordinator.remeasure).forEach(remeasure => remeasure());
+        timelineDragCoordinator.activeUpdate?.(dragLastAbsoluteYRef.current);
+      }, 0);
+    }, 40);
+  }, [contentScrollY, insets.bottom, insets.top, stopDragAutoScroll, timelineDragCoordinator]);
+
+  const handleTimelineDragPreview = useCallback((preview: TimelineDragPreview | null) => {
+    setTimelineDragPreview(preview);
+    if (!preview) stopDragAutoScroll();
+  }, [stopDragAutoScroll]);
+
+  useEffect(() => stopDragAutoScroll, [stopDragAutoScroll]);
 
   const adoptTimelineDay = useCallback((dateIso: string, preferredStopId?: string) => {
     const day = timeline.days.find(candidate => candidate.dateIso === dateIso);
@@ -1077,71 +1150,118 @@ export default function JernieTab() {
   }, [profile.preferredMapsApp]);
 
   const persistTimelineMove = useCallback(async (
-    stopId: string,
-    dayId: string,
-    move: ItineraryItemMove,
+    nextItinerary: Record<string, ItineraryDay[]>,
+    itemId: string,
+    write: () => Promise<void>,
   ) => {
     setMoveBusy(true);
-    setOptimisticMove({ base: itinerary, stopId, dayId, move });
+    setOptimisticMove({ base: itinerary, value: nextItinerary, itemId });
     try {
-      await reorderItineraryDayItems(trip.id, stopId, dayId, move);
+      await write();
       refetch();
     } catch (error) {
-      setOptimisticMove(current => (
-        current?.stopId === stopId
-        && current.dayId === dayId
-        && current.move.itemId === move.itemId
-          ? null
-          : current
-      ));
+      setOptimisticMove(current => current?.itemId === itemId ? null : current);
       throw error;
     } finally {
       setMoveBusy(false);
     }
-  }, [itinerary, refetch, trip.id]);
+  }, [itinerary, refetch]);
 
   const handleEntryDrop = useCallback((request: TimelineDropRequest) => {
+    const sameDay = request.placement.stopId === request.destination.stopId
+      && request.placement.dayId === request.destination.dayId;
     if (
+      sameDay
+      &&
       request.targetItemId === request.placement.itemId
       && request.time === undefined
     ) return;
-    const days = renderedItinerary[request.placement.stopId];
-    const day = days?.find(candidate => candidate.id === request.placement.dayId);
-    if (!day) {
+    const sourceDays = renderedItinerary[request.placement.stopId];
+    const sourceDay = sourceDays?.find(candidate => candidate.id === request.placement.dayId);
+    const destinationDays = renderedItinerary[request.destination.stopId];
+    const destinationDay = destinationDays?.find(candidate => candidate.id === request.destination.dayId);
+    if (!sourceDays || !sourceDay || !destinationDays || !destinationDay) {
       refetch();
       return;
     }
-    const move = itineraryMoveForDrop(day.items, {
+    const drop: ItineraryItemDrop = {
       itemId: request.placement.itemId,
       targetItemId: request.targetItemId,
       afterTarget: request.afterTarget,
       time: request.time,
-    });
-    const movedItems = reorderItineraryItems(day.items, move);
-    const unchanged = movedItems.length === day.items.length && movedItems.every((item, index) => (
-      item.id === day.items[index]?.id
-      && item.order === day.items[index]?.order
-      && item.time === day.items[index]?.time
-    ));
-    if (unchanged) return;
+    };
 
-    const save = () => persistTimelineMove(
-      request.placement.stopId,
-      request.placement.dayId,
-      move,
-    );
-    const retryAfterLooseFailure = () => {
+    let nextItinerary: Record<string, ItineraryDay[]>;
+    let write: () => Promise<void>;
+    if (sameDay) {
+      const move = itineraryMoveForDrop(sourceDay.items, drop);
+      const movedItems = reorderItineraryItems(sourceDay.items, move);
+      const unchanged = movedItems.length === sourceDay.items.length
+        && movedItems.every((item, index) => (
+          item.id === sourceDay.items[index]?.id
+          && item.order === sourceDay.items[index]?.order
+          && item.time === sourceDay.items[index]?.time
+        ));
+      if (unchanged) return;
+      nextItinerary = {
+        ...renderedItinerary,
+        [request.placement.stopId]: sourceDays.map(candidate => candidate.id === sourceDay.id
+          ? { ...candidate, items: movedItems }
+          : candidate),
+      };
+      write = () => reorderItineraryDayItems(
+        trip.id, request.placement.stopId, request.placement.dayId, move,
+      );
+    } else {
+      const moved = moveItemsBetweenDays(sourceDay.items, destinationDay.items, drop);
+      if (request.placement.stopId === request.destination.stopId) {
+        nextItinerary = {
+          ...renderedItinerary,
+          [request.placement.stopId]: sourceDays.map(candidate => {
+            if (candidate.id === sourceDay.id) return { ...candidate, items: moved.sourceItems };
+            if (candidate.id === destinationDay.id) return { ...candidate, items: moved.destinationItems };
+            return candidate;
+          }),
+        };
+      } else {
+        nextItinerary = {
+          ...renderedItinerary,
+          [request.placement.stopId]: sourceDays.map(candidate => candidate.id === sourceDay.id
+            ? { ...candidate, items: moved.sourceItems }
+            : candidate),
+          [request.destination.stopId]: destinationDays.map(candidate => candidate.id === destinationDay.id
+            ? { ...candidate, items: moved.destinationItems }
+            : candidate),
+        };
+      }
+      write = () => moveItineraryItemBetweenDays(
+        trip.id,
+        { stopId: request.placement.stopId, dayId: request.placement.dayId },
+        { stopId: request.destination.stopId, dayId: request.destination.dayId },
+        drop,
+      );
+    }
+
+    const save = () => persistTimelineMove(nextItinerary, request.placement.itemId, write);
+    const saveWithReadableError = async () => {
+      try {
+        await save();
+      } catch (cause) {
+        throw new DecisionSheetError(moveFailureMessage(cause));
+      }
+    };
+    const retryAfterLooseFailure = (cause: unknown) => {
       moveEntrySheetRef.current?.present({
         Glyph: ArrowsDownUpIcon,
         tone: 'action',
         title: `Couldn't move ${request.entry.title}`,
-        message: 'The itinerary may have changed on another device. Nothing was lost.',
+        message: moveFailureMessage(cause),
         cancelLabel: 'Keep it here',
         confirmLabel: 'Try again',
         busyLabel: 'Moving…',
         errorMessage: "Couldn't save this move. Your original itinerary is unchanged.",
         testIdPrefix: 'move-entry',
-        onConfirm: save,
+        onConfirm: saveWithReadableError,
       });
     };
 
@@ -1172,9 +1292,9 @@ export default function JernieTab() {
       busyLabel: 'Moving…',
       errorMessage: "Couldn't save this move. Your original itinerary is unchanged.",
       testIdPrefix: 'move-entry',
-      onConfirm: save,
+      onConfirm: saveWithReadableError,
     });
-  }, [bookings, persistTimelineMove, refetch, renderedItinerary]);
+  }, [bookings, persistTimelineMove, refetch, renderedItinerary, trip.id]);
 
   const commitTimelineRemoval = useCallback(async (removal: TimelineRemoval) => {
     if (removal.kind === 'booking') {
@@ -1362,6 +1482,11 @@ export default function JernieTab() {
             onEntryNavigate={handleEntryNavigate}
             onEntryRemove={handleEntryRemove}
             dragPlacements={dragPlacements}
+            dayPlacements={dragDayPlacements[day.dateIso]}
+            dragCoordinator={timelineDragCoordinator}
+            dragPreview={timelineDragPreview}
+            onDragPreviewChange={handleTimelineDragPreview}
+            onDragPositionChange={handleTimelineDragPosition}
             dragEnabled={!moveBusy}
             onEntryDrop={handleEntryDrop}
             onAdd={handleAddToBand}

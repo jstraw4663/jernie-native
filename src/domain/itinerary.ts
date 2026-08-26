@@ -130,6 +130,43 @@ export function reorderItineraryItems(
   return ordered.map((item, order) => ({ ...item, order }));
 }
 
+export interface ItineraryCrossDayMoveResult {
+  sourceItems: ItineraryItem[];
+  destinationItems: ItineraryItem[];
+}
+
+/**
+ * Atomically-shaped pure transform for moving one stored item between itinerary days. The
+ * destination index is resolved from its visual anchor against the latest destination array,
+ * while both arrays leave with contiguous stored order values.
+ */
+export function moveItineraryItemBetweenDays(
+  sourceItems: readonly ItineraryItem[],
+  destinationItems: readonly ItineraryItem[],
+  drop: ItineraryItemDrop,
+): ItineraryCrossDayMoveResult {
+  const source = sourceItems.find(item => item.id === drop.itemId);
+  if (!source) throw new Error('Itinerary item no longer exists');
+  if (destinationItems.some(item => item.id === drop.itemId)) {
+    throw new Error('Itinerary destination already contains this item');
+  }
+
+  // Temporarily append the source so the same anchor/time resolver used by same-day drops can
+  // calculate its destination index without introducing a second ordering implementation.
+  const virtualDestination = [
+    ...destinationItems,
+    { ...source, order: destinationItems.length },
+  ];
+  const move = itineraryMoveForDrop(virtualDestination, drop);
+  const nextDestination = reorderItineraryItems(virtualDestination, move);
+  const nextSource = sourceItems
+    .filter(item => item.id !== drop.itemId)
+    .sort((a, b) => a.order - b.order)
+    .map((item, order) => ({ ...item, order }));
+
+  return { sourceItems: nextSource, destinationItems: nextDestination };
+}
+
 // ── Day generation ───────────────────────────────────────────────────────────
 
 export interface SyncItineraryDaysInput {

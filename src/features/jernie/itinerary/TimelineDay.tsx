@@ -32,6 +32,11 @@ interface TimelineDayProps {
   onEntryNavigate?: (entry: TimelineEntry) => void;
   onEntryRemove?: (entry: TimelineEntry) => void;
   dragPlacements?: Record<string, TimelineDragPlacement>;
+  dayPlacements?: TimelineDayPlacement[];
+  dragCoordinator?: TimelineDragCoordinator;
+  dragPreview?: TimelineDragPreview | null;
+  onDragPreviewChange?: (preview: TimelineDragPreview | null) => void;
+  onDragPositionChange?: (absoluteY: number) => void;
   dragEnabled?: boolean;
   onEntryDrop?: (request: TimelineDropRequest) => void;
   onAdd?: (dateIso: string, band: TimelineBandKey) => void;
@@ -49,6 +54,22 @@ export interface TimelineDragPlacement {
   itemId: string;
 }
 
+export interface TimelineDayPlacement {
+  stopId: string;
+  dayId: string;
+}
+
+export interface TimelineDropDestination extends TimelineDayPlacement {
+  dateIso: string;
+}
+
+export interface TimelineDragPreview {
+  entryId: string;
+  sourceDateIso: string;
+  destinationDateIso: string;
+  destinationBandKey: TimelineBandKey | 'unscheduled';
+}
+
 export interface TimelineDropRequest {
   entry: TimelineEntry;
   placement: TimelineDragPlacement;
@@ -56,6 +77,7 @@ export interface TimelineDropRequest {
   afterTarget: boolean;
   /** Undefined retains time, null makes the item unscheduled, and a string changes it. */
   time?: string | null;
+  destination: TimelineDropDestination;
   destinationLabel: string;
 }
 
@@ -69,24 +91,60 @@ interface MeasuredRow {
 interface MeasuredZone {
   key: TimelineBandKey | 'unscheduled';
   label: string;
+  dateIso: string;
+  dayLabel: string;
+  placements: TimelineDayPlacement[];
   y: number;
   height: number;
 }
 
+export interface TimelineDragCoordinator {
+  rows: Record<string, MeasuredRow>;
+  zones: Record<string, MeasuredZone>;
+  remeasure: Record<string, () => void>;
+  activeUpdate?: (absoluteY: number) => void;
+}
+
+export function createTimelineDragCoordinator(): TimelineDragCoordinator {
+  return { rows: {}, zones: {}, remeasure: {} };
+}
+
+function placementKey(placement: TimelineDragPlacement): string {
+  return `${placement.stopId}:${placement.dayId}:${placement.itemId}`;
+}
+
+function coordinatorZoneKey(dateIso: string, key: TimelineBandKey | 'unscheduled'): string {
+  return `${dateIso}:${key}`;
+}
+
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function dragDayLabel(day: TimelineDay): string {
+  const [, month, date] = day.dateIso.split('-').map(Number);
+  return `${day.weekday} ${SHORT_MONTHS[month - 1]} ${date}`;
+}
+
 interface ActiveDrag {
   entryId: string;
-  scopeKey: string;
+  sourceDateIso: string;
   placeholderTop: number;
   placeholderHeight: number;
+  destinationBandKey: TimelineBandKey | 'unscheduled';
+  destinationBandLabel: string;
+  previewTimeLabel: string;
+  placementLabel: string;
   request: TimelineDropRequest;
 }
 
 export const TIMELINE_DAY_BAR_HEIGHT = 34;
+export const TIMELINE_DRAG_ACTIVATION_MS = 500;
 
 /** One date in the continuous trip timeline, including its push-away sticky day bar. */
 export const TimelineDayView = memo(function TimelineDayView({
   day, stopColors, onEntryPress, onEntryNavigate, onEntryRemove, onAdd, onLayout, onStopBoundaryLayout,
-  dragPlacements = {}, dragEnabled = true, onEntryDrop,
+  dragPlacements = {}, dayPlacements = [], dragCoordinator, dragPreview, onDragPreviewChange,
+  onDragPositionChange,
+  dragEnabled = true, onEntryDrop,
   contentScrollY, contentOriginY, stickyTop,
 }: TimelineDayProps) {
   const [s, t] = useStyles();
@@ -97,10 +155,10 @@ export const TimelineDayView = memo(function TimelineDayView({
   const bodyWindowYRef = useRef(0);
   const rowRefs = useRef<Record<string, View | null>>({});
   const rowMeta = useRef<Record<string, Pick<MeasuredRow, 'entry' | 'placement'>>>({});
-  const measuredRows = useRef<Record<string, MeasuredRow>>({});
   const zoneRefs = useRef<Record<string, View | null>>({});
   const zoneMeta = useRef<Record<string, Pick<MeasuredZone, 'key' | 'label'>>>({});
-  const measuredZones = useRef<Record<string, MeasuredZone>>({});
+  const [localDragCoordinator] = useState(createTimelineDragCoordinator);
+  const coordinator = dragCoordinator ?? localDragCoordinator;
   const activeDragRef = useRef<ActiveDrag | null>(null);
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
   const stickyDayBar = useAnimatedStyle(() => {
@@ -131,17 +189,24 @@ export const TimelineDayView = memo(function TimelineDayView({
     const node = rowRefs.current[entryId];
     const meta = rowMeta.current[entryId];
     node?.measureInWindow((_x, y, _width, height) => {
-      if (meta) measuredRows.current[entryId] = { ...meta, y, height };
+      if (meta) coordinator.rows[placementKey(meta.placement)] = { ...meta, y, height };
     });
-  }, []);
+  }, [coordinator]);
 
   const measureZone = useCallback((zoneKey: string) => {
     const node = zoneRefs.current[zoneKey];
     const meta = zoneMeta.current[zoneKey];
     node?.measureInWindow((_x, y, _width, height) => {
-      if (meta) measuredZones.current[zoneKey] = { ...meta, y, height };
+      if (meta) coordinator.zones[coordinatorZoneKey(day.dateIso, meta.key)] = {
+        ...meta,
+        dateIso: day.dateIso,
+        dayLabel: dragDayLabel(day),
+        placements: dayPlacements,
+        y,
+        height,
+      };
     });
-  }, []);
+  }, [coordinator, day, dayPlacements]);
 
   const registerRow = useCallback((
     entry: TimelineEntry,
@@ -172,15 +237,16 @@ export const TimelineDayView = memo(function TimelineDayView({
     for (const entryId of Object.keys(rowRefs.current)) {
       if (liveEntryIds.has(entryId)) continue;
       delete rowRefs.current[entryId];
+      const meta = rowMeta.current[entryId];
+      if (meta) delete coordinator.rows[placementKey(meta.placement)];
       delete rowMeta.current[entryId];
-      delete measuredRows.current[entryId];
     }
     if (day.unscheduled.length === 0 && !activeDragRef.current) {
       delete zoneRefs.current.unscheduled;
       delete zoneMeta.current.unscheduled;
-      delete measuredZones.current.unscheduled;
+      delete coordinator.zones[coordinatorZoneKey(day.dateIso, 'unscheduled')];
     }
-  }, [day.bands, day.unscheduled, dragPlacements]);
+  }, [coordinator, day.bands, day.dateIso, day.unscheduled, dragPlacements]);
 
   const refreshMeasurements = useCallback(() => {
     measureBody();
@@ -188,32 +254,61 @@ export const TimelineDayView = memo(function TimelineDayView({
     Object.keys(zoneRefs.current).forEach(measureZone);
   }, [measureBody, measureRow, measureZone]);
 
+  useEffect(() => {
+    coordinator.remeasure[day.dateIso] = refreshMeasurements;
+    return () => {
+      delete coordinator.remeasure[day.dateIso];
+      Object.values(rowMeta.current).forEach(meta => {
+        delete coordinator.rows[placementKey(meta.placement)];
+      });
+      Object.values(zoneMeta.current).forEach(meta => {
+        delete coordinator.zones[coordinatorZoneKey(day.dateIso, meta.key)];
+      });
+    };
+  }, [coordinator, day.dateIso, refreshMeasurements]);
+
   const beginDrag = useCallback((entry: TimelineEntry, placement: TimelineDragPlacement) => {
-    refreshMeasurements();
+    Object.values(coordinator.remeasure).forEach(remeasure => remeasure());
     tap();
-    const source = measuredRows.current[entry.id];
+    const source = coordinator.rows[placementKey(placement)];
+    const destinationBandKey = entry.time.band ?? 'unscheduled';
+    const destinationBandLabel = destinationBandKey === 'unscheduled'
+      ? 'Unscheduled'
+      : day.bands.find(band => band.key === destinationBandKey)?.label ?? entry.time.label;
     const request: TimelineDropRequest = {
       entry,
       placement,
       targetItemId: placement.itemId,
       afterTarget: false,
-      destinationLabel: entry.time.label,
+      destination: { stopId: placement.stopId, dayId: placement.dayId, dateIso: entry.dateIso },
+      destinationLabel: destinationBandLabel,
     };
     const next: ActiveDrag = {
       entryId: entry.id,
-      scopeKey: `${placement.stopId}:${placement.dayId}`,
+      sourceDateIso: entry.dateIso,
       placeholderTop: (source?.y ?? bodyWindowYRef.current) - bodyWindowYRef.current,
       placeholderHeight: source?.height ?? 50,
+      destinationBandKey,
+      destinationBandLabel,
+      previewTimeLabel: destinationBandKey === 'unscheduled' ? 'No time' : destinationBandLabel,
+      placementLabel: 'Current position',
       request,
     };
     activeDragRef.current = next;
     setActiveDrag(next);
-  }, [refreshMeasurements]);
+    onDragPreviewChange?.({
+      entryId: entry.id,
+      sourceDateIso: entry.dateIso,
+      destinationDateIso: entry.dateIso,
+      destinationBandKey,
+    });
+  }, [coordinator, day.bands, onDragPreviewChange]);
 
   const updateDrag = useCallback((absoluteY: number) => {
+    onDragPositionChange?.(absoluteY);
     const current = activeDragRef.current;
     if (!current) return;
-    const zones = Object.values(measuredZones.current);
+    const zones = Object.values(coordinator.zones).filter(candidate => candidate.placements.length > 0);
     if (zones.length === 0) return;
     const zone = zones.reduce((best, candidate) => {
       const distance = absoluteY < candidate.y
@@ -228,8 +323,8 @@ export const TimelineDayView = memo(function TimelineDayView({
           : 0;
       return distance < bestDistance ? candidate : best;
     });
-    const rows = Object.values(measuredRows.current).filter(candidate =>
-      `${candidate.placement.stopId}:${candidate.placement.dayId}` === current.scopeKey
+    const rows = Object.values(coordinator.rows).filter(candidate =>
+      candidate.entry.dateIso === zone.dateIso
       && (candidate.entry.time.band ?? 'unscheduled') === zone.key,
     );
     const target = rows.length > 0
@@ -240,6 +335,10 @@ export const TimelineDayView = memo(function TimelineDayView({
             : best
         ))
       : undefined;
+    const destinationPlacement = target?.placement
+      ?? zone.placements.find(candidate => candidate.stopId === current.request.placement.stopId)
+      ?? zone.placements[0];
+    if (!destinationPlacement) return;
     const afterTarget = Boolean(
       target
       && target.entry.id !== current.entryId
@@ -262,8 +361,18 @@ export const TimelineDayView = memo(function TimelineDayView({
       targetItemId: target?.placement.itemId,
       afterTarget,
       time,
-      destinationLabel: target?.entry.time.label ?? zone.label,
+      destination: { ...destinationPlacement, dateIso: zone.dateIso },
+      destinationLabel: zone.dateIso === current.sourceDateIso
+        ? zone.label
+        : `${zone.label} on ${zone.dayLabel}`,
     };
+    const sourceIsTarget = target?.entry.id === current.entryId;
+    const dateSuffix = zone.dateIso === current.sourceDateIso ? '' : ` · ${zone.dayLabel}`;
+    const placementLabel = sourceIsTarget
+      ? 'Current position'
+      : target
+        ? `${afterTarget ? 'After' : 'Before'} ${target.entry.title}${dateSuffix}`
+        : `In ${zone.label}${dateSuffix}`;
     const placeholderY = target
       ? target.y + (afterTarget ? target.height : 0)
       : zone.y + Math.min(34, zone.height);
@@ -271,24 +380,66 @@ export const TimelineDayView = memo(function TimelineDayView({
       ...current,
       placeholderTop: placeholderY - bodyWindowYRef.current,
       placeholderHeight: current.placeholderHeight,
+      destinationBandKey: zone.key,
+      destinationBandLabel: zone.label,
+      previewTimeLabel: zone.key === 'unscheduled' ? 'No time' : zone.label,
+      placementLabel,
       request,
     };
     activeDragRef.current = next;
     const changed = current.request.targetItemId !== request.targetItemId
       || current.request.afterTarget !== request.afterTarget
-      || current.request.time !== request.time;
-    if (changed) setActiveDrag(next);
-  }, []);
+      || current.request.time !== request.time
+      || current.request.destination.stopId !== request.destination.stopId
+      || current.request.destination.dayId !== request.destination.dayId
+      || current.request.destination.dateIso !== request.destination.dateIso
+      || current.destinationBandKey !== zone.key
+      || current.placementLabel !== placementLabel;
+    if (changed) {
+      setActiveDrag(next);
+      onDragPreviewChange?.({
+        entryId: current.entryId,
+        sourceDateIso: current.sourceDateIso,
+        destinationDateIso: zone.dateIso,
+        destinationBandKey: zone.key,
+      });
+    }
+  }, [coordinator, onDragPositionChange, onDragPreviewChange]);
 
   const finishDrag = useCallback((completed: boolean) => {
     const current = activeDragRef.current;
+    coordinator.activeUpdate = undefined;
     activeDragRef.current = null;
     setActiveDrag(null);
+    onDragPreviewChange?.(null);
     if (completed && current) onEntryDrop?.(current.request);
-  }, [onEntryDrop]);
+  }, [coordinator, onDragPreviewChange, onEntryDrop]);
+
+  useEffect(() => {
+    if (!activeDrag) return undefined;
+    coordinator.activeUpdate = updateDrag;
+    return () => {
+      if (coordinator.activeUpdate === updateDrag) coordinator.activeUpdate = undefined;
+    };
+  }, [activeDrag, coordinator, updateDrag]);
+
+  const visibleDragPreview = dragPreview ?? (activeDrag ? {
+    entryId: activeDrag.entryId,
+    sourceDateIso: activeDrag.sourceDateIso,
+    destinationDateIso: activeDrag.request.destination.dateIso,
+    destinationBandKey: activeDrag.destinationBandKey,
+  } : null);
+  const dragInProgress = Boolean(visibleDragPreview);
+  const dropBandKey = visibleDragPreview?.destinationDateIso === day.dateIso
+    ? visibleDragPreview.destinationBandKey
+    : undefined;
 
   return (
-    <View testID={`timeline-day-${day.dateIso}`} onLayout={handleLayout} style={[s.day, day.isPast && s.dayPast]}>
+    <View
+      testID={`timeline-day-${day.dateIso}`}
+      onLayout={handleLayout}
+      style={[s.day, day.isPast && s.dayPast, activeDrag && s.dayDragActive]}
+    >
       <Animated.View style={[s.dayBar, stickyDayBar]} accessibilityRole="header">
         <Text style={s.dayDate}>{day.weekday} {day.dayOfMonth}</Text>
         <View style={s.dayStopMarks}>
@@ -307,14 +458,28 @@ export const TimelineDayView = memo(function TimelineDayView({
 
       <View ref={bodyRef} collapsable={false} onLayout={measureBody} style={s.body}>
         {activeDrag ? (
-          <View
-            pointerEvents="none"
-            testID={`timeline-drop-placeholder-${activeDrag.entryId}`}
-            style={[
-              s.dropPlaceholder,
-              { top: activeDrag.placeholderTop, height: activeDrag.placeholderHeight },
-            ]}
-          />
+          <>
+            <View
+              pointerEvents="none"
+              testID={`timeline-drop-placeholder-${activeDrag.entryId}`}
+              style={[
+                s.dropPlaceholder,
+                { top: activeDrag.placeholderTop, height: activeDrag.placeholderHeight },
+              ]}
+            />
+            <View
+              pointerEvents="none"
+              testID={`timeline-drop-indicator-${activeDrag.entryId}`}
+              style={[s.dropIndicator, { top: activeDrag.placeholderTop - 12 }]}
+            >
+              <View style={s.dropIndicatorLine} />
+              <View style={s.dropIndicatorPill}>
+                <Text style={s.dropIndicatorText} numberOfLines={1}>
+                  {activeDrag.placementLabel}
+                </Text>
+              </View>
+            </View>
+          </>
         ) : null}
         {day.stay ? (
           <View
@@ -363,6 +528,9 @@ export const TimelineDayView = memo(function TimelineDayView({
             dragPlacements={dragPlacements}
             dragEnabled={dragEnabled}
             activeDrag={activeDrag}
+            dragInProgress={dragInProgress}
+            dropBandKey={dropBandKey}
+            activeEntryId={visibleDragPreview?.entryId}
             onRegisterRow={registerRow}
             onMeasureRow={measureRow}
             onRegisterZone={registerZone}
@@ -373,17 +541,33 @@ export const TimelineDayView = memo(function TimelineDayView({
           />
         ))}
 
-        {day.unscheduled.length || activeDrag ? (
+        {day.unscheduled.length || dragInProgress ? (
           <View
             ref={node => registerZone('unscheduled', 'Unscheduled', node)}
             collapsable={false}
             testID={`timeline-unscheduled-${day.dateIso}`}
             onLayout={() => measureZone('unscheduled')}
+            style={[
+              dragInProgress && day.unscheduled.length === 0 && s.timeBandDragEmpty,
+              dropBandKey === 'unscheduled' && s.timeBandTarget,
+            ]}
           >
             <View style={s.bandHeader}>
-              <Text style={s.bandSpan}>—</Text>
-              <View style={s.spineCol}><View style={s.spineLine} /><View style={s.bandTick} /></View>
-              <Text style={s.bandLabel}>UNSCHEDULED</Text>
+              <Text style={[
+                s.bandSpan,
+                dropBandKey === 'unscheduled' && s.bandCopyTarget,
+              ]}>—</Text>
+              <View style={s.spineCol}>
+                <View style={s.spineLine} />
+                <View style={[
+                  s.bandTick,
+                  dropBandKey === 'unscheduled' && s.bandTickTarget,
+                ]} />
+              </View>
+              <Text style={[
+                s.bandLabel,
+                dropBandKey === 'unscheduled' && s.bandCopyTarget,
+              ]}>UNSCHEDULED</Text>
             </View>
             {day.unscheduled.map(entry => (
               <TimelineEntryRow
@@ -395,7 +579,10 @@ export const TimelineDayView = memo(function TimelineDayView({
                 dragPlacement={dragPlacements[entry.id]}
                 dragEnabled={dragEnabled}
                 dragActive={activeDrag?.entryId === entry.id}
-                dragDimmed={Boolean(activeDrag && activeDrag.entryId !== entry.id)}
+                dragDimmed={Boolean(dragInProgress && visibleDragPreview?.entryId !== entry.id)}
+                previewTimeLabel={activeDrag?.entryId === entry.id
+                  ? activeDrag.previewTimeLabel
+                  : undefined}
                 onRegisterDragRow={registerRow}
                 onMeasureDragRow={measureRow}
                 onDragStart={beginDrag}
@@ -412,7 +599,7 @@ export const TimelineDayView = memo(function TimelineDayView({
 
 function TimeBand({
   band, dateIso, onEntryPress, onEntryNavigate, onEntryRemove, onAdd,
-  dragPlacements, dragEnabled, activeDrag,
+  dragPlacements, dragEnabled, activeDrag, dragInProgress, dropBandKey, activeEntryId,
   onRegisterRow, onMeasureRow, onRegisterZone, onMeasureZone,
   onDragStart, onDragUpdate, onDragFinish,
 }: {
@@ -425,6 +612,9 @@ function TimeBand({
   dragPlacements: Record<string, TimelineDragPlacement>;
   dragEnabled: boolean;
   activeDrag: ActiveDrag | null;
+  dragInProgress: boolean;
+  dropBandKey?: TimelineBandKey | 'unscheduled';
+  activeEntryId?: string;
   onRegisterRow: (entry: TimelineEntry, placement: TimelineDragPlacement, node: View | null) => void;
   onMeasureRow: (entryId: string) => void;
   onRegisterZone: (key: TimelineBandKey, label: string, node: View | null) => void;
@@ -434,17 +624,25 @@ function TimeBand({
   onDragFinish: (completed: boolean) => void;
 }) {
   const [s, t] = useStyles();
+  const isDropBand = dropBandKey === band.key;
   return (
     <View
       ref={node => onRegisterZone(band.key, band.label, node)}
       collapsable={false}
       testID={`timeline-band-${dateIso}-${band.key}`}
       onLayout={() => onMeasureZone(band.key)}
+      style={[
+        dragInProgress && band.entries.length === 0 && s.timeBandDragEmpty,
+        isDropBand && s.timeBandTarget,
+      ]}
     >
       <View style={s.bandHeader}>
-        <Text style={s.bandSpan}>{band.span}</Text>
-        <View style={s.spineCol}><View style={s.spineLine} /><View style={s.bandTick} /></View>
-        <Text style={s.bandLabel}>{band.label}</Text>
+        <Text style={[s.bandSpan, isDropBand && s.bandCopyTarget]}>{band.span}</Text>
+        <View style={s.spineCol}>
+          <View style={s.spineLine} />
+          <View style={[s.bandTick, isDropBand && s.bandTickTarget]} />
+        </View>
+        <Text style={[s.bandLabel, isDropBand && s.bandCopyTarget]}>{band.label}</Text>
       </View>
       {band.entries.map(entry => (
         <TimelineEntryRow
@@ -456,7 +654,10 @@ function TimeBand({
           dragPlacement={dragPlacements[entry.id]}
           dragEnabled={dragEnabled}
           dragActive={activeDrag?.entryId === entry.id}
-          dragDimmed={Boolean(activeDrag && activeDrag.entryId !== entry.id)}
+          dragDimmed={Boolean(dragInProgress && activeEntryId !== entry.id)}
+          previewTimeLabel={activeDrag?.entryId === entry.id
+            ? activeDrag.previewTimeLabel
+            : undefined}
           onRegisterDragRow={onRegisterRow}
           onMeasureDragRow={onMeasureRow}
           onDragStart={onDragStart}
@@ -488,6 +689,7 @@ function TimeBand({
 export function TimelineEntryRow({
   entry, onPress, onNavigate, onRemove,
   dragPlacement, dragEnabled = true, dragActive = false, dragDimmed = false,
+  previewTimeLabel,
   onRegisterDragRow, onMeasureDragRow, onDragStart, onDragUpdate, onDragFinish,
 }: {
   entry: TimelineEntry;
@@ -498,6 +700,8 @@ export function TimelineEntryRow({
   dragEnabled?: boolean;
   dragActive?: boolean;
   dragDimmed?: boolean;
+  /** While lifted, names the live destination bucket in the fixed time column. */
+  previewTimeLabel?: string;
   onRegisterDragRow?: (entry: TimelineEntry, placement: TimelineDragPlacement, node: View | null) => void;
   onMeasureDragRow?: (entryId: string) => void;
   onDragStart?: (entry: TimelineEntry, placement: TimelineDragPlacement) => void;
@@ -522,7 +726,9 @@ export function TimelineEntryRow({
   const dragGesture = useMemo(() => Gesture.Pan()
     .enabled(draggable)
     .maxPointers(1)
-    .activateAfterLongPress(280)
+    // Gesture Handler cancels this pending long press once the finger travels beyond
+    // its 10-point allowance, so scrolling wins unless the user deliberately pauses.
+    .activateAfterLongPress(TIMELINE_DRAG_ACTIVATION_MS)
     .onStart(() => {
       if (dragPlacement && onDragStart) runOnJS(onDragStart)(entry, dragPlacement);
     })
@@ -539,16 +745,23 @@ export function TimelineEntryRow({
     <Pressable
       testID={`timeline-entry-${entry.id}`}
       accessibilityRole={press ? 'button' : undefined}
-      accessibilityLabel={[entry.time.label, entry.title, entry.meta].filter(Boolean).join('. ')}
+      accessibilityLabel={[
+        previewTimeLabel ?? entry.time.label, entry.title, entry.meta,
+      ].filter(Boolean).join('. ')}
       disabled={!press}
       onPress={press}
       style={({ pressed }) => [s.entry, entry.past && s.entryPast, pressed && press && s.pressed]}
     >
       <Text
-        style={[s.entryTime, entry.time.precision !== 'hard' && s.entryTimeLoose]}
+        testID={`timeline-entry-time-${entry.id}`}
+        style={[
+          s.entryTime,
+          entry.time.precision !== 'hard' && s.entryTimeLoose,
+          previewTimeLabel && s.entryTimeDrag,
+        ]}
         numberOfLines={1}
       >
-        {entry.time.label}
+        {previewTimeLabel ?? entry.time.label}
       </Text>
       <View style={s.spineCol}>
         <View style={s.spineLine} />
@@ -708,6 +921,7 @@ const SPINE_WIDTH = 24;
 
 const useStyles = createThemedStyles((t) => ({
   day: { backgroundColor: t.surface },
+  dayDragActive: { zIndex: 100 },
   dayPast: { opacity: 0.72 },
   dayBar: {
     height: TIMELINE_DAY_BAR_HEIGHT,
@@ -758,11 +972,15 @@ const useStyles = createThemedStyles((t) => ({
   transitionSub: { ...Typography.roles.sub, color: t.textFaint, marginTop: 4 },
 
   bandHeader: { minHeight: 34, flexDirection: 'row' },
-  bandSpan: { width: TIME_WIDTH, paddingTop: 11, paddingRight: 9, textAlign: 'right', ...Typography.roles.dataSm, fontSize: 9, color: t.textDisabled },
-  bandLabel: { flex: 1, paddingTop: 10, paddingLeft: 8, ...Typography.roles.caps, fontSize: 8.5, color: t.textFaint },
+  bandSpan: { width: TIME_WIDTH, paddingTop: 11, paddingRight: 9, textAlign: 'right', ...Typography.roles.dataSm, color: t.textFaint },
+  bandLabel: { flex: 1, paddingTop: 10, paddingLeft: 8, ...Typography.roles.caps, color: t.textMuted },
   spineCol: { width: SPINE_WIDTH, position: 'relative', alignItems: 'center' },
   spineLine: { position: 'absolute', top: 0, bottom: 0, width: 1.5, backgroundColor: t.border },
   bandTick: { marginTop: 13, width: 7, height: 1.5, backgroundColor: t.border },
+  bandTickTarget: { backgroundColor: t.action },
+  bandCopyTarget: { color: t.action },
+  timeBandDragEmpty: { minHeight: 52 },
+  timeBandTarget: { borderRadius: Radius.row, backgroundColor: t.actionSoft },
 
   entry: { minHeight: 50, flexDirection: 'row' },
   entryPast: { opacity: 0.42 },
@@ -770,6 +988,7 @@ const useStyles = createThemedStyles((t) => ({
   // The web canvas uses italic for loose time, but no italic native face is bundled. Upright
   // DMSans is the honest fallback until the design system adds one.
   entryTimeLoose: { fontFamily: 'DMSans', fontWeight: '400' as const, color: t.textMuted },
+  entryTimeDrag: { fontFamily: 'DMSans-Bold', fontWeight: '700' as const, color: t.action },
   entryNode: { marginTop: 15, width: 10, height: 10, borderRadius: 5, borderWidth: 1.5, zIndex: 1 },
   entryContent: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 7, paddingLeft: 8 },
   entryTile: { width: 36, height: 36, borderRadius: 11 },
@@ -783,7 +1002,7 @@ const useStyles = createThemedStyles((t) => ({
     justifyContent: 'center',
   },
   dragRow: { position: 'relative', zIndex: 1 },
-  dragRowDimmed: { opacity: 0.48 },
+  dragRowDimmed: { opacity: 0.7 },
   dragRowActive: {
     zIndex: 50,
     borderRadius: Radius.row,
@@ -797,9 +1016,41 @@ const useStyles = createThemedStyles((t) => ({
     zIndex: 40,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: t.action,
+    borderColor: t.actionLine,
     borderRadius: Radius.row,
     backgroundColor: t.actionSoft,
+  },
+  dropIndicator: {
+    position: 'absolute',
+    left: TIME_WIDTH + SPINE_WIDTH + 8,
+    right: 0,
+    height: 24,
+    zIndex: 60,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  dropIndicatorLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1.5,
+    backgroundColor: t.action,
+  },
+  dropIndicatorPill: {
+    maxWidth: '88%',
+    minHeight: 22,
+    marginLeft: 8,
+    paddingHorizontal: 9,
+    borderRadius: Radius.full,
+    backgroundColor: t.action,
+    justifyContent: 'center',
+  },
+  dropIndicatorText: {
+    ...Typography.roles.sub,
+    fontFamily: 'DMSans-SemiBold',
+    fontWeight: '600' as const,
+    fontSize: 10,
+    color: t.textInverse,
   },
   swipeForeground: { backgroundColor: t.surface },
   swipeActions: { flexDirection: 'row', alignSelf: 'stretch' },

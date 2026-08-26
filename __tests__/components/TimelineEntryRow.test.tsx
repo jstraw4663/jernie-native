@@ -20,7 +20,10 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
 
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { TimelineEntryRow } from '@/src/features/jernie/itinerary/TimelineDay';
+import {
+  TIMELINE_DRAG_ACTIVATION_MS,
+  TimelineEntryRow,
+} from '@/src/features/jernie/itinerary/TimelineDay';
 import type { TimelineEntry } from '@/src/domain/itineraryTimeline';
 
 const BASE: TimelineEntry = {
@@ -67,6 +70,10 @@ afterEach(() => {
 
 beforeEach(() => { mockSwipeClose.mockClear(); });
 
+test('drag requires an intentional half-second hold', () => {
+  expect(TIMELINE_DRAG_ACTIVATION_MS).toBe(500);
+});
+
 test('every interactive row exposes Details', () => {
   const { tree, onDetails } = renderRow(BASE);
   expect(tree.root.findAllByProps({ testID: 'timeline-entry-details-item:one' }).length).toBeGreaterThan(0);
@@ -104,4 +111,23 @@ test('every removable row exposes Remove on the opposite swipe', () => {
   act(() => { remove.props.onPress(); });
   expect(mockSwipeClose).toHaveBeenCalledTimes(1);
   expect(onRemove).toHaveBeenCalledWith(BASE);
+});
+
+test('a lifted row shows the live destination bucket in its time column', () => {
+  let tree!: renderer.ReactTestRenderer;
+  act(() => {
+    tree = renderer.create(
+      <TimelineEntryRow
+        entry={BASE}
+        dragActive
+        previewTimeLabel="Afternoon"
+      />,
+    );
+  });
+  mounted.push(tree);
+
+  expect(tree.root.findByProps({ testID: 'timeline-entry-time-item:one' }).props.children)
+    .toBe('Afternoon');
+  expect(tree.root.findByProps({ testID: 'timeline-entry-item:one' }).props.accessibilityLabel)
+    .toContain('Afternoon');
 });

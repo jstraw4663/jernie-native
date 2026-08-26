@@ -215,6 +215,7 @@ describe('JernieTab — itinerary reorder', () => {
       day.props.onEntryDrop({
         entry: coffee,
         placement: { stopId: 'stop-a', dayId: 'day-1', itemId: 'coffee' },
+        destination: { stopId: 'stop-a', dayId: 'day-1', dateIso: '2026-08-10' },
         targetItemId: 'museum',
         afterTarget: true,
         time: 'afternoon',
@@ -243,6 +244,7 @@ describe('JernieTab — itinerary reorder', () => {
       day.props.onEntryDrop({
         entry: coffee,
         placement: { stopId: 'stop-a', dayId: 'day-1', itemId: 'coffee' },
+        destination: { stopId: 'stop-a', dayId: 'day-1', dateIso: '2026-08-10' },
         targetItemId: 'coffee',
         afterTarget: false,
         destinationLabel: 'Morning',
@@ -275,6 +277,7 @@ describe('JernieTab — itinerary reorder', () => {
       day.props.onEntryDrop({
         entry: popovers,
         placement: { stopId: 'stop-a', dayId: 'day-1', itemId: 'popovers' },
+        destination: { stopId: 'stop-a', dayId: 'day-1', dateIso: '2026-08-10' },
         targetItemId: 'dinner',
         afterTarget: false,
         time: '5:30 PM',
