@@ -112,6 +112,7 @@ export default function ExploreTab() {
         header={
           <ExploreFeaturedRow
             places={featured}
+            nearbyCount={sorted.length}
             stopCity={stopCity}
             getPhotoUrl={getPhotoUrl}
             addedPlaceIds={addedPlaceIds}

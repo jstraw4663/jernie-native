@@ -50,7 +50,7 @@ const PHOTO = () => 'https://example.com/p.jpg';
 describe('ExploreFeaturedRow', () => {
   test('renders nothing below two places — one card in a rail reads as a layout bug', () => {
     const tree = render(
-      <ExploreFeaturedRow places={[place('a')]} stopCity="Bar Harbor"
+      <ExploreFeaturedRow places={[place('a')]} nearbyCount={1} stopCity="Bar Harbor"
         getPhotoUrl={PHOTO} addedPlaceIds={new Set()} onPlacePress={() => {}} />,
     );
     expect(tree.toJSON()).toBeNull();
@@ -58,17 +58,17 @@ describe('ExploreFeaturedRow', () => {
 
   test('names the stop it hand-picked from, and counts what it found', () => {
     const tree = render(
-      <ExploreFeaturedRow places={[place('a'), place('b'), place('c')]} stopCity="Bar Harbor"
+      <ExploreFeaturedRow places={[place('a'), place('b'), place('c')]} nearbyCount={38} stopCity="Bar Harbor"
         getPhotoUrl={PHOTO} addedPlaceIds={new Set()} onPlacePress={() => {}} />,
     );
     expect(texts(tree)).toContain('Worth the detour');
     expect(texts(tree)).toContain('Hand-picked in Bar Harbor');
-    expect(texts(tree)).toContain('3 places');
+    expect(texts(tree)).toContain('38 places nearby');
   });
 
   test('says "across the trip" when no stop is selected', () => {
     const tree = render(
-      <ExploreFeaturedRow places={[place('a'), place('b')]}
+      <ExploreFeaturedRow places={[place('a'), place('b')]} nearbyCount={2}
         getPhotoUrl={PHOTO} addedPlaceIds={new Set()} onPlacePress={() => {}} />,
     );
     expect(texts(tree)).toContain('Hand-picked across the trip');
@@ -77,7 +77,7 @@ describe('ExploreFeaturedRow', () => {
   test('a card press reports the place it was pressed on', () => {
     const onPlacePress = jest.fn();
     const tree = render(
-      <ExploreFeaturedRow places={[place('a'), place('b')]} stopCity="Bar Harbor"
+      <ExploreFeaturedRow places={[place('a'), place('b')]} nearbyCount={2} stopCity="Bar Harbor"
         getPhotoUrl={PHOTO} addedPlaceIds={new Set()} onPlacePress={onPlacePress} />,
     );
     renderer.act(() => {
@@ -88,7 +88,7 @@ describe('ExploreFeaturedRow', () => {
 
   test('an added place says so to a screen reader', () => {
     const tree = render(
-      <ExploreFeaturedRow places={[place('a'), place('b')]} stopCity="Bar Harbor"
+      <ExploreFeaturedRow places={[place('a'), place('b')]} nearbyCount={2} stopCity="Bar Harbor"
         getPhotoUrl={PHOTO} addedPlaceIds={new Set(['b'])} onPlacePress={() => {}} />,
     );
     expect(card(tree, 'featured-b').props.accessibilityLabel).toBe('Place b, already added');

@@ -16,6 +16,9 @@ export const FEATURED_MIN = 2;
 
 interface ExploreFeaturedRowProps {
   places: Place[];
+  /** Everything the filters match, not just what is in the rail — the canvas's "38 places
+   *  nearby" counts the whole result, which is why the word "nearby" is in the copy. */
+  nearbyCount: number;
   /** The city the stop filter is on, or undefined for "All stops". */
   stopCity?: string;
   getPhotoUrl: (place: Place) => string | undefined;
@@ -24,7 +27,7 @@ interface ExploreFeaturedRowProps {
 }
 
 export function ExploreFeaturedRow({
-  places, stopCity, getPhotoUrl, addedPlaceIds, onPlacePress,
+  places, nearbyCount, stopCity, getPhotoUrl, addedPlaceIds, onPlacePress,
 }: ExploreFeaturedRowProps) {
   const [s] = useStyles();
   if (places.length < FEATURED_MIN) return null;
@@ -33,7 +36,7 @@ export function ExploreFeaturedRow({
     <View>
       <View style={s.header}>
         <Text style={s.title} accessibilityRole="header">Worth the detour</Text>
-        <Text style={s.count}>{places.length} places</Text>
+        <Text style={s.count}>{nearbyCount} places nearby</Text>
       </View>
       <Text style={s.basis}>
         {stopCity ? `Hand-picked in ${stopCity}` : 'Hand-picked across the trip'}
