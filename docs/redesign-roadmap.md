@@ -24,7 +24,7 @@ with hand-rolled code limited to the register in
 | Session 4 — Jernie home | **Done, gate green.** One vertical scroll; hero, collapse, rail, CTA row, day groups. Pager, accordion and `CTACardZone`'s phase router removed. Revised on device: the card *becomes* the bar, the header keeps the trip name, range stretched to 165, hero photo bug fixed. |
 | Session 5 — Agenda + gaps | **Done, gate green.** Three lenses, four type groups, derived gap rows, coverage grid. `taxonomy.ts` / `gaps.ts` / `agenda.ts` new and unit tested. Revised on device: wider coverage columns, one shared motion vocabulary. |
 | Session 6 — Detail sheet | **Done, gate green** (`4a704e0`). One data-driven shell in `src/features/jernie/sheets/detail/`; all four types render from it and a fifth is a list entry. Replaced the seven-file duplicated sheet scaffold. |
-| **Itinerary timeline** (inserted) | **Tasks 1–7 done.** A sprint between Sessions 6 and 7 with its own plan and spec — continuous timeline, date rail, maps chooser, swipe actions with delayed-commit Undo, long-press reorder. See `docs/superpowers/plans/2026-08-24-itinerary-timeline.md`. Awaiting the device review in Task 7. |
+| **Itinerary timeline** (inserted) | **Tasks 1–6 done; Task 7 automated gate green, device review pending.** A sprint between Sessions 6 and 7 with its own plan and spec — continuous timeline, date rail, maps chooser, swipe actions with delayed-commit Undo, long-press reorder. See `docs/superpowers/plans/2026-08-24-itinerary-timeline.md`. |
 | Sessions 7–12 | Not started. **Next: Session 7 — Explore.** |
 
 ---

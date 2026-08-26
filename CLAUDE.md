@@ -1,121 +1,84 @@
-# Jernie Native — Dev Context
+# Jernie Native — Claude bootstrap
 
-> Greenfield React Native Expo app. Design spec: `../jernie/docs/superpowers/specs/2026-05-29-jernie-native-migration-design.md`
+`AGENTS.md` is the canonical repository contract, shared by Claude and Codex. This file only
+tells Claude how to load and maintain that structure. It deliberately carries no project rules
+of its own — read those at the source, every session.
 
-## Running locally
-```bash
-npx expo start          # Metro on Ubuntu, iPhone connects via Tailscale
-npx jest                # run tests
-eas build --profile development --platform ios   # first-time dev build
-eas update --branch preview --message "..."      # push JS update to testers
-```
+## Before any repository work
 
-## Metro on this machine
+1. Read `AGENTS.md` in full.
+2. Read `docs/agents/HANDOFF.md` in full.
+3. Run `git status --short` and inspect recent commits (`git log --oneline -10`). Git, source,
+   and real command output outrank the handoff when they disagree. Preserve untracked and
+   unrelated user changes; never assume an untracked file is disposable.
+4. Read only the active plan/spec the handoff names, plus the references `AGENTS.md` routes for
+   this specific task. Do not scan the codebase by default.
+5. Before writing any application code, satisfy `AGENTS.md`'s Expo requirement: read the exact
+   SDK 56 documentation at https://docs.expo.dev/versions/v56.0.0/. Unversioned or older Expo
+   docs do not satisfy it.
+6. For any UI, visual, copy, icon, animation, or interaction work, load the `jernie-design`
+   skill (`.claude/skills/jernie-design/SKILL.md`) and read every reference its routing table
+   marks as required — before writing the first line of that work.
 
-`watchman` is **not installed**, so Metro falls back to Node's fs watcher, which misses files
-created while the dev server is already running. The symptom is a resolution error for a file
-that demonstrably exists:
+Then follow `AGENTS.md` for scope, architecture, design invariants, testing and release gates,
+Expo, Git, and completion reporting. Do not work from memory of those rules; they live and
+change in `AGENTS.md`.
 
-```
-Unable to resolve module @/src/features/jernie/sheets/MemberSheet ...
-could not be found within the project
-```
+## After material implementation, review, or diagnosis
 
-Confirm it's the watcher and not the code by cold-bundling — if this succeeds, the code is fine:
+1. Replace `docs/agents/HANDOFF.md` with the verified current state: objective, verified facts,
+   working-tree status, exact next actions, watch-outs, and the exact commands run with their
+   results. Replace stale content; never append a session diary.
+2. Keep the handoff at roughly 50 lines or fewer.
+3. Update `docs/redesign-roadmap.md` only when durable milestone status changes.
+4. Update the active plan/spec when its progress or accepted decisions change.
+5. Use `docs/superpowers/known-issues.md` only for a genuine deferred defect or architectural
+   risk — never for active-task todos — and remove entries when they are fixed.
+6. Do not update the handoff after a simple read-only question that produced no material
+   repository finding.
 
-```bash
-npx expo export --platform ios --output-dir /tmp/verify
-```
+## Where new persistent information goes
 
-Then restart Metro with `npx expo start --clear`.
+| Information | File |
+| --- | --- |
+| Stable rule for every agent | `AGENTS.md` |
+| Durable runtime, command, or environment fact | `docs/agents/PROJECT_CONTEXT.md` |
+| Immediate branch state or next action | `docs/agents/HANDOFF.md` |
+| Milestone status | `docs/redesign-roadmap.md` |
+| Implementation progress or accepted decision | the active plan in `docs/superpowers/plans/`, or its spec |
+| Deferred defect or architectural risk | `docs/superpowers/known-issues.md` |
+| Claude-only tool, hook, or permission behavior | this file or `.claude/settings*.json` |
 
-Restarting is usually enough. Installing `watchman` stops it recurring, but it is **optional**
-— it is a background daemon with its own failure modes (`watchman watch-del-all`), and it needs
-sudo. Worth doing only if the restarts get annoying.
+Never resolve a documentation problem by copying a shared rule back into this file. Codex does
+not read it, and a duplicated rule drifts out of sync.
 
-If you do: **do not `apt install watchman`.** watchman itself is current and actively developed
-(releases weekly), but Debian/Ubuntu's *package* has been frozen at 4.9.0 since 2017 — that
-specific ancient build is what React Native warns against, not watchman. A current build is
-staged at `~/.local/share/watchman-dist`:
+## Delegation mapping
 
-```bash
-sudo mkdir -p /usr/local/bin /usr/local/lib /usr/local/var/run/watchman
-sudo cp ~/.local/share/watchman-dist/bin/* /usr/local/bin/
-sudo cp ~/.local/share/watchman-dist/lib/* /usr/local/lib/
-sudo chmod 755 /usr/local/bin/watchman /usr/local/bin/watchmanctl
-sudo chmod 2777 /usr/local/var/run/watchman
-watchman version   # verify
-```
+`AGENTS.md`'s planning and delegation rules are the contract; this is only Claude's mapping of
+them onto its own tooling.
 
-The binaries hardcode `/usr/local/lib` in their `DT_NEEDED` entries, which is why they cannot
-be installed under `$HOME` — `LD_LIBRARY_PATH` does not apply to absolute paths.
+- Author plans with `superpowers:writing-plans`; execute them with
+  `superpowers:subagent-driven-development`. That skill's Model Selection guidance agrees with
+  `AGENTS.md`; the project rule only moves the choice earlier, into the plan text, so Codex can
+  read the same assignment.
+- Tier maps to the `Agent` tool's `model` parameter: light -> `haiku`, standard -> `sonnet`,
+  deep -> `opus`. Pass it on every dispatch; omitting it inherits this session's model.
+- The `Agent` tool takes no reasoning parameter. Carry the plan's reasoning level in the dispatch
+  prompt as an explicit depth instruction. To bind it mechanically instead, add a definition
+  under `.claude/agents/` with model and reasoning effort in its frontmatter - no such directory
+  exists today.
+- Subagent briefs, reports, and review diffs go in `.superpowers/sdd/<plan-name>/`, which is
+  gitignored. Keep them out of `docs/`.
 
-## Key API notes
+## Claude-specific notes
 
-- **MMKV v4:** Use `createMMKV({ id: 'name' })` — NOT `new MMKV()`. The constructor was removed in v4.
-  ```typescript
-  import { createMMKV } from 'react-native-mmkv';
-  const storage = createMMKV({ id: 'jernie-write-queue' });
-  ```
-- **Fonts are static, never variable.** React Native cannot drive a variable font's `wght`
-  axis, and iOS synthesises no weight at all. `assets/fonts/` holds six static TTFs, each
-  registered under its own family name in `app/_layout.tsx`: Fraunces 400, DM Sans
-  400/600/700, DM Mono 400/500. That is every weight the design specifies — it uses no
-  italic and no bold serif, so neither is bundled.
-  **Weight is selected by family name.** `fontFamily: 'DMSans', fontWeight: '700'` renders
-  Regular; you want `fontFamily: 'DMSans-Bold'`. A token role must resolve to a bundled
-  face — if you add a role, add the face or pick an existing one.
-  The variable Google Fonts downloads (`Fraunces[SOFT,WONK,opsz,wght].ttf`,
-  `DMSans[opsz,wght].ttf` and their short-named duplicates) were deleted; Fraunces's default
-  instance was Black, which is why every serif heading rendered heavy. The static faces come
-  from the `@expo-google-fonts/{fraunces,dm-sans}` tarballs and are vendored, not depended
-  on. Check them on device at `jernie://dev/fonts`.
-- **`eas build` builds the committed git state, not your working tree.** It warns about
-  uncommitted changes and offers to continue; continuing uploads `HEAD` regardless. **Commit
-  before every build that adds a native dependency**, or the client comes back without it.
-  The symptom is a salmon-tinted box showing a single letter where an icon should be — that
-  is RN's `Unimplemented component: <RNSVGSvgView>` label crushed into a 16px square, not a
-  rendering bug. Confirm with `git show HEAD:package.json | grep <the-dep>`.
-- **`RCT_USE_PREBUILT_RNCORE=0` and `EXPO_USE_PRECOMPILED_MODULES=0` are set in `eas.json`,
-  deliberately.** EAS turns both on by default for SDK 56. Prebuilt RN core skips
-  `use_react_native_codegen_discovery`, so third-party New-Arch libraries never get their
-  generated Fabric `ComponentDescriptor`s — the library compiles, links, and then renders as
-  `Unimplemented component: <RNSVGSvgView>` at runtime. `react-native-screens` is immune
-  because Expo ships pre-generated codegen for it; `react-native-svg` is not. Builds are
-  slower from source; that is the whole cost. See expo/expo#47266.
-  Diagnose by pulling the `.ipa` from `eas build:list --json` and comparing:
-  `RNSScreenComponentDescriptor` present vs `RNSVGSvgViewComponentDescriptor` absent means
-  codegen discovery did not run.
-- **Native deps need a dev build.** `react-native-svg` (Phosphor icons) and `expo-image` ship
-  native code, so `eas build --profile development --platform ios` after adding them.
-- **Phosphor icons import per-icon, never from the barrel.** Metro does not tree-shake
-  barrels and the index is over 500KB: `import Star from 'phosphor-react-native/src/icons/Star'`.
-  The package declares that subpath in its `exports`.
-- **Design tokens: `src/design/tokens.ts`.** Regenerated from
-  `.claude/skills/jernie-design/tokens/*.css`. The navy / gold / cream palette is deleted, not
-  deprecated — `Brand` no longer exists. Colours come from `Core` / `Semantic` / `TypeColors`
-  / `Scrim`, type from `Typography.roles`, and there is exactly one accent (`Core.action`,
-  teal) meaning *secured*; amber `Semantic.warning` means *unfinished*; red is a failed
-  booking and almost never appears. New components take colours from `useTheme()`
-  (`src/design/useTheme.ts`) so dark mode is a config flip rather than a second pass.
-- **UI primitives live in `src/ui/`** — twelve components (`Button`, `Chip`, `Badge`,
-  `ListRow`, `ItineraryRow`, `GapRow`, `PromptRow`, `SegmentedControl`, `ProgressBar`,
-  `Toggle`, `StopCard`, `StatStrip`) plus the photo seam. **Compose these; do not
-  re-implement them.** See every variant at `jernie://dev/ui`. They take colour from
-  `useTheme()`, never from `Core`, via `createThemedStyles()` — which exists because
-  `StyleSheet.create` at module scope cannot see a hook, and calling it in a component body
-  allocates a fresh sheet per row. It caches on the palette object and hands back
-  `[sheet, palette]`. `Palette` carries `warning*`/`error*` as well as the neutrals: dark
-  amber is `#E0A244`, a different colour, not `#B56B00` dimmed.
-- **Screens never hard-code an image URL.** Name the subject —
-  `resolvePhoto({ kind: 'place', place }, { enrichment })` in `src/lib/images.ts` — and
-  render the result through `<Photo>`, which falls back to `<ImagePlaceholder>` when there
-  is none. Resolved URLs are derived on read and never written back: enrichment lives in
-  Firestore, the RTDB record stays clean, and `trips/{tripId}` is immutable at the top level
-  anyway. `stop` and `trip` subjects return `undefined` until a provider is chosen.
-- **Reanimated v4** (not v3 as spec'd): API is backward-compatible. Use `useSharedValue`, `withSpring`, etc. as documented in v3 — all work in v4.
-
-## Git rules
-1. Never commit to main directly. Branch from dev.
-2. npm test must pass before any PR to main.
-3. Never commit .env.
+- `.claude/skills/jernie-design/` is shared project truth, not Claude-only policy — the path is
+  historical and Codex reads those files directly. Do not move, restructure, or re-scope it.
+- Settings split: `.claude/settings.json` is shared, committed configuration (enabled plugins);
+  `.claude/settings.local.json` holds personal permission allowlists. Neither is a place for
+  durable project rules.
+- This file uses plain instructions rather than `@` file imports, so each read above is an
+  explicit step. If an import is ever added, keep the plain-language instruction to read
+  `AGENTS.md` alongside it.
+- Skills and default workflows are subordinate to `AGENTS.md` and to direct user instructions.
+  Where a Superpowers or Expo skill's default conflicts with the contract, the contract wins.
