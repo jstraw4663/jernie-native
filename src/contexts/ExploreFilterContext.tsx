@@ -1,6 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { getExploreDefaultStopId, type ExploreFilters, type FilterId, type SortKey } from '@/src/domain/explore';
+// `getDevNow()`, not `new Date()` — every other date-aware surface in the app reads the
+// admin panel's time override through it, and a default stop that ignored it would be the
+// one screen you could not test on a chosen day.
+import { getDevNow } from '@/src/utils/devTime';
 
 export interface ExploreFilterContextValue {
   filters: ExploreFilters;
@@ -42,7 +46,7 @@ export function ExploreFilterProvider({ children }: ExploreFilterProviderProps) 
   // array), so the initial derivation almost always falls back to 'all' and gets
   // corrected by the effect below once real stops land.
   const [stopId, setStopId] = useState<string | 'all'>(
-    () => getExploreDefaultStopId(stops, new Date()) ?? 'all',
+    () => getExploreDefaultStopId(stops, getDevNow()) ?? 'all',
   );
   const [category, setCategory] = useState<FilterId>(DEFAULT_CATEGORY);
   const [search, setSearch] = useState(DEFAULT_SEARCH);
@@ -60,7 +64,7 @@ export function ExploreFilterProvider({ children }: ExploreFilterProviderProps) 
   useEffect(() => {
     if (userChoseStop.current) return;
     if (stops.length === 0) return;
-    const defaultId = getExploreDefaultStopId(stops, new Date());
+    const defaultId = getExploreDefaultStopId(stops, getDevNow());
     setStopId(defaultId ?? 'all');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stopsKey]);
@@ -74,7 +78,7 @@ export function ExploreFilterProvider({ children }: ExploreFilterProviderProps) 
     // A reset that left userChoseStop true would permanently freeze the store against
     // re-derivation — the whole point of the ref is to let a fresh session re-derive.
     userChoseStop.current = false;
-    setStopId(getExploreDefaultStopId(stops, new Date()) ?? 'all');
+    setStopId(getExploreDefaultStopId(stops, getDevNow()) ?? 'all');
     setCategory(DEFAULT_CATEGORY);
     setSearch(DEFAULT_SEARCH);
     setMustOnly(DEFAULT_MUST_ONLY);

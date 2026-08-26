@@ -1,77 +1,69 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// Explore — find something worth adding, near where you'll actually be.
+//
+// Session 7. The screen owns almost nothing now: the filters live in ExploreFilterContext so
+// Session 8's Map arrives on the same result set, and the two sections are their own
+// components. What is left here is the wiring and the one thing that is genuinely this
+// screen's own — what happens when you decide to add a place.
+//
+// Reference: docs/design/Jernie Screen.dc.html (the `isExplore` block) and
+// docs/design/Jernie Spec.dc.html panel 6b.
+import { MagnifyingGlassIcon } from 'phosphor-react-native/src/icons/MagnifyingGlass';
+import React, { useCallback, useMemo, useRef } from 'react';
+import { View } from 'react-native';
 import { useTripContext } from '@/src/contexts/TripContext';
+import { useExploreFilters } from '@/src/contexts/ExploreFilterContext';
+import { createThemedStyles } from '@/src/design/useTheme';
 import {
-  getShuffleSeed, buildCarouselRows, matchesCategoryFilter, matchesStopFilter, matchesSearch,
-  sortPlaces, getAddedPlaceIds,
+  buildFeaturedPlaces, getAddedPlaceIds, getShuffleSeed, matchesFilters, sortPlaces,
 } from '@/src/domain/explore';
-import type { FilterId, SortKey } from '@/src/domain/explore';
-import { addPlaceToItinerary } from '@/src/lib/itineraryWrites';
 import { resolvePlacePhoto } from '@/src/domain/placeEnrichment';
-import { SearchBar } from '@/src/features/jernie/explore/SearchBar';
-import type { Icon } from 'phosphor-react-native';
-import { iconFor, PLACE_ICON } from '@/src/design/icons';
-import { FilterPillRow } from '@/src/features/jernie/explore/FilterPillRow';
-import { PlaceCarouselRow } from '@/src/features/jernie/explore/PlaceCarouselRow';
-import { PlaceList } from '@/src/features/jernie/explore/PlaceList';
-import { DetailSheet, useDetailSheet } from '@/src/features/jernie/sheets/detail';
+import { ExploreFeaturedRow } from '@/src/features/jernie/explore/ExploreFeaturedRow';
+import { ExploreFilterBar } from '@/src/features/jernie/explore/ExploreFilterBar';
+import { ExploreFilterSheet } from '@/src/features/jernie/explore/ExploreFilterSheet';
+import type { ExploreFilterSheetRef } from '@/src/features/jernie/explore/ExploreFilterSheet';
+import { ExploreGrid } from '@/src/features/jernie/explore/ExploreGrid';
 import { DayPickerSheet } from '@/src/features/jernie/sheets/DayPickerSheet';
 import type { DayPickerSheetRef } from '@/src/features/jernie/sheets/DayPickerSheet';
-import { Core, Spacing, Typography } from '@/src/design/tokens';
+import { DetailSheet, useDetailSheet } from '@/src/features/jernie/sheets/detail';
+import { addPlaceToItinerary } from '@/src/lib/itineraryWrites';
+import { PromptRow } from '@/src/ui';
 import type { Place } from '@/src/types';
-
-const CATEGORY_FILTER_ITEMS: { id: FilterId; label: string; Glyph?: Icon }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'restaurant', label: 'Eats',          Glyph: iconFor('food') },
-  { id: 'hike', label: 'Hikes',               Glyph: iconFor('hike') },
-  { id: 'bar', label: 'Bars',                 Glyph: iconFor('bars') },
-  { id: 'sights', label: 'Sights & More',     Glyph: iconFor('sight') },
-  { id: 'activity', label: 'Activities',      Glyph: iconFor('activity') },
-];
 
 export default function ExploreTab() {
   const { trip, stops, places, itinerary, enrichment, refetch } = useTripContext();
-  const [activeFilter, setActiveFilter] = useState<FilterId>('all');
-  const [activeStopId, setActiveStopId] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sort, setSort] = useState<SortKey>('rating');
+  const { filters, setStop, setCategory, setSearch, setMustOnly, setSort, reset } = useExploreFilters();
+  const [s, t] = useStyles();
+
   const detail = useDetailSheet();
   const dayPickerRef = useRef<DayPickerSheetRef>(null);
+  const filterSheetRef = useRef<ExploreFilterSheetRef>(null);
 
   const shuffleSeed = useMemo(() => getShuffleSeed(Date.now()), []);
   const addedPlaceIds = useMemo(() => getAddedPlaceIds(itinerary), [itinerary]);
-
-  const getStopColor = useCallback(
-    (place: Place) => stops.find(s => s.id === place.stopId)?.color ?? Core.action,
-    [stops],
-  );
 
   const getPhotoUrl = useCallback(
     (place: Place) => resolvePlacePhoto(place, enrichment),
     [enrichment],
   );
 
-  const filteredPlaces = useMemo(
-    () => places.filter(p =>
-      matchesCategoryFilter(p, activeFilter) &&
-      matchesStopFilter(p, activeStopId) &&
-      matchesSearch(p, searchQuery),
-    ),
-    [places, activeFilter, activeStopId, searchQuery],
+  const matching = useMemo(
+    () => places.filter(place => matchesFilters(place, filters)),
+    [places, filters],
   );
 
-  const sortedPlaces = useMemo(
-    () => sortPlaces(filteredPlaces, enrichment, sort),
-    [filteredPlaces, enrichment, sort],
+  const sorted = useMemo(
+    () => sortPlaces(matching, enrichment, filters.sort),
+    [matching, enrichment, filters.sort],
   );
 
-  const carouselRows = useMemo(
-    () => buildCarouselRows(places, shuffleSeed, activeFilter, activeStopId).filter(row => row.places.length >= 2),
-    [places, shuffleSeed, activeFilter, activeStopId],
+  const featured = useMemo(
+    () => buildFeaturedPlaces(places, filters, shuffleSeed),
+    [places, filters, shuffleSeed],
   );
 
-  const isSearching = searchQuery.trim().length > 0;
+  const stopCity = filters.stopId === 'all'
+    ? undefined
+    : stops.find(stop => stop.id === filters.stopId)?.city;
 
   const handlePlacePress = useCallback((place: Place) => {
     detail.openPlace(place, {
@@ -80,6 +72,8 @@ export default function ExploreTab() {
       // the stop had no days, which made the empty case invisible.
       onAdd: () => {
         detail.dismiss();
+        // The place's own stop, not the filter's — a place found under "All stops" belongs
+        // where it is, not where you happened to be browsing.
         dayPickerRef.current?.present({
           stopId: place.stopId,
           onPick: day => {
@@ -90,53 +84,66 @@ export default function ExploreTab() {
     });
   }, [detail, addedPlaceIds, trip.id, refetch]);
 
-  const stopFilterItems = useMemo(() => [
-    { id: 'all', label: 'All Stops' },
-    ...stops.map(s => ({ id: s.id, label: s.city, Glyph: PLACE_ICON, color: s.color })),
-  ], [stops]);
-
-  const insets = useSafeAreaInsets();
+  const handleApplySheet = useCallback(
+    (next: { search: string; mustOnly: boolean }) => {
+      setSearch(next.search);
+      setMustOnly(next.mustOnly);
+    },
+    [setSearch, setMustOnly],
+  );
 
   return (
-    <View style={styles.container}>
-      <Text style={[styles.title, { paddingTop: insets.top + Spacing.sm }]}>Explore</Text>
-      <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
-      <FilterPillRow items={CATEGORY_FILTER_ITEMS} activeId={activeFilter} onSelect={id => setActiveFilter(id as FilterId)} defaultColor={Core.action} />
-      {stops.length > 1 && (
-        <FilterPillRow items={stopFilterItems} activeId={activeStopId} onSelect={setActiveStopId} defaultColor={Core.action} />
-      )}
+    <View style={s.screen}>
+      <ExploreFilterBar
+        stops={stops}
+        filters={filters}
+        setStop={setStop}
+        setCategory={setCategory}
+        onOpenFilters={() => filterSheetRef.current?.present()}
+      />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {!isSearching && carouselRows.map(row => (
-          <PlaceCarouselRow
-            key={row.id}
-            row={row}
-            getStopColor={getStopColor}
+      <ExploreGrid
+        places={sorted}
+        sort={filters.sort}
+        onSortChange={setSort}
+        getPhotoUrl={getPhotoUrl}
+        addedPlaceIds={addedPlaceIds}
+        onPlacePress={handlePlacePress}
+        header={
+          <ExploreFeaturedRow
+            places={featured}
+            stopCity={stopCity}
             getPhotoUrl={getPhotoUrl}
             addedPlaceIds={addedPlaceIds}
-            onCardPress={handlePlacePress}
+            onPlacePress={handlePlacePress}
           />
-        ))}
+        }
+        // An empty state is an action, not a centred grey sentence. It names what is
+        // filtering the list away and offers the way out.
+        empty={
+          <PromptRow
+            testID="explore-empty"
+            title="No places match these filters"
+            sub="Widen the stop or the type, or clear them and start again"
+            action="Clear"
+            icon={<MagnifyingGlassIcon size={18} color={t.textMuted} weight="regular" />}
+            onPress={reset}
+          />
+        }
+      />
 
-        <PlaceList
-          places={sortedPlaces}
-          sort={sort}
-          onSortChange={setSort}
-          accentColor={Core.action}
-          getStopColor={getStopColor}
-          addedPlaceIds={addedPlaceIds}
-          onPlacePress={handlePlacePress}
-        />
-      </ScrollView>
-
+      <ExploreFilterSheet
+        ref={filterSheetRef}
+        search={filters.search}
+        mustOnly={filters.mustOnly}
+        onApply={handleApplySheet}
+      />
       <DetailSheet ref={detail.sheet} />
       <DayPickerSheet ref={dayPickerRef} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Core.surface },
-  title: { ...Typography.roles.display, color: Core.text, paddingHorizontal: Spacing.base, marginBottom: Spacing.sm },
-  scrollContent: { paddingBottom: Spacing.xxxl },
-});
+const useStyles = createThemedStyles(t => ({
+  screen: { flex: 1, backgroundColor: t.surface },
+}));
