@@ -51,7 +51,7 @@ const HIT_SLOP = { top: 5, bottom: 5, left: 5, right: 5 };
 export function ChipDropdown({ label, options, selectedId, onSelect, icon, testID }: ChipDropdownProps) {
   const [s, t] = useStyles();
   const insets = useSafeAreaInsets();
-  const { height: windowHeight } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const triggerRef = useRef<View>(null);
 
   const [frame, setFrame] = useState<AnchorFrame | null>(null);
@@ -92,10 +92,19 @@ export function ChipDropdown({ label, options, selectedId, onSelect, icon, testI
     handleClose();
   };
 
+  // Left-aligned to the trigger when it fits; shifted left just enough to stay inside the
+  // `Gutter` margin when it doesn't — never right-aligned, which would read as a different
+  // control snapping into place. Clamped against the resolved `CARD_MIN_WIDTH` rather than a
+  // post-layout measurement so there is no second, visible reposition after the card first
+  // appears (it opens from opacity 0 either way, but this also skips the extra render).
+  const cardLeft = frame
+    ? Math.max(Gutter, Math.min(frame.x, windowWidth - Gutter - CARD_MIN_WIDTH))
+    : undefined;
+
   const cardPosition = frame
     ? flip
-      ? { left: frame.x, bottom: windowHeight - frame.y + ANCHOR_GAP }
-      : { left: frame.x, top: frame.y + frame.height + ANCHOR_GAP }
+      ? { left: cardLeft, bottom: windowHeight - frame.y + ANCHOR_GAP }
+      : { left: cardLeft, top: frame.y + frame.height + ANCHOR_GAP }
     : undefined;
 
   return (
@@ -114,7 +123,12 @@ export function ChipDropdown({ label, options, selectedId, onSelect, icon, testI
         testID={testID}
         style={({ pressed }) => (pressed ? s.pressed : undefined)}
       >
-        <Chip label={label} icon={icon} variant="dropdown" />
+        {/* `Chip` renders its own accessible button (role + label), which would otherwise
+            double-announce this trigger. Hiding it here — rather than editing `Chip` — keeps
+            this `Pressable` the single screen-reader stop. */}
+        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <Chip label={label} icon={icon} variant="dropdown" />
+        </View>
       </Pressable>
 
       <Modal visible={open} transparent animationType="none" onRequestClose={handleClose} statusBarTranslucent>

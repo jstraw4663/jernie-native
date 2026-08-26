@@ -64,6 +64,35 @@ function menuItems(tree: renderer.ReactTestRenderer) {
   );
 }
 
+// A screen reader skips anything under `accessibilityElementsHidden` /
+// `importantForAccessibility="no-hide-descendants"`, but `findAll` has no notion of that — it
+// just walks the render tree. Walk the ancestor chain ourselves so the check reflects what a
+// screen reader would actually announce, not merely what's present in the tree.
+function isAccessibilityHidden(node: renderer.ReactTestInstance): boolean {
+  for (let current = node.parent; current; current = current.parent) {
+    if (current.props.accessibilityElementsHidden || current.props.importantForAccessibility === 'no-hide-descendants') {
+      return true;
+    }
+  }
+  return false;
+}
+
+// A single `Pressable` shows up as several nested nodes in the test tree (its own composite
+// instance plus the mocked host views underneath), all echoing the same accessibilityRole and
+// accessibilityLabel by prop pass-through. Collapse a contiguous "role: button" chain to its
+// outermost node so each real, screen-reader-visible button is counted exactly once.
+function accessibleButtons(tree: renderer.ReactTestRenderer, label: string) {
+  return tree.root.findAll(node => {
+    if (node.props.accessibilityRole !== 'button' || node.props.accessibilityLabel !== label) return false;
+    if (isAccessibilityHidden(node)) return false;
+    const parent = node.parent;
+    if (parent && parent.props.accessibilityRole === 'button' && parent.props.accessibilityLabel === label) {
+      return false;
+    }
+    return true;
+  });
+}
+
 test('closed by default', () => {
   const tree = renderDropdown();
   expect(menuItems(tree)).toHaveLength(0);
@@ -92,6 +121,11 @@ test('pressing an option fires onSelect with that id and closes', () => {
   expect(onSelect).toHaveBeenCalledTimes(1);
   expect(onSelect).toHaveBeenCalledWith('bar-harbor');
   expect(menuItems(tree)).toHaveLength(0);
+});
+
+test('the trigger is the only screen-reader stop for its label — Chip\'s inner button is hidden', () => {
+  const tree = renderDropdown();
+  expect(accessibleButtons(tree, 'Portland')).toHaveLength(1);
 });
 
 test('the selected option carries accessibilityState.selected', () => {
