@@ -12,6 +12,7 @@
 export { Badge, type BadgeProps, type BadgeTone } from './Badge';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';
 export { Chip, type ChipProps, type ChipVariant } from './Chip';
+export { ChipDropdown, type ChipDropdownProps, type DropdownOption } from './ChipDropdown';
 export { GapRow, type GapRowProps } from './GapRow';
 export { ImagePlaceholder, Photo, type PhotoProps } from './Photo';
 export { ItineraryRow, type ItineraryRowProps } from './ItineraryRow';
