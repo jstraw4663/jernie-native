@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { Platform, View, Text, StyleSheet } from 'react-native';
 import { Core } from '@/src/design/tokens';
 import { AdminUnlockProvider, useAdminUnlock } from '@/src/contexts/AdminUnlockContext';
+import { ExploreFilterProvider } from '@/src/contexts/ExploreFilterContext';
 
 // Minimal icon placeholders — replaced with SVG icons in Plan 4/5/6
 function TabIcon({ label, focused }: { label: string; focused: boolean }) {
@@ -19,7 +20,9 @@ export default function TabsLayout() {
   // listener share one unlock state — the taps land on the bar, which the screen doesn't own.
   return (
     <AdminUnlockProvider>
-      <TabsNavigator />
+      <ExploreFilterProvider>
+        <TabsNavigator />
+      </ExploreFilterProvider>
     </AdminUnlockProvider>
   );
 }
