@@ -3,7 +3,7 @@
 // adapted to this project's camelCase Place shape and coarser category enum.
 
 import { getPlaceEnrichment } from '@/src/domain/placeEnrichment';
-import type { Place, PlaceCategory, PlaceEnrichment, ItineraryDay, ItineraryItem } from '@/src/types';
+import type { Place, PlaceCategory, PlaceEnrichment, ItineraryDay, ItineraryItem, Stop } from '@/src/types';
 
 // ── Seeded shuffle ────────────────────────────────────────────────────────────
 // Deterministic PRNG so carousel row order is stable within a session but rotates
@@ -31,6 +31,31 @@ export function seededShuffle<T>(arr: T[], seed: number): T[] {
 /** 4-hour bucket, keyed off an explicit `now` (not Date.now() internally) for testability. */
 export function getShuffleSeed(now: number): number {
   return Math.floor(now / (4 * 3600 * 1000));
+}
+
+// ── Default stop selection ─────────────────────────────────────────────────────
+
+/**
+ * Returns the default stop ID for the Explore tab.
+ * 1. The stop whose span contains today
+ * 2. Otherwise the earliest stop that starts after today
+ * 3. Otherwise the last stop
+ * 4. null only when stops is empty
+ */
+export function getExploreDefaultStopId(stops: Stop[], now: Date): string | null {
+  if (stops.length === 0) return null;
+  const todayIso = now.toISOString().split('T')[0];
+
+  // 1. Check if today is inside a stop's span
+  const current = stops.find(s => todayIso >= s.dates.start && todayIso < s.dates.end);
+  if (current) return current.id;
+
+  // 2. Find the earliest stop that starts after today
+  const next = stops.find(s => s.dates.start > todayIso);
+  if (next) return next.id;
+
+  // 3. Return the last stop
+  return stops[stops.length - 1].id;
 }
 
 // ── Category filter ───────────────────────────────────────────────────────────
@@ -78,12 +103,43 @@ export function matchesSearch(place: Place, query: string): boolean {
   );
 }
 
+// ── Filter model ───────────────────────────────────────────────────────────────
+
+export interface ExploreFilters {
+  stopId: string | 'all';
+  category: FilterId;
+  search: string;
+  mustOnly: boolean;
+  sort: SortKey;
+}
+
+export function matchesMustFilter(place: Place, mustOnly: boolean): boolean {
+  if (!mustOnly) return true;
+  return place.must;
+}
+
+export function matchesFilters(place: Place, f: ExploreFilters): boolean {
+  return (
+    matchesStopFilter(place, f.stopId) &&
+    matchesCategoryFilter(place, f.category) &&
+    matchesSearch(place, f.search) &&
+    matchesMustFilter(place, f.mustOnly)
+  );
+}
+
+export function sheetFilterCount(f: ExploreFilters): number {
+  let count = 0;
+  if (f.search.trim().length > 0) count += 1;
+  if (f.mustOnly) count += 1;
+  return count;
+}
+
 // ── Sort ───────────────────────────────────────────────────────────────────────
 
 export type SortKey = 'rating' | 'price-asc' | 'price-desc' | 'name';
 
 export const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: 'rating',     label: 'Top Rated' },
+  { value: 'rating',     label: 'Top rated' },
   { value: 'price-asc',  label: 'Price, low first' },
   { value: 'price-desc', label: 'Price, high first' },
   { value: 'name',       label: 'A – Z' },
@@ -111,48 +167,22 @@ export function sortPlaces(
   });
 }
 
-// ── Carousel rows ──────────────────────────────────────────────────────────────
+// ── Featured places ───────────────────────────────────────────────────────────
 
-export interface CarouselRowDef {
-  id: string;
-  label: string;
-  filter: (p: Place) => boolean;
-}
+export const FEATURED_LIMIT = 12;
 
-// "Must Do" is always pinned first; the rest are shuffled by the 4-hour seed.
-const PINNED_ROW: CarouselRowDef = { id: 'must-do', label: 'Must Do', filter: p => p.must };
-
-const SHUFFLEABLE_ROWS: CarouselRowDef[] = [
-  { id: 'eats',       label: 'Restaurants',  filter: p => p.category === 'restaurant' },
-  { id: 'hikes',      label: 'Hikes',        filter: p => p.category === 'hike' },
-  { id: 'water',      label: 'On the Water', filter: p => p.subcategory === 'on-the-water' },
-  { id: 'bars',       label: 'Bars',         filter: p => p.category === 'bar' },
-  { id: 'sights',     label: 'Sights & More', filter: p => p.category === 'sight' || p.category === 'other' },
-];
-
-export interface CarouselRow {
-  id: string;
-  label: string;
-  places: Place[];
-}
-
-/** Builds every carousel row's (filtered + shuffled) place list. Hiding rows with <2 places is left to the caller. */
-export function buildCarouselRows(
+/**
+ * Builds a featured places list: must-do places passing matchesFilters,
+ * seeded-shuffled, capped at FEATURED_LIMIT.
+ */
+export function buildFeaturedPlaces(
   places: Place[],
+  filters: ExploreFilters,
   shuffleSeed: number,
-  activeFilter: FilterId,
-  activeStopId: string | 'all',
-): CarouselRow[] {
-  const shuffledRows = seededShuffle(SHUFFLEABLE_ROWS, shuffleSeed);
-  const allRows = [PINNED_ROW, ...shuffledRows];
-  return allRows.map((row, i) => ({
-    id: row.id,
-    label: row.label,
-    places: seededShuffle(
-      places.filter(p => row.filter(p) && matchesCategoryFilter(p, activeFilter) && matchesStopFilter(p, activeStopId)),
-      shuffleSeed + i + 1,
-    ),
-  }));
+): Place[] {
+  const filtered = places.filter(p => p.must && matchesFilters(p, filters));
+  const shuffled = seededShuffle(filtered, shuffleSeed);
+  return shuffled.slice(0, FEATURED_LIMIT);
 }
 
 // ── Add to itinerary ────────────────────────────────────────────────────────────

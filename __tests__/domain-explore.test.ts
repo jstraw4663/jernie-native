@@ -1,22 +1,35 @@
 import {
   seededShuffle,
   getShuffleSeed,
+  getExploreDefaultStopId,
   matchesCategoryFilter,
   matchesStopFilter,
   matchesSearch,
+  matchesMustFilter,
+  matchesFilters,
+  sheetFilterCount,
   sortPlaces,
-  buildCarouselRows,
+  buildFeaturedPlaces,
   FILTER_PILLS,
+  FEATURED_LIMIT,
   isPlaceAdded,
   getAddedPlaceIds,
   getDefaultDayForStop,
   buildAddToItineraryItem,
 } from '@/src/domain/explore';
-import type { Place, PlaceEnrichment, ItineraryDay, ItineraryItem } from '@/src/types';
+import type { Place, PlaceEnrichment, ItineraryDay, ItineraryItem, Stop } from '@/src/types';
 
 function place(overrides: Partial<Place> & Pick<Place, 'id' | 'name' | 'category'>): Place {
   return {
     tripId: 'trip-1', stopId: 'stop-1', must: false, source: 'curator', addedBy: 'uid-1',
+    ...overrides,
+  };
+}
+
+function stop(overrides: Partial<Stop> & Pick<Stop, 'id' | 'dates'>): Stop {
+  return {
+    tripId: 'trip-1', city: 'Test', region: 'Test', emoji: '📍', lat: 0, lon: 0,
+    order: 0,
     ...overrides,
   };
 }
@@ -56,6 +69,47 @@ describe('getShuffleSeed', () => {
 
   test('crossing a 4-hour boundary changes the seed', () => {
     expect(getShuffleSeed(0)).not.toBe(getShuffleSeed(FOUR_HOURS));
+  });
+});
+
+describe('getExploreDefaultStopId', () => {
+  test('returns null when stops is empty', () => {
+    expect(getExploreDefaultStopId([], new Date('2026-08-25'))).toBeNull();
+  });
+
+  test('returns the stop containing today', () => {
+    const stops = [
+      stop({ id: 'stop-1', dates: { start: '2026-08-20', end: '2026-08-23' } }),
+      stop({ id: 'stop-2', dates: { start: '2026-08-24', end: '2026-08-27' } }),
+      stop({ id: 'stop-3', dates: { start: '2026-08-28', end: '2026-08-31' } }),
+    ];
+    expect(getExploreDefaultStopId(stops, new Date('2026-08-25'))).toBe('stop-2');
+  });
+
+  test('returns the earliest stop that starts after today (next stop, gap between stops)', () => {
+    const stops = [
+      stop({ id: 'stop-1', dates: { start: '2026-08-20', end: '2026-08-23' } }),
+      stop({ id: 'stop-2', dates: { start: '2026-08-25', end: '2026-08-27' } }),
+      stop({ id: 'stop-3', dates: { start: '2026-08-29', end: '2026-08-31' } }),
+    ];
+    // Today is 2026-08-24 (in the gap between stop-1 and stop-2)
+    expect(getExploreDefaultStopId(stops, new Date('2026-08-24'))).toBe('stop-2');
+  });
+
+  test('returns the first stop when today is before the trip', () => {
+    const stops = [
+      stop({ id: 'stop-1', dates: { start: '2026-08-25', end: '2026-08-27' } }),
+      stop({ id: 'stop-2', dates: { start: '2026-08-28', end: '2026-08-31' } }),
+    ];
+    expect(getExploreDefaultStopId(stops, new Date('2026-08-20'))).toBe('stop-1');
+  });
+
+  test('returns the last stop when today is after the trip', () => {
+    const stops = [
+      stop({ id: 'stop-1', dates: { start: '2026-08-20', end: '2026-08-23' } }),
+      stop({ id: 'stop-2', dates: { start: '2026-08-24', end: '2026-08-27' } }),
+    ];
+    expect(getExploreDefaultStopId(stops, new Date('2026-08-28'))).toBe('stop-2');
   });
 });
 
@@ -117,6 +171,82 @@ describe('matchesSearch', () => {
   });
 });
 
+describe('matchesMustFilter', () => {
+  test('returns true for all places when mustOnly is false', () => {
+    const p = place({ id: 'p1', name: 'X', category: 'restaurant', must: false });
+    expect(matchesMustFilter(p, false)).toBe(true);
+  });
+
+  test('returns true only for must places when mustOnly is true', () => {
+    const mustPlace = place({ id: 'p1', name: 'X', category: 'restaurant', must: true });
+    const nonMustPlace = place({ id: 'p2', name: 'Y', category: 'restaurant', must: false });
+    expect(matchesMustFilter(mustPlace, true)).toBe(true);
+    expect(matchesMustFilter(nonMustPlace, true)).toBe(false);
+  });
+});
+
+describe('matchesFilters', () => {
+  const p1 = place({ id: 'p1', name: 'Restaurant X', category: 'restaurant', stopId: 'stop-1', must: true });
+  const p2 = place({ id: 'p2', name: 'Hike Y', category: 'hike', stopId: 'stop-2', must: false });
+
+  test('composites all four filters', () => {
+    const filters = { stopId: 'all', category: 'all', search: '', mustOnly: false, sort: 'rating' as const };
+    expect(matchesFilters(p1, filters)).toBe(true);
+    expect(matchesFilters(p2, filters)).toBe(true);
+  });
+
+  test('respects stopId filter', () => {
+    const filters = { stopId: 'stop-1', category: 'all', search: '', mustOnly: false, sort: 'rating' as const };
+    expect(matchesFilters(p1, filters)).toBe(true);
+    expect(matchesFilters(p2, filters)).toBe(false);
+  });
+
+  test('respects category filter', () => {
+    const filters = { stopId: 'all', category: 'restaurant', search: '', mustOnly: false, sort: 'rating' as const };
+    expect(matchesFilters(p1, filters)).toBe(true);
+    expect(matchesFilters(p2, filters)).toBe(false);
+  });
+
+  test('respects search filter', () => {
+    const filters = { stopId: 'all', category: 'all', search: 'restaurant', mustOnly: false, sort: 'rating' as const };
+    expect(matchesFilters(p1, filters)).toBe(true);
+    expect(matchesFilters(p2, filters)).toBe(false);
+  });
+
+  test('respects mustOnly filter', () => {
+    const filters = { stopId: 'all', category: 'all', search: '', mustOnly: true, sort: 'rating' as const };
+    expect(matchesFilters(p1, filters)).toBe(true);
+    expect(matchesFilters(p2, filters)).toBe(false);
+  });
+});
+
+describe('sheetFilterCount', () => {
+  test('returns 0 when search is empty and mustOnly is false', () => {
+    const filters = { stopId: 'all', category: 'all', search: '', mustOnly: false, sort: 'rating' as const };
+    expect(sheetFilterCount(filters)).toBe(0);
+  });
+
+  test('returns 1 when search is non-empty', () => {
+    const filters = { stopId: 'all', category: 'all', search: 'restaurant', mustOnly: false, sort: 'rating' as const };
+    expect(sheetFilterCount(filters)).toBe(1);
+  });
+
+  test('returns 1 when mustOnly is true', () => {
+    const filters = { stopId: 'all', category: 'all', search: '', mustOnly: true, sort: 'rating' as const };
+    expect(sheetFilterCount(filters)).toBe(1);
+  });
+
+  test('returns 2 when both search and mustOnly are active', () => {
+    const filters = { stopId: 'all', category: 'all', search: 'restaurant', mustOnly: true, sort: 'rating' as const };
+    expect(sheetFilterCount(filters)).toBe(2);
+  });
+
+  test('ignores stopId, category, and sort in the count', () => {
+    const filters = { stopId: 'stop-1', category: 'restaurant', search: '', mustOnly: false, sort: 'name' as const };
+    expect(sheetFilterCount(filters)).toBe(0);
+  });
+});
+
 describe('sortPlaces', () => {
   const a = place({ id: 'a', name: 'Zebra', category: 'restaurant', rating: 4.2, price: '$$' });
   const b = place({ id: 'b', name: 'Apple', category: 'restaurant', rating: 4.8, price: '$$$$' });
@@ -155,52 +285,54 @@ describe('sortPlaces', () => {
   });
 });
 
-describe('buildCarouselRows', () => {
+describe('buildFeaturedPlaces', () => {
   const places: Place[] = [
-    place({ id: 'p1', name: 'A', category: 'restaurant', must: true }),
-    place({ id: 'p2', name: 'B', category: 'restaurant' }),
-    place({ id: 'p3', name: 'C', category: 'hike' }),
-    place({ id: 'p4', name: 'D', category: 'hike' }),
-    place({ id: 'p5', name: 'E', category: 'bar' }),
-    place({ id: 'p6', name: 'F', category: 'sight' }),
-    place({ id: 'p7', name: 'G', category: 'other' }),
-    place({ id: 'p8', name: 'H', category: 'restaurant', stopId: 'stop-2' }),
+    place({ id: 'p1', name: 'Must Restaurant A', category: 'restaurant', stopId: 'stop-1', must: true }),
+    place({ id: 'p2', name: 'Non-must Restaurant B', category: 'restaurant', stopId: 'stop-1', must: false }),
+    place({ id: 'p3', name: 'Must Hike C', category: 'hike', stopId: 'stop-1', must: true }),
+    place({ id: 'p4', name: 'Must Sight D', category: 'sight', stopId: 'stop-2', must: true }),
+    place({ id: 'p5', name: 'Must Activity E', category: 'activity', stopId: 'stop-1', must: true }),
   ];
 
-  test('Must Do is always the first row', () => {
-    const rows = buildCarouselRows(places, 1, 'all', 'all');
-    expect(rows[0].id).toBe('must-do');
-    expect(rows[0].places.map(p => p.id)).toEqual(['p1']);
+  test('returns only must places', () => {
+    const filters = { stopId: 'all', category: 'all', search: '', mustOnly: false, sort: 'rating' as const };
+    const featured = buildFeaturedPlaces(places, filters, 1);
+    expect(featured.every(p => p.must)).toBe(true);
   });
 
-  test('Sights & More folds sight and other together', () => {
-    const rows = buildCarouselRows(places, 1, 'all', 'all');
-    const sightsRow = rows.find(r => r.id === 'sights')!;
-    expect(sightsRow.places.map(p => p.id).sort()).toEqual(['p6', 'p7']);
+  test('respects filters', () => {
+    const filters = { stopId: 'stop-1', category: 'all', search: '', mustOnly: false, sort: 'rating' as const };
+    const featured = buildFeaturedPlaces(places, filters, 1);
+    expect(featured.every(p => p.stopId === 'stop-1')).toBe(true);
   });
 
-  test('Bars row contains only the bar category', () => {
-    const rows = buildCarouselRows(places, 1, 'all', 'all');
-    const barsRow = rows.find(r => r.id === 'bars')!;
-    expect(barsRow.places.map(p => p.id)).toEqual(['p5']);
+  test('applies seeded shuffle', () => {
+    const filters = { stopId: 'all', category: 'all', search: '', mustOnly: false, sort: 'rating' as const };
+    const featured1 = buildFeaturedPlaces(places, filters, 42);
+    const featured2 = buildFeaturedPlaces(places, filters, 42);
+    expect(featured1).toEqual(featured2);
   });
 
-  test('respects the active category filter', () => {
-    const rows = buildCarouselRows(places, 1, 'hike', 'all');
-    const eatsRow = rows.find(r => r.id === 'eats')!;
-    expect(eatsRow.places).toEqual([]);
+  test('caps at FEATURED_LIMIT', () => {
+    const manyMust = Array.from({ length: 20 }, (_, i) =>
+      place({ id: `p${i}`, name: `Must ${i}`, category: 'restaurant', stopId: 'stop-1', must: true }),
+    );
+    const filters = { stopId: 'all', category: 'all', search: '', mustOnly: false, sort: 'rating' as const };
+    const featured = buildFeaturedPlaces(manyMust, filters, 1);
+    expect(featured).toHaveLength(FEATURED_LIMIT);
   });
 
-  test('respects the active stop filter', () => {
-    const rows = buildCarouselRows(places, 1, 'all', 'stop-2');
-    const eatsRow = rows.find(r => r.id === 'eats')!;
-    expect(eatsRow.places.map(p => p.id)).toEqual(['p8']);
+  test('includes must places that match the category filter', () => {
+    const filters = { stopId: 'all', category: 'restaurant', search: '', mustOnly: false, sort: 'rating' as const };
+    const featured = buildFeaturedPlaces(places, filters, 1);
+    expect(featured.some(p => p.id === 'p1')).toBe(true);
+    expect(featured.some(p => p.id === 'p3')).toBe(false); // hike filtered out
   });
 
-  test('same seed produces the same row order and per-row shuffle', () => {
-    const rowsA = buildCarouselRows(places, 99, 'all', 'all');
-    const rowsB = buildCarouselRows(places, 99, 'all', 'all');
-    expect(rowsA).toEqual(rowsB);
+  test('returns empty when no must places match the filters', () => {
+    const filters = { stopId: 'stop-2', category: 'restaurant', search: '', mustOnly: false, sort: 'rating' as const };
+    const featured = buildFeaturedPlaces(places, filters, 1);
+    expect(featured).toEqual([]);
   });
 });
 
