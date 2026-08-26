@@ -1,78 +1,68 @@
 # Agent handoff
 
 Updated: 2026-08-26
-Agent: Codex, incorporating Claude's 2026-08-25 review and the drag/drop transaction fix
-Branch: `feat/design-system`
-HEAD before this documentation change: `a900714`
+Agent: Claude, executing Session 7 (Explore) subagent-driven
+Branch: `feat/session-7-explore`, branched from `feat/design-system` @ `d5b65af`
+HEAD: `dc6302c`
 
 ## Current objective
 
-- Finish the itinerary-timeline Task 7 device pass.
-- Active plan: `docs/superpowers/plans/2026-08-24-itinerary-timeline.md`.
-- Design contract: `docs/superpowers/specs/2026-08-24-itinerary-timeline-design.md`.
-- Do not begin Session 7 Explore until Jeremy accepts this device gate.
+- Session 7 (Explore) is code-complete and its automated gate is green. **Next: Jeremy's
+  device pass**, then merge `feat/session-7-explore` into `feat/design-system`.
+- Active plan: `docs/superpowers/plans/2026-08-26-explore.md` — its "What to test on device,
+  and how" section is the device script.
+- Still open from the previous sprint: the itinerary-timeline Task 7 device pass
+  (`docs/superpowers/plans/2026-08-24-itinerary-timeline.md`), listed below.
 
 ## Verified state
 
-- Tasks 1–6 are implemented; Task 7's design/code review and automated gate are complete.
-- The Schoodic Peninsula move failure was traced against the live development database. The
-  record is present at `trips/maine-2026/itinerary/barharbor/day-barharbor-4/items` with the
-  expected `item-barharbor-4-3` ID, so the prior “changed on another device” copy was false.
-- RTDB transactions may invoke their updater with an initial uncached `null`. The old writer
-  aborted that callback and classified every `committed: false` result as a remote edit. The
-  shared existing-item transaction helper now keeps the day synchronized for the write window,
-  rechecks existence, safely retries one cache-only abort, and never recreates a deleted day.
-  Delayed item deletion uses the same hardened helper.
-- Move failures are typed and the decision sheet now distinguishes a genuinely missing item,
-  permission loss, connectivity, and a non-committing transaction instead of blaming another
-  device.
-- Task 6.1 improves drag clarity without changing reorder semantics: bucket headings use the
-  full design-system type roles and stronger neutral ink; the live destination gets the 9%
-  selected tint and accent tick; empty bands expand while dragging; and the insertion boundary
-  names `Before …`, `After …`, or `In …`. The lifted row's time column now follows the live
-  bucket (`Morning`, `Afternoon`, etc.; `No time` for Unscheduled).
-- Drag activation now requires a 500 ms stationary hold (up from 280 ms). Gesture Handler's
-  existing 10-point pre-activation movement allowance cancels the pending drag when the user
-  starts scrolling, while the existing haptic still confirms a successful lift.
-- `ef8e799` includes the shared `DecisionSheet`/danger button, inverse-ink Undo with correct
-  retry/dismiss and stacked-failure attribution, transactional removal, tokenized reorder,
-  custom-component registrations, `DayGroup` deletion, and Jest teardown/snapshot fixes.
-- The design canvas cleanup landed in `a900714`.
-- Latest full gate: 89 suites, 1,036 tests, exit 0; TypeScript clean; cold iOS export passes.
-- The sprint added no dependencies, Firebase schema changes, or security-rule changes.
-- Maps-app discovery needs a fresh development build because iOS application-query schemes and
-  Android package queries are native configuration. A stale binary can appear to support only
-  Apple Maps.
+- Session 7 gate is green on both halves: filter state lives in `ExploreFilterContext`,
+  mounted above `<Tabs>` so Session 8's Map consumes it unchanged; and
+  `getExploreDefaultStopId` resolves current → next → last, so the stop never defaults to
+  "All stops" while the trip has stops. `'all'` remains a legal explicit choice.
+- The screen now matches the canvas: one filter bar (stop bubble, type bubble, sliders button
+  with a count badge), exactly one carousel, a two-column FlashList grid. Search moved into
+  the filter sheet, where the Apply commit point is.
+- New: `src/ui/ChipDropdown.tsx` (approved as custom and registered),
+  `src/contexts/ExploreFilterContext.tsx`, and four components under
+  `src/features/jernie/explore/`. Retired: `FilterPillRow`, `SearchBar`, `PlaceCarouselCard`,
+  `PlaceCarouselRow`, `PlaceList`, `PlaceListCard` and their four suites.
+- **Two things the canvas asks for that the data cannot support**, both decided with Jeremy:
+  no save/bookmark circle (no saved-places schema, and redesign work may not add one), and no
+  distance sort or "open now" line (6 of 54 places carry coordinates, `hours` is a free-form
+  `string[]`, `expo-location` is not installed). The carousel states its real basis instead.
+- Before this branch: `d5b65af` and `f2e2e98` commit Codex's 2026-08-26 work. Its handoff
+  claimed the gate was green; it was not — `__tests__/app/jernie.test.tsx` built
+  `TimelineDropRequest` without the `destination` field the handler reads, and `tsconfig`
+  excludes `__tests__`, so only jest could see it. Fixed in `f2e2e98`.
+- Verified 2026-08-26 on `dc6302c`: `npx tsc --noEmit` exit 0; `npm test` **91 suites,
+  1,079 tests, exit 0**; `npx expo export --platform ios --output-dir /tmp/verify-s7` exit 0.
+- No dependency, schema, security-rule or native-config change this session.
 
-## Remaining device work
+## Remaining work
 
-1. Add/verify accessible alternatives for swipe-only Remove and long-press-only reorder under
-   VoiceOver.
-2. Check font scaling, especially the timeline's 7.5–9px labels.
-3. Check reduced motion, long-trip performance, and both themes.
-4. Inspect `StopMorph`'s invisible full-height return target and decide whether to retain or cut
-   it.
-5. Run the full release gate again after any resulting code changes.
-6. On device, review the Task 6.1 destination treatment while moving Schoodic Peninsula both
-   within its bucket and across Morning/Afternoon/Evening. Confirm the insertion label remains
-   readable under the lifted card and the time column changes at each bucket boundary.
+1. **Session 7 device pass** — the plan's device script. Both themes, VoiceOver on the
+   bubbles and the sort control, largest Dynamic Type on the grid's two columns.
+2. **Itinerary-timeline Task 7 device pass**, still open: accessible alternatives for
+   swipe-only Remove and long-press-only reorder; font scaling at the timeline's 7.5–9px
+   labels; reduced motion; long-trip performance; `StopMorph`'s invisible full-height return
+   target; and the Task 6.1 drag-destination treatment.
+3. **Maps-app chooser** still needs `eas build --profile development --platform ios` before
+   it can be tested — application-query schemes are native configuration.
+4. Two parked items in `.superpowers/sdd/2026-08-26-explore/progress.md`: `ChipDropdown`'s
+   clamp assumes a 180px card, and the tab bar is still on the static `Core` palette with
+   letter placeholders (Session 8 rebuilds it as five tabs).
 
-## Working tree and verification
+## Watch-outs
 
-- `.vscode/` is untracked and intentionally untouched; it is a personal editor preference.
-- Drag/drop fix touches `src/lib/itineraryWrites.ts`, the Jernie tab's move error copy, the RTDB
-  manual mock, and `__tests__/itineraryWrites.test.ts`; no dependency, native-config, schema,
-  rules, or live-data mutation was made.
-- Drag-clarity touches `TimelineDay.tsx`, its focused row test, and the existing Timeline reorder
-  design-register entry. It adds no dependency, schema, rule, or native-config change.
-- Intentional drag activation adds a timing constant and regression assertion in those same
-  timeline files; focused timeline suites pass 12/12 and TypeScript remains clean.
-- Verification on 2026-08-26: focused writer suite 26/26; focused timeline suites 11/11;
-  full `npm test` 89 suites / 1,036 tests; `npx tsc --noEmit`; cold SDK 56 iOS export
-  to `/tmp/jernie-drag-clarity-verify-20260826`; `git diff --check`.
+- `tsconfig.json` excludes `__tests__`, so `tsc` cannot catch a test built against a changed
+  interface. A green `tsc` is not evidence the suite compiles — run `npm test`.
+- A suite printing all-pass is not green unless the process exits 0. Three separate
+  after-teardown leaks caused a false exit 1 on this repo before; the newest was FlashList's
+  post-mount layout update, flushed inside `act()` in the Explore suites.
+- `.vscode/` is untracked and intentionally untouched.
 
 ## Next milestone
 
-- After Task 7 acceptance: Session 7 Explore.
-- Then Session 8 Map (new fifth tab/route), Session 9 Profile passport, Session 10 Onboarding,
-  Session 11 Images, and Session 12 Skeletons.
+- After the Session 7 device pass: Session 8 Map — a **new fifth route**, consuming
+  `ExploreFilterContext`. Then 9 Profile passport, 10 Onboarding, 11 Images, 12 Skeletons.
