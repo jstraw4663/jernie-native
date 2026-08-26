@@ -102,6 +102,8 @@ export const ExploreFilterSheet = React.forwardRef<ExploreFilterSheetRef, Explor
         backgroundStyle={s.background}
       >
         <BottomSheetView style={s.content}>
+          <Text style={s.title} accessibilityRole="header">Filters</Text>
+
           <BottomSheetTextInput
             testID="explore-filter-search"
             style={s.input}
@@ -162,6 +164,10 @@ const useStyles = createThemedStyles(t => ({
     paddingBottom: Spacing.xxl,
     gap: Spacing.base,
   },
+  // Fraunces 24, the same title role every other sheet in this app uses
+  // (DecisionSheet, MapAppSheet). No icon tile above it: this is a filter sheet,
+  // not a decision, so it does not carry the glyph treatment.
+  title: { ...Typography.roles.title, color: t.text },
   input: {
     ...Typography.roles.body,
     color: t.text,
