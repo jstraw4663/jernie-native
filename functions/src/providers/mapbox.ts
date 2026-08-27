@@ -1,12 +1,19 @@
 // Adapter for Mapbox Search Box.
 //
-// ENDPOINT CONFIDENCE. The forward-search path, the response envelope, `feature_type:
-// "place"`, and BOTH coordinate locations were confirmed against a real response on
-// 2026-08-26 (see the verified fixture in __tests__/providers/mapbox.test.ts). Two things
-// remain unobserved and should be checked when first exercised:
-//   - the `poi` branch: no POI result has been seen directly, so ACTIVITY_FEATURE_TYPES
-//     is still documentation-derived.
-//   - the Directions response below, which has not been called live at all.
+// ENDPOINT CONFIDENCE — both paths now confirmed against real responses, 2026-08-27.
+//
+//   - Search: `feature_type: "place"` for a town, `"poi"` for Camden Hills State Park
+//     (poi_category ["outdoors","park"]), `"region"` for Portland Parish, Jamaica. Both
+//     coordinate locations and `place_formatted` are as the fixture in
+//     __tests__/providers/mapbox.test.ts has them.
+//   - Directions: Portland ME → Bar Harbor returned `code: "Ok"`, duration 10857.9s and
+//     distance 280621m, which this adapter reduces to 181 minutes and 174.4 miles. The
+//     response carried NO `geometry` key, confirming `overview=false` does what the cache
+//     design depends on: we never receive Mapbox's route data, only our own two integers.
+//
+// The one live-only lesson worth keeping: search ranks the whole catalogue together, so a
+// town competes with airports and shops of the same name. That is why the caller asks for
+// `types` rather than filtering afterwards — see searchMapboxPlaces below.
 //
 // WHY SEARCH BOX AND NOT GEOCODING v6: the design's stop sheet needs both "Camden, Maine"
 // (a town) and "Camden Hills State Park" (a POI) in one result list — that is the whole
