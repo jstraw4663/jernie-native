@@ -5,7 +5,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, {
-  runOnJS, useAnimatedStyle, useSharedValue, withSpring,
+  LinearTransition, runOnJS, useAnimatedStyle, useSharedValue, withSpring,
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { ArrowDownIcon } from 'phosphor-react-native/src/icons/ArrowDown';
@@ -36,8 +36,12 @@ interface TimelineDayProps {
   dragCoordinator?: TimelineDragCoordinator;
   dragPreview?: TimelineDragPreview | null;
   onDragPreviewChange?: (preview: TimelineDragPreview | null) => void;
+  dragOverlayTop?: SharedValue<number>;
+  dragIndicatorTop?: SharedValue<number>;
+  onDragOverlayChange?: (overlay: TimelineDragOverlayState | null) => void;
   onDragPositionChange?: (absoluteY: number) => void;
   dragEnabled?: boolean;
+  settleLayout?: boolean;
   onEntryDrop?: (request: TimelineDropRequest) => void;
   onAdd?: (dateIso: string, band: TimelineBandKey) => void;
   onLayout?: (dateIso: string, event: LayoutChangeEvent) => void;
@@ -68,6 +72,13 @@ export interface TimelineDragPreview {
   sourceDateIso: string;
   destinationDateIso: string;
   destinationBandKey: TimelineBandKey | 'unscheduled';
+}
+
+export interface TimelineDragOverlayState {
+  entry: TimelineEntry;
+  height: number;
+  previewTimeLabel: string;
+  placementLabel: string;
 }
 
 export interface TimelineDropRequest {
@@ -127,8 +138,6 @@ function dragDayLabel(day: TimelineDay): string {
 interface ActiveDrag {
   entryId: string;
   sourceDateIso: string;
-  placeholderTop: number;
-  placeholderHeight: number;
   destinationBandKey: TimelineBandKey | 'unscheduled';
   destinationBandLabel: string;
   previewTimeLabel: string;
@@ -138,21 +147,22 @@ interface ActiveDrag {
 
 export const TIMELINE_DAY_BAR_HEIGHT = 34;
 export const TIMELINE_DRAG_ACTIVATION_MS = 500;
+const TIMELINE_SETTLE_TRANSITION = LinearTransition.springify()
+  .damping(Animation.springs.settle.damping)
+  .stiffness(Animation.springs.settle.stiffness);
 
 /** One date in the continuous trip timeline, including its push-away sticky day bar. */
 export const TimelineDayView = memo(function TimelineDayView({
   day, stopColors, onEntryPress, onEntryNavigate, onEntryRemove, onAdd, onLayout, onStopBoundaryLayout,
   dragPlacements = {}, dayPlacements = [], dragCoordinator, dragPreview, onDragPreviewChange,
-  onDragPositionChange,
-  dragEnabled = true, onEntryDrop,
+  dragOverlayTop, dragIndicatorTop, onDragOverlayChange, onDragPositionChange,
+  dragEnabled = true, settleLayout = false, onEntryDrop,
   contentScrollY, contentOriginY, stickyTop,
 }: TimelineDayProps) {
   const [s, t] = useStyles();
   const cities = day.segments.map(segment => segment.city).join(' → ') || 'Travel';
   const dayY = useSharedValue(0);
   const dayHeight = useSharedValue(0);
-  const bodyRef = useRef<View>(null);
-  const bodyWindowYRef = useRef(0);
   const rowRefs = useRef<Record<string, View | null>>({});
   const rowMeta = useRef<Record<string, Pick<MeasuredRow, 'entry' | 'placement'>>>({});
   const zoneRefs = useRef<Record<string, View | null>>({});
@@ -180,10 +190,6 @@ export const TimelineDayView = memo(function TimelineDayView({
     dayHeight.value = height;
     onLayout?.(day.dateIso, event);
   };
-
-  const measureBody = useCallback(() => {
-    bodyRef.current?.measureInWindow((_x, y) => { bodyWindowYRef.current = y; });
-  }, []);
 
   const measureRow = useCallback((entryId: string) => {
     const node = rowRefs.current[entryId];
@@ -249,10 +255,9 @@ export const TimelineDayView = memo(function TimelineDayView({
   }, [coordinator, day.bands, day.dateIso, day.unscheduled, dragPlacements]);
 
   const refreshMeasurements = useCallback(() => {
-    measureBody();
     Object.keys(rowRefs.current).forEach(measureRow);
     Object.keys(zoneRefs.current).forEach(measureZone);
-  }, [measureBody, measureRow, measureZone]);
+  }, [measureRow, measureZone]);
 
   useEffect(() => {
     coordinator.remeasure[day.dateIso] = refreshMeasurements;
@@ -286,23 +291,32 @@ export const TimelineDayView = memo(function TimelineDayView({
     const next: ActiveDrag = {
       entryId: entry.id,
       sourceDateIso: entry.dateIso,
-      placeholderTop: (source?.y ?? bodyWindowYRef.current) - bodyWindowYRef.current,
-      placeholderHeight: source?.height ?? 50,
       destinationBandKey,
       destinationBandLabel,
       previewTimeLabel: destinationBandKey === 'unscheduled' ? 'No time' : destinationBandLabel,
       placementLabel: 'Current position',
       request,
     };
+    if (dragOverlayTop) dragOverlayTop.value = source?.y ?? 0;
+    if (dragIndicatorTop) dragIndicatorTop.value = source?.y ?? 0;
     activeDragRef.current = next;
     setActiveDrag(next);
+    onDragOverlayChange?.({
+      entry,
+      height: source?.height ?? 50,
+      previewTimeLabel: next.previewTimeLabel,
+      placementLabel: next.placementLabel,
+    });
     onDragPreviewChange?.({
       entryId: entry.id,
       sourceDateIso: entry.dateIso,
       destinationDateIso: entry.dateIso,
       destinationBandKey,
     });
-  }, [coordinator, day.bands, onDragPreviewChange]);
+  }, [
+    coordinator, day.bands, dragIndicatorTop, dragOverlayTop,
+    onDragOverlayChange, onDragPreviewChange,
+  ]);
 
   const updateDrag = useCallback((absoluteY: number) => {
     onDragPositionChange?.(absoluteY);
@@ -376,10 +390,9 @@ export const TimelineDayView = memo(function TimelineDayView({
     const placeholderY = target
       ? target.y + (afterTarget ? target.height : 0)
       : zone.y + Math.min(34, zone.height);
+    if (dragIndicatorTop) dragIndicatorTop.value = placeholderY;
     const next: ActiveDrag = {
       ...current,
-      placeholderTop: placeholderY - bodyWindowYRef.current,
-      placeholderHeight: current.placeholderHeight,
       destinationBandKey: zone.key,
       destinationBandLabel: zone.label,
       previewTimeLabel: zone.key === 'unscheduled' ? 'No time' : zone.label,
@@ -397,6 +410,12 @@ export const TimelineDayView = memo(function TimelineDayView({
       || current.placementLabel !== placementLabel;
     if (changed) {
       setActiveDrag(next);
+      onDragOverlayChange?.({
+        entry: current.request.entry,
+        height: coordinator.rows[placementKey(current.request.placement)]?.height ?? 50,
+        previewTimeLabel: next.previewTimeLabel,
+        placementLabel: next.placementLabel,
+      });
       onDragPreviewChange?.({
         entryId: current.entryId,
         sourceDateIso: current.sourceDateIso,
@@ -404,16 +423,20 @@ export const TimelineDayView = memo(function TimelineDayView({
         destinationBandKey: zone.key,
       });
     }
-  }, [coordinator, onDragPositionChange, onDragPreviewChange]);
+  }, [
+    coordinator, dragIndicatorTop, onDragOverlayChange,
+    onDragPositionChange, onDragPreviewChange,
+  ]);
 
   const finishDrag = useCallback((completed: boolean) => {
     const current = activeDragRef.current;
     coordinator.activeUpdate = undefined;
     activeDragRef.current = null;
     setActiveDrag(null);
+    onDragOverlayChange?.(null);
     onDragPreviewChange?.(null);
     if (completed && current) onEntryDrop?.(current.request);
-  }, [coordinator, onDragPreviewChange, onEntryDrop]);
+  }, [coordinator, onDragOverlayChange, onDragPreviewChange, onEntryDrop]);
 
   useEffect(() => {
     if (!activeDrag) return undefined;
@@ -435,10 +458,11 @@ export const TimelineDayView = memo(function TimelineDayView({
     : undefined;
 
   return (
-    <View
+    <Animated.View
       testID={`timeline-day-${day.dateIso}`}
       onLayout={handleLayout}
-      style={[s.day, day.isPast && s.dayPast, activeDrag && s.dayDragActive]}
+      layout={settleLayout ? TIMELINE_SETTLE_TRANSITION : undefined}
+      style={[s.day, day.isPast && s.dayPast]}
     >
       <Animated.View style={[s.dayBar, stickyDayBar]} accessibilityRole="header">
         <Text style={s.dayDate}>{day.weekday} {day.dayOfMonth}</Text>
@@ -456,31 +480,7 @@ export const TimelineDayView = memo(function TimelineDayView({
         <Text style={s.count}>{day.count} {day.count === 1 ? 'plan' : 'plans'}</Text>
       </Animated.View>
 
-      <View ref={bodyRef} collapsable={false} onLayout={measureBody} style={s.body}>
-        {activeDrag ? (
-          <>
-            <View
-              pointerEvents="none"
-              testID={`timeline-drop-placeholder-${activeDrag.entryId}`}
-              style={[
-                s.dropPlaceholder,
-                { top: activeDrag.placeholderTop, height: activeDrag.placeholderHeight },
-              ]}
-            />
-            <View
-              pointerEvents="none"
-              testID={`timeline-drop-indicator-${activeDrag.entryId}`}
-              style={[s.dropIndicator, { top: activeDrag.placeholderTop - 12 }]}
-            >
-              <View style={s.dropIndicatorLine} />
-              <View style={s.dropIndicatorPill}>
-                <Text style={s.dropIndicatorText} numberOfLines={1}>
-                  {activeDrag.placementLabel}
-                </Text>
-              </View>
-            </View>
-          </>
-        ) : null}
+      <View style={s.body}>
         {day.stay ? (
           <View
             testID={`timeline-stay-${day.dateIso}`}
@@ -538,17 +538,19 @@ export const TimelineDayView = memo(function TimelineDayView({
             onDragStart={beginDrag}
             onDragUpdate={updateDrag}
             onDragFinish={finishDrag}
+            dragOverlayTop={dragOverlayTop}
+            dragRenderedInOverlay={Boolean(dragOverlayTop && onDragOverlayChange)}
+            settleLayout={settleLayout}
           />
         ))}
 
-        {day.unscheduled.length || dragInProgress ? (
+        {day.unscheduled.length || activeDrag ? (
           <View
             ref={node => registerZone('unscheduled', 'Unscheduled', node)}
             collapsable={false}
             testID={`timeline-unscheduled-${day.dateIso}`}
             onLayout={() => measureZone('unscheduled')}
             style={[
-              dragInProgress && day.unscheduled.length === 0 && s.timeBandDragEmpty,
               dropBandKey === 'unscheduled' && s.timeBandTarget,
             ]}
           >
@@ -588,12 +590,15 @@ export const TimelineDayView = memo(function TimelineDayView({
                 onDragStart={beginDrag}
                 onDragUpdate={updateDrag}
                 onDragFinish={finishDrag}
+                dragOverlayTop={dragOverlayTop}
+                dragRenderedInOverlay={Boolean(dragOverlayTop && onDragOverlayChange)}
+                settleLayout={settleLayout}
               />
             ))}
           </View>
         ) : null}
       </View>
-    </View>
+    </Animated.View>
   );
 });
 
@@ -601,7 +606,7 @@ function TimeBand({
   band, dateIso, onEntryPress, onEntryNavigate, onEntryRemove, onAdd,
   dragPlacements, dragEnabled, activeDrag, dragInProgress, dropBandKey, activeEntryId,
   onRegisterRow, onMeasureRow, onRegisterZone, onMeasureZone,
-  onDragStart, onDragUpdate, onDragFinish,
+  onDragStart, onDragUpdate, onDragFinish, dragOverlayTop, dragRenderedInOverlay, settleLayout,
 }: {
   band: TimelineBand;
   dateIso: string;
@@ -622,17 +627,20 @@ function TimeBand({
   onDragStart: (entry: TimelineEntry, placement: TimelineDragPlacement) => void;
   onDragUpdate: (absoluteY: number) => void;
   onDragFinish: (completed: boolean) => void;
+  dragOverlayTop?: SharedValue<number>;
+  dragRenderedInOverlay: boolean;
+  settleLayout: boolean;
 }) {
   const [s, t] = useStyles();
   const isDropBand = dropBandKey === band.key;
   return (
-    <View
-      ref={node => onRegisterZone(band.key, band.label, node)}
+    <Animated.View
+      ref={(node: View | null) => onRegisterZone(band.key, band.label, node)}
       collapsable={false}
       testID={`timeline-band-${dateIso}-${band.key}`}
       onLayout={() => onMeasureZone(band.key)}
+      layout={settleLayout ? TIMELINE_SETTLE_TRANSITION : undefined}
       style={[
-        dragInProgress && band.entries.length === 0 && s.timeBandDragEmpty,
         isDropBand && s.timeBandTarget,
       ]}
     >
@@ -663,6 +671,9 @@ function TimeBand({
           onDragStart={onDragStart}
           onDragUpdate={onDragUpdate}
           onDragFinish={onDragFinish}
+          dragOverlayTop={dragOverlayTop}
+          dragRenderedInOverlay={dragRenderedInOverlay}
+          settleLayout={settleLayout}
         />
       ))}
       {band.showEmptyPrompt && band.entries.length === 0 && onAdd ? (
@@ -682,7 +693,7 @@ function TimeBand({
           </Pressable>
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -691,6 +702,7 @@ export function TimelineEntryRow({
   dragPlacement, dragEnabled = true, dragActive = false, dragDimmed = false,
   previewTimeLabel,
   onRegisterDragRow, onMeasureDragRow, onDragStart, onDragUpdate, onDragFinish,
+  dragOverlayTop, dragRenderedInOverlay = false, settleLayout = false,
 }: {
   entry: TimelineEntry;
   onPress?: (entry: TimelineEntry) => void;
@@ -707,6 +719,9 @@ export function TimelineEntryRow({
   onDragStart?: (entry: TimelineEntry, placement: TimelineDragPlacement) => void;
   onDragUpdate?: (absoluteY: number) => void;
   onDragFinish?: (completed: boolean) => void;
+  dragOverlayTop?: SharedValue<number>;
+  dragRenderedInOverlay?: boolean;
+  settleLayout?: boolean;
 }) {
   const [s, t] = useStyles();
   const Glyph = iconFor(entry.category, entry.subtype);
@@ -716,6 +731,7 @@ export function TimelineEntryRow({
     dragEnabled && dragPlacement && onDragStart && onDragUpdate && onDragFinish,
   );
   const dragY = useSharedValue(0);
+  const dragTouchOffsetY = useSharedValue(0);
   const dragStyle = useAnimatedStyle(() => ({
     transform: [
       { translateY: dragY.value },
@@ -729,17 +745,25 @@ export function TimelineEntryRow({
     // Gesture Handler cancels this pending long press once the finger travels beyond
     // its 10-point allowance, so scrolling wins unless the user deliberately pauses.
     .activateAfterLongPress(TIMELINE_DRAG_ACTIVATION_MS)
-    .onStart(() => {
+    .onStart(event => {
+      if (dragOverlayTop) {
+        dragTouchOffsetY.value = event.y;
+        dragOverlayTop.value = event.absoluteY - event.y;
+      }
       if (dragPlacement && onDragStart) runOnJS(onDragStart)(entry, dragPlacement);
     })
     .onUpdate(event => {
       dragY.value = event.translationY;
+      if (dragOverlayTop) dragOverlayTop.value = event.absoluteY - dragTouchOffsetY.value;
       if (onDragUpdate) runOnJS(onDragUpdate)(event.absoluteY);
     })
     .onFinalize((_event, completed) => {
       dragY.value = withSpring(0, Animation.springs.gentle);
       if (onDragFinish) runOnJS(onDragFinish)(completed);
-    }), [dragPlacement, draggable, dragY, entry, onDragFinish, onDragStart, onDragUpdate]);
+    }), [
+      dragOverlayTop, dragPlacement, dragTouchOffsetY, draggable, dragY,
+      entry, onDragFinish, onDragStart, onDragUpdate,
+    ]);
 
   const row = (
     <Pressable
@@ -848,7 +872,9 @@ export function TimelineEntryRow({
   const swipeable = !onPress && !onRemove ? row : (
     <ReanimatedSwipeable
       testID={`timeline-entry-swipe-${entry.id}`}
-      enabled={!dragActive}
+      // Keep the nested handler's native configuration stable while the outer reorder Pan is
+      // active. The reorder has already won the gesture arena after its stationary hold, so
+      // toggling this handler is unnecessary and can cancel that in-flight touch on Fabric.
       friction={1.6}
       leftThreshold={48}
       rightThreshold={42}
@@ -870,9 +896,11 @@ export function TimelineEntryRow({
         ref={(node: View | null) => onRegisterDragRow?.(entry, dragPlacement, node)}
         collapsable={false}
         onLayout={() => onMeasureDragRow?.(entry.id)}
+        layout={settleLayout ? TIMELINE_SETTLE_TRANSITION : undefined}
         style={[
           s.dragRow,
           dragDimmed && s.dragRowDimmed,
+          dragActive && dragRenderedInOverlay && s.dragRowOverlaySource,
           dragActive && s.dragRowActive,
           dragStyle,
         ]}
@@ -880,6 +908,62 @@ export function TimelineEntryRow({
         {swipeable}
       </Animated.View>
     </GestureDetector>
+  );
+}
+
+export function TimelineDragOverlay({
+  overlay, rowTop, indicatorTop, screenOriginY,
+}: {
+  overlay: TimelineDragOverlayState | null;
+  rowTop: SharedValue<number>;
+  indicatorTop: SharedValue<number>;
+  screenOriginY: SharedValue<number>;
+}) {
+  const [s] = useStyles();
+  const rowPosition = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: rowTop.value - screenOriginY.value },
+      { scale: 1.025 },
+      { rotate: '-0.4deg' },
+    ],
+  }));
+  const indicatorPosition = useAnimatedStyle(() => ({
+    transform: [{ translateY: indicatorTop.value - screenOriginY.value }],
+  }));
+
+  return (
+    <View pointerEvents="none" testID="timeline-drag-overlay" style={s.dragOverlayLayer}>
+      <View style={s.dragOverlayContent}>
+        {overlay ? (
+          <>
+            <Animated.View
+              testID={`timeline-overlay-placeholder-${overlay.entry.id}`}
+              style={[s.dropPlaceholder, { height: overlay.height }, indicatorPosition]}
+            />
+            <Animated.View
+              testID={`timeline-overlay-indicator-${overlay.entry.id}`}
+              style={[s.dropIndicator, s.dragOverlayIndicatorOffset, indicatorPosition]}
+            >
+              <View style={s.dropIndicatorLine} />
+              <View style={s.dropIndicatorPill}>
+                <Text style={s.dropIndicatorText} numberOfLines={1}>
+                  {overlay.placementLabel}
+                </Text>
+              </View>
+            </Animated.View>
+            <Animated.View
+              testID={`timeline-overlay-row-${overlay.entry.id}`}
+              style={[s.dragOverlayCard, rowPosition]}
+            >
+              <TimelineEntryRow
+                entry={overlay.entry}
+                previewTimeLabel={overlay.previewTimeLabel}
+              />
+            </Animated.View>
+          </>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -921,7 +1005,6 @@ const SPINE_WIDTH = 24;
 
 const useStyles = createThemedStyles((t) => ({
   day: { backgroundColor: t.surface },
-  dayDragActive: { zIndex: 100 },
   dayPast: { opacity: 0.72 },
   dayBar: {
     height: TIMELINE_DAY_BAR_HEIGHT,
@@ -979,7 +1062,6 @@ const useStyles = createThemedStyles((t) => ({
   bandTick: { marginTop: 13, width: 7, height: 1.5, backgroundColor: t.border },
   bandTickTarget: { backgroundColor: t.action },
   bandCopyTarget: { color: t.action },
-  timeBandDragEmpty: { minHeight: 52 },
   timeBandTarget: { borderRadius: Radius.row, backgroundColor: t.actionSoft },
 
   entry: { minHeight: 50, flexDirection: 'row' },
@@ -1003,6 +1085,7 @@ const useStyles = createThemedStyles((t) => ({
   },
   dragRow: { position: 'relative', zIndex: 1 },
   dragRowDimmed: { opacity: 0.7 },
+  dragRowOverlaySource: { opacity: 0 },
   dragRowActive: {
     zIndex: 50,
     borderRadius: Radius.row,
@@ -1051,6 +1134,30 @@ const useStyles = createThemedStyles((t) => ({
     fontWeight: '600' as const,
     fontSize: 10,
     color: t.textInverse,
+  },
+  dragOverlayLayer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  dragOverlayContent: {
+    position: 'absolute',
+    top: 0,
+    right: Gutter,
+    bottom: 0,
+    left: Gutter,
+  },
+  dragOverlayIndicatorOffset: { marginTop: -12 },
+  dragOverlayCard: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    left: 0,
+    borderRadius: Radius.row,
+    backgroundColor: t.surface,
+    ...Shadow.float,
   },
   swipeForeground: { backgroundColor: t.surface },
   swipeActions: { flexDirection: 'row', alignSelf: 'stretch' },

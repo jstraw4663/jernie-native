@@ -16,9 +16,10 @@ jest.mock('react-native-gesture-handler', () => {
 
 import React from 'react';
 import { Text } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 import renderer from 'react-test-renderer';
 import {
-  ItineraryDateRail, TimelineDayView,
+  ItineraryDateRail, TimelineDayView, TimelineDragOverlay,
 } from '@/src/features/jernie/itinerary';
 import type {
   TimelineBand, TimelineDay, TimelineEntry,
@@ -212,6 +213,47 @@ describe('TimelineDayView', () => {
     expect(tree.root.findByProps({ testID: 'timeline-entry-weather-plan' })).toBeTruthy();
   });
 
+  test('does not reflow an empty day when another day starts dragging', () => {
+    const tree = render(
+      <TimelineDayView
+        day={timelineDay({
+          dateIso: '2026-05-25', weekday: 'Mon', dayOfMonth: 25,
+          bands: bands().map(band => ({ ...band, entries: [] })),
+          count: 0,
+        })}
+        stopColors={{ 'stop-a': '#123456' }}
+        dragPreview={{
+          entryId: 'coffee',
+          sourceDateIso: '2026-05-24',
+          destinationDateIso: '2026-05-25',
+          destinationBandKey: 'unscheduled',
+        }}
+      />,
+    );
+
+    expect(tree.root.findAllByProps({ testID: 'timeline-unscheduled-2026-05-25' })).toHaveLength(0);
+    expect(tree.root.findByProps({ testID: 'timeline-band-2026-05-25-afternoon' }).props.style)
+      .toEqual([false]);
+  });
+
+  test('enables layout motion only for the post-drop settle window', () => {
+    const sharedProps = {
+      day: timelineDay(),
+      stopColors: { 'stop-a': '#123456' },
+      dragPlacements: {
+        coffee: { stopId: 'stop-a', dayId: 'day-a', itemId: 'coffee' },
+      },
+      onEntryDrop: () => {},
+    };
+    const idle = render(<TimelineDayView {...sharedProps} />);
+    const settling = render(<TimelineDayView {...sharedProps} settleLayout />);
+
+    expect(idle.root.findAll(node => Boolean(node.props.layout))).toHaveLength(0);
+    expect(settling.root.findAll(node => Boolean(node.props.layout)).length).toBeGreaterThanOrEqual(7);
+    expect(settling.root.findByProps({ testID: 'timeline-day-2026-05-24' }).props.layout).toBeTruthy();
+    expect(settling.root.findByProps({ testID: 'timeline-band-2026-05-24-morning' }).props.layout).toBeTruthy();
+  });
+
   test('adds drag affordances only for rows backed by stored itinerary items', () => {
     const synthetic = entry({
       id: 'booking:restaurant-1:reservation',
@@ -239,5 +281,32 @@ describe('TimelineDayView', () => {
     expect(tree.root.findAllByProps({
       testID: 'timeline-entry-drag-handle-booking:restaurant-1:reservation',
     })).toHaveLength(0);
+  });
+});
+
+describe('TimelineDragOverlay', () => {
+  test('renders the lifted row and destination marker above the timeline', () => {
+    const shared = (value: number) => ({ value }) as SharedValue<number>;
+    const tree = render(
+      <TimelineDragOverlay
+        overlay={{
+          entry: entry(),
+          height: 52,
+          previewTimeLabel: 'Afternoon',
+          placementLabel: 'Before Jordan Pond House · Mon May 25',
+        }}
+        rowTop={shared(180)}
+        indicatorTop={shared(260)}
+        screenOriginY={shared(20)}
+      />,
+    );
+
+    expect(tree.root.findByProps({ testID: 'timeline-drag-overlay' })).toBeTruthy();
+    expect(tree.root.findByProps({ testID: 'timeline-overlay-row-coffee' })).toBeTruthy();
+    expect(tree.root.findByProps({ testID: 'timeline-overlay-placeholder-coffee' })).toBeTruthy();
+    expect(tree.root.findByProps({ testID: 'timeline-overlay-indicator-coffee' })).toBeTruthy();
+    const copy = tree.root.findAllByType(Text).flatMap(node => node.props.children);
+    expect(copy).toContain('Afternoon');
+    expect(copy).toContain('Before Jordan Pond House · Mon May 25');
   });
 });

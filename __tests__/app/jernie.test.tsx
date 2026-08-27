@@ -65,10 +65,12 @@ jest.mock('@/src/lib/firebase', () => ({
 }));
 const mockRemoveItineraryItemById = jest.fn();
 const mockReorderItineraryDayItems = jest.fn();
+const mockMoveItineraryItemBetweenDays = jest.fn();
 jest.mock('@/src/lib/itineraryWrites', () => ({
   ...jest.requireActual('@/src/lib/itineraryWrites'),
   removeItineraryItemById: (...args: unknown[]) => mockRemoveItineraryItemById(...args),
   reorderItineraryDayItems: (...args: unknown[]) => mockReorderItineraryDayItems(...args),
+  moveItineraryItemBetweenDays: (...args: unknown[]) => mockMoveItineraryItemBetweenDays(...args),
 }));
 const mockRemoveBooking = jest.fn();
 jest.mock('@/src/lib/bookingWrites', () => ({
@@ -184,6 +186,7 @@ beforeEach(() => {
   mockUserTripsState = { trips: [], status: 'ready' };
   mockRemoveItineraryItemById.mockReset().mockResolvedValue(undefined);
   mockReorderItineraryDayItems.mockReset().mockResolvedValue(undefined);
+  mockMoveItineraryItemBetweenDays.mockReset().mockResolvedValue(undefined);
   mockRemoveBooking.mockReset().mockResolvedValue(undefined);
 });
 
@@ -251,6 +254,56 @@ describe('JernieTab — itinerary reorder', () => {
       });
     });
 
+    expect(mockReorderItineraryDayItems).not.toHaveBeenCalled();
+  });
+
+  test('moves a loose item between days through the atomic cross-day writer', async () => {
+    mockContextValue.itinerary = {
+      'stop-a': [{
+        id: 'day-1', stopId: 'stop-a', dateIso: '2026-08-10', items: [itineraryItems[0]],
+      }],
+      'stop-b': [{
+        id: 'day-2', stopId: 'stop-b', dateIso: '2026-08-15', items: [itineraryItems[1]],
+      }],
+    };
+    const tree = renderScreen();
+    const sourceDay = tree.root.findAll(node =>
+      node.props.day?.dateIso === '2026-08-10' && typeof node.props.onEntryDrop === 'function',
+    )[0];
+    expect(sourceDay.props.dragPreview).toBeUndefined();
+    expect(sourceDay.props.dragOverlayTop).toBeTruthy();
+    expect(sourceDay.props.dragIndicatorTop).toBeTruthy();
+    expect(sourceDay.props.onDragOverlayChange).toEqual(expect.any(Function));
+    expect(tree.root.findByProps({ testID: 'timeline-drag-overlay' })).toBeTruthy();
+    const coffee = sourceDay.props.day.bands
+      .flatMap((band: { entries: TimelineEntry[] }) => band.entries)
+      .find((entry: TimelineEntry) => entry.id === 'item:coffee');
+
+    await act(async () => {
+      sourceDay.props.onEntryDrop({
+        entry: coffee,
+        placement: { stopId: 'stop-a', dayId: 'day-1', itemId: 'coffee' },
+        destination: { stopId: 'stop-b', dayId: 'day-2', dateIso: '2026-08-15' },
+        targetItemId: 'museum',
+        afterTarget: false,
+        time: 'afternoon',
+        destinationLabel: 'Afternoon on Sat Aug 15',
+      });
+      await Promise.resolve();
+    });
+
+    const settlingSourceDay = tree.root.findAll(node =>
+      node.props.day?.dateIso === '2026-08-10' && typeof node.props.onEntryDrop === 'function',
+    )[0];
+    expect(settlingSourceDay.props.settleLayout).toBe(true);
+    expect(settlingSourceDay.props.dragEnabled).toBe(false);
+
+    expect(mockMoveItineraryItemBetweenDays).toHaveBeenCalledWith(
+      'trip-1',
+      { stopId: 'stop-a', dayId: 'day-1' },
+      { stopId: 'stop-b', dayId: 'day-2' },
+      { itemId: 'coffee', targetItemId: 'museum', afterTarget: false, time: 'afternoon' },
+    );
     expect(mockReorderItineraryDayItems).not.toHaveBeenCalled();
   });
 

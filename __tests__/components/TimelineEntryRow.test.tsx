@@ -14,7 +14,13 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
       { value: 100 },
       { close: mockSwipeClose, openLeft: jest.fn(), openRight: jest.fn(), reset: jest.fn() },
     );
-    return ReactLib.createElement(RN.View, { testID: props.testID }, remove, props.children, actions);
+    return ReactLib.createElement(
+      RN.View,
+      { testID: props.testID, swipeEnabled: props.enabled },
+      remove,
+      props.children,
+      actions,
+    );
   };
 });
 
@@ -130,4 +136,21 @@ test('a lifted row shows the live destination bucket in its time column', () => 
     .toBe('Afternoon');
   expect(tree.root.findByProps({ testID: 'timeline-entry-item:one' }).props.accessibilityLabel)
     .toContain('Afternoon');
+});
+
+test('a lifted row does not reconfigure its nested swipe handler', () => {
+  let tree!: renderer.ReactTestRenderer;
+  act(() => {
+    tree = renderer.create(
+      <TimelineEntryRow
+        entry={BASE}
+        onPress={jest.fn()}
+        dragActive
+      />,
+    );
+  });
+  mounted.push(tree);
+
+  expect(tree.root.findByProps({ testID: 'timeline-entry-swipe-item:one' }).props.swipeEnabled)
+    .toBeUndefined();
 });

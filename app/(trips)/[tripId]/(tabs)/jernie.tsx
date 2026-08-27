@@ -42,7 +42,7 @@ import {
 } from '@/src/lib/itineraryWrites';
 import { readSnooze, writeSnooze } from '@/src/lib/nudgeSnooze';
 import { resolvePhoto } from '@/src/lib/images';
-import { Core, Gutter, Spacing } from '@/src/design/tokens';
+import { Animation, Core, Gutter, Spacing } from '@/src/design/tokens';
 import { createThemedStyles } from '@/src/design/useTheme';
 import { Button, tap } from '@/src/ui';
 import { getDevNow } from '@/src/utils/devTime';
@@ -57,10 +57,11 @@ import { StopRail, type RailStop } from '@/src/features/jernie/home/StopRail';
 import { DetailSheet, useDetailSheet } from '@/src/features/jernie/sheets/detail';
 import {
   createTimelineDragCoordinator, ItineraryDateRail, ItineraryUndoToast, TimelineDayView,
-  TIMELINE_DAY_BAR_HEIGHT,
+  TimelineDragOverlay, TIMELINE_DAY_BAR_HEIGHT,
 } from '@/src/features/jernie/itinerary';
 import type {
-  TimelineDayPlacement, TimelineDragPlacement, TimelineDragPreview, TimelineDropRequest,
+  TimelineDayPlacement, TimelineDragOverlayState, TimelineDragPlacement,
+  TimelineDragPreview, TimelineDropRequest,
 } from '@/src/features/jernie/itinerary';
 import { StopFormSheet } from '@/src/features/jernie/sheets/StopFormSheet';
 import type { StopFormSheetRef } from '@/src/features/jernie/sheets/StopFormSheet';
@@ -209,8 +210,10 @@ export default function JernieTab() {
   const [optimisticMove, setOptimisticMove] = useState<OptimisticTimelineMove | null>(null);
   const [moveBusy, setMoveBusy] = useState(false);
   const [timelineDragCoordinator] = useState(createTimelineDragCoordinator);
-  const [timelineDragPreview, setTimelineDragPreview] = useState<TimelineDragPreview | null>(null);
+  const [timelineDragOverlay, setTimelineDragOverlay] = useState<TimelineDragOverlayState | null>(null);
+  const [timelineSettleActive, setTimelineSettleActive] = useState(false);
   const undoIdRef = useRef(0);
+  const timelineSettleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fast Refresh can preserve a pre-migration restore snapshot in local component state.
   // Drop it before the user can retry it through the delayed-commit handler.
@@ -332,6 +335,9 @@ export default function JernieTab() {
   const scrollY = useSharedValue(initialCollapseY);
   const railTransitionActive = useSharedValue(0);
   const contentScrollY = useSharedValue(initialContentY);
+  const timelineDragRowTop = useSharedValue(0);
+  const timelineDragIndicatorTop = useSharedValue(0);
+  const screenWindowY = useSharedValue(0);
   const collapseOriginY = useSharedValue(initialContentY - initialCollapseY);
   // Once the collapse reaches its endpoint, reverse scrolling moves the itinerary beneath the
   // pinned header. It is released only by the deliberate quick-return gesture (or trip-top CTA).
@@ -339,6 +345,7 @@ export default function JernieTab() {
   const boundaryReturnArmed = useSharedValue(0);
   const quickReturnActive = useSharedValue(0);
   const programmaticTargetY = useSharedValue(-1);
+  const screenRef = useRef<View>(null);
   const listRef = useRef<Animated.ScrollView>(null);
   const dayOffsetsRef = useRef<Record<string, number>>({});
   const stopBoundaryOffsetsRef = useRef<Record<string, number>>({});
@@ -398,11 +405,39 @@ export default function JernieTab() {
   }, [contentScrollY, insets.bottom, insets.top, stopDragAutoScroll, timelineDragCoordinator]);
 
   const handleTimelineDragPreview = useCallback((preview: TimelineDragPreview | null) => {
-    setTimelineDragPreview(preview);
     if (!preview) stopDragAutoScroll();
   }, [stopDragAutoScroll]);
 
+  const handleTimelineDragOverlay = useCallback((overlay: TimelineDragOverlayState | null) => {
+    setTimelineDragOverlay(current => {
+      if (!overlay || !current) return overlay;
+      if (
+        current.entry.id === overlay.entry.id
+        && current.height === overlay.height
+        && current.previewTimeLabel === overlay.previewTimeLabel
+        && current.placementLabel === overlay.placementLabel
+      ) return current;
+      return overlay;
+    });
+  }, []);
+
+  const beginTimelineSettle = useCallback(() => {
+    if (timelineSettleTimerRef.current) clearTimeout(timelineSettleTimerRef.current);
+    setTimelineSettleActive(true);
+    timelineSettleTimerRef.current = setTimeout(() => {
+      timelineSettleTimerRef.current = null;
+      setTimelineSettleActive(false);
+    }, Animation.duration.slow);
+  }, []);
+
+  const handleScreenLayout = useCallback(() => {
+    screenRef.current?.measureInWindow((_x, y) => { screenWindowY.value = y; });
+  }, [screenWindowY]);
+
   useEffect(() => stopDragAutoScroll, [stopDragAutoScroll]);
+  useEffect(() => () => {
+    if (timelineSettleTimerRef.current) clearTimeout(timelineSettleTimerRef.current);
+  }, []);
 
   const adoptTimelineDay = useCallback((dateIso: string, preferredStopId?: string) => {
     const day = timeline.days.find(candidate => candidate.dateIso === dateIso);
@@ -1242,7 +1277,10 @@ export default function JernieTab() {
       );
     }
 
-    const save = () => persistTimelineMove(nextItinerary, request.placement.itemId, write);
+    const save = () => {
+      beginTimelineSettle();
+      return persistTimelineMove(nextItinerary, request.placement.itemId, write);
+    };
     const saveWithReadableError = async () => {
       try {
         await save();
@@ -1294,7 +1332,7 @@ export default function JernieTab() {
       testIdPrefix: 'move-entry',
       onConfirm: saveWithReadableError,
     });
-  }, [bookings, persistTimelineMove, refetch, renderedItinerary, trip.id]);
+  }, [beginTimelineSettle, bookings, persistTimelineMove, refetch, renderedItinerary, trip.id]);
 
   const commitTimelineRemoval = useCallback(async (removal: TimelineRemoval) => {
     if (removal.kind === 'booking') {
@@ -1431,7 +1469,12 @@ export default function JernieTab() {
   );
 
   return (
-    <View style={s.screen}>
+    <View
+      ref={screenRef}
+      collapsable={false}
+      onLayout={handleScreenLayout}
+      style={s.screen}
+    >
       <Animated.ScrollView
         ref={listRef}
         onScroll={scrollHandler}
@@ -1484,10 +1527,13 @@ export default function JernieTab() {
             dragPlacements={dragPlacements}
             dayPlacements={dragDayPlacements[day.dateIso]}
             dragCoordinator={timelineDragCoordinator}
-            dragPreview={timelineDragPreview}
             onDragPreviewChange={handleTimelineDragPreview}
+            dragOverlayTop={timelineDragRowTop}
+            dragIndicatorTop={timelineDragIndicatorTop}
+            onDragOverlayChange={handleTimelineDragOverlay}
             onDragPositionChange={handleTimelineDragPosition}
-            dragEnabled={!moveBusy}
+            dragEnabled={!moveBusy && !timelineSettleActive}
+            settleLayout={timelineSettleActive}
             onEntryDrop={handleEntryDrop}
             onAdd={handleAddToBand}
             onLayout={handleTimelineDayLayout}
@@ -1510,6 +1556,13 @@ export default function JernieTab() {
         <Animated.View style={bottomRunway} />
         </Animated.View>
       </Animated.ScrollView>
+
+      <TimelineDragOverlay
+        overlay={timelineDragOverlay}
+        rowTop={timelineDragRowTop}
+        indicatorTop={timelineDragIndicatorTop}
+        screenOriginY={screenWindowY}
+      />
 
       <HomeHeader
         kicker={kicker}

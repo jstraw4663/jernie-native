@@ -234,6 +234,7 @@ export const Animation = {
   // Reanimated withSpring configs.
   springs: {
     gentle: { damping: 34, stiffness: 280 },  // chip selection, fades
+    settle: { damping: 47, stiffness: 280 },  // post-drop layout; reduced overshoot
     snappy: { damping: 44, stiffness: 400 },  // tab switch, toggle
     drag:   { damping: 50, stiffness: 460 },  // sheet detents, rail snap
   },

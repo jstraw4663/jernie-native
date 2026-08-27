@@ -12,6 +12,7 @@
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
   /* spring-gentle  → damping 34, stiffness 280  (chip selection, fades) */
+  /* spring-settle  → damping 47, stiffness 280  (post-drop layout; reduced overshoot) */
   /* spring-snappy  → damping 44, stiffness 400  (tab switch, toggle) */
   /* spring-drag    → damping 50, stiffness 460  (sheet detents, rail snap) */
 }

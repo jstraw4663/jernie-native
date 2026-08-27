@@ -40,10 +40,10 @@ Design: `docs/superpowers/specs/2026-08-24-itinerary-timeline-design.md`
 - Task 5 focused gate: 60 tests pass across six suites. Repository TypeScript passes; cold Expo
   SDK 56 iOS export passes at 2,613 modules. All 89 Jest suites and 1,007 tests report pass; the
   process retains the existing post-teardown `TripLoadingScreen`/Expo logger exit diagnostic.
-- Task 6 reorder is implemented on the existing Gesture Handler + Reanimated stack. A 280 ms
-  long press lifts a persisted row, dims siblings, and tracks a dashed drop slot across the
-  day's five bands and Unscheduled section. Targets are constrained to the same persisted
-  `stopId + dayId`; synthetic booking events are deliberately not draggable.
+- Task 6 reorder is implemented on the existing Gesture Handler + Reanimated stack. A 500 ms
+  stationary hold lifts a persisted row, dims siblings, and tracks a dashed drop slot across
+  every persisted day's five bands and Unscheduled section. Synthetic booking events are
+  deliberately not draggable.
 - Drops use a real row anchor when one exists and update `time` when the destination changes,
   so clock sorting cannot undo the visible move. Loose items update optimistically and persist
   through the authenticated RTDB transaction. Booking-backed and locked items wait for the
@@ -52,7 +52,50 @@ Design: `docs/superpowers/specs/2026-08-24-itinerary-timeline-design.md`
   pass; cold Expo SDK 56 iOS export passes at 2,618 modules. All 90 Jest suites and 1,026 tests
   report pass; the process retains the pre-existing post-teardown `TripLoadingScreen`/Expo
   logger exit diagnostic.
+- Task 6.1 extends the measured destination coordinator across dates and stops, adds bounded
+  edge autoscroll, labels cross-day insertion boundaries, and updates the lifted time column
+  and target band live. Same-day moves retain the day-level transaction; cross-day moves use
+  one authenticated transaction at the itinerary root so source removal and destination
+  insertion commit atomically. The UI applies the same pure transform optimistically and rolls
+  back to the server-backed itinerary on failure.
+- The final audit adds screen coverage for the atomic cross-day route and visibility coverage
+  for stable cross-day preview layout. Device tracing found the real flash/cancel cause in the
+  cross-day preview: lift expanded every empty band and mounted an empty Unscheduled section in
+  every day, changing the scroll height by hundreds of points while Pan activated. Task 6.2
+  removes those global layout mutations while retaining the five measured bands, labels and
+  autoscroll. The remaining activation path still published preview through screen-level React
+  state, reconciling every day while the native Pan was active. Task 6.3 removes that feedback
+  loop: the source day owns its visual preview locally and the global coordinator remains mutable.
+  Destination-day-wide tint is deferred until it can be driven without a parent render.
+- Task 6.4 traces the remaining cancellation to native configuration changes after activation:
+  the lifted row disabled its nested ReanimatedSwipeable while the source day simultaneously
+  gained a new stacking order. Both changes occurred beneath the same active finger. The nested
+  handler now keeps stable configuration and the day wrapper is no longer restacked; cross-day
+  measurement and persistence are unchanged. Focused gate: 14 tests across two suites. Full
+  gate: 91 suites, 1,082 tests and two snapshots, exit 0; TypeScript clean; cold SDK 56 iOS
+  export passes at 2,624 modules.
 
+
+- Same-day dragging is now confirmed smooth on device, isolating the remaining concern to
+  cross-day visual ownership. Task 6.5 keeps the real row and native Pan mounted in the source
+  day while a pointer-transparent screen overlay renders the lifted copy and insertion boundary
+  from shared absolute coordinates. Later day siblings and edge autoscroll can no longer cover
+  or displace the visual under the finger, and the parent receives no per-frame React updates.
+  Cross-day confirmation, rollback, and atomic persistence are unchanged. Focused gate: 33 tests
+  across two suites. Full gate: 91 suites, 1,083 tests and two snapshots, exit 0; TypeScript and
+  diff checks clean; cold SDK 56 iOS export passes at 2,624 modules. Device review is next.
+
+- Cross-day drag is now device-confirmed. Task 6.6 smooths the remaining post-drop source-gap
+  closure without counter-scrolling the collapse-owned viewport. During a tokenized 420 ms
+  settle window, Reanimated layout transitions move persisted rows, bands, and downstream days
+  with the registered settle spring; device review confirmed the geometry now closes smoothly.
+  The accepted follow-up raises damping from 34 to 47 at the same 280 stiffness, targeting about
+  70% less visible rebound while retaining a small spring response. A second drag cannot start
+  until the layout is stable.
+  Reanimated defaults the transition to the system reduced-motion preference. Persistence and
+  rollback are unchanged. Focused gate: 34 tests across two suites. Full gate: 91 suites,
+  1,084 tests and two snapshots, exit 0; TypeScript/diff checks clean; cold SDK 56 iOS export
+  passes at 2,624 modules. Device review confirms the reduced-bounce tuning feels smooth.
 
 ## Task 7 — release gate, 2026-08-25
 
@@ -99,10 +142,11 @@ multi-suite-only: jest-expo's lazy `fetch` global warning after teardown, and Ge
 `TripErrorScreen` also turned out to be snapshotting `null` because neither wrapped its render
 in `act`. **89 suites, 1,033 tests, exit 0.** Cold iOS export passes. TypeScript clean.
 
-**Still open — needs a device, and a new dev build first.** Accessibility (swipe-only Remove and
-long-press-only reorder are unreachable under VoiceOver), font scaling at the timeline's 7.5–9px
-labels, reduced motion, long-trip performance, both themes. `StopMorph`'s invisible full-height
-return target wants Jeremy's eyes before it is kept or cut.
+**Still open — needs a device.** Long-press reorder, cross-day movement, edge autoscroll, and
+post-drop settlement are confirmed. Cover non-gesture alternatives for swipe/reorder, font
+scaling at the timeline 7.5–9px labels, reduced motion, long-trip performance, both themes,
+and locked-item rollback.
+`StopMorph`'s invisible full-height return target wants Jeremy's eyes before it is kept or cut.
 
 ## Standing gates
 
@@ -164,6 +208,77 @@ Gate: both palettes; no hard-coded URL, emoji, legacy token, or hit target below
 - Add long-press lift/drop with Gesture Handler and Reanimated.
 - Loose/unconfirmed drops persist immediately.
 - Booked/locked drops persist only after the decision sheet approves them.
+
+## Task 6.1 — cross-day reorder and destination clarity
+
+Tier: deep | Reasoning: high - shared gesture measurement, edge scrolling, optimistic state,
+and a concurrency-safe transactional write spanning multiple itinerary days.
+
+- Share measured row and band destinations across the continuous timeline.
+- Keep all persisted days reachable while dragging, including empty bands and Unscheduled.
+- Show the destination date/band and before/after anchor while the lifted time column follows it.
+- Move across stops/days with one authenticated atomic write and retain confirmation semantics.
+- Cover the pure transform, writer races, screen routing, and cross-day destination visibility.
+
+## Task 6.2 — drag-start layout stability
+
+Tier: standard | Reasoning: medium - isolate a device-only gesture cancellation caused by
+cross-day preview layout changes while preserving the shared measured coordinator.
+
+- Never grow every empty band or mount every empty Unscheduled section when drag begins.
+- Keep the source day's established same-day Unscheduled target and all persisted cross-day zones.
+- Preserve cross-day target tint, insertion labels, time previews, and edge autoscroll.
+- Add a regression proving an external cross-day preview does not reflow an otherwise empty day.
+
+## Task 6.3 — keep React state out of the active pan
+
+Tier: deep | Reasoning: high - isolate a device-only gesture lifecycle cancellation across a
+Reanimated/Gesture Handler worklet and the parent React render loop.
+
+- Do not publish live drag preview through Jernie screen state while Pan is active.
+- Keep global measurements and autoscroll in mutable coordinator/refs; keep visual lift, time,
+  insertion boundary, and destination request in the source day's local state.
+- Stop autoscroll on finalize without a parent render.
+- Defer destination-day-wide tint until it can be driven without reconciling the gesture subtree.
+
+## Task 6.4 — keep native handler configuration stable while active
+
+Tier: deep | Reasoning: high - device-only cancellation at the boundary between the outer
+long-press Pan, nested ReanimatedSwipeable handlers, and Fabric view stacking.
+
+- Do not toggle a nested Swipeable handler's `enabled` configuration after reorder activates.
+- Do not restack the source-day native wrapper while its descendant owns the active touch.
+- Preserve the established 500 ms hold, local lift visuals, shared cross-day measurements,
+  edge autoscroll, and atomic destination writes.
+- Add focused coverage that a lifted row does not publish a changing Swipeable `enabled` prop.
+
+## Task 6.5 — screen-level cross-day drag overlay
+
+Tier: deep | Reasoning: high - cross-day visual ownership across sibling day stacking contexts,
+programmatic edge scrolling, shared window coordinates, and an active native Pan.
+
+- Keep the real row and its gesture mounted in the source day without restacking that day.
+- Render the lifted copy and insertion boundary in one always-mounted, pointer-transparent
+  screen layer so later day siblings and autoscroll cannot cover or displace them.
+- Drive lifted-row position from the native Pan's absolute pointer coordinate; drive insertion
+  position from the existing measured destination coordinator.
+- Limit React updates to overlay content changes at destination boundaries, never per-frame
+  pointer movement, and do not feed overlay state back into the gesture subtree.
+- Preserve same-day behavior, edge autoscroll, confirmation/rollback, and atomic cross-day writes.
+- Add focused overlay and screen-wiring coverage.
+
+## Task 6.6 — smooth the post-drop layout settle
+
+Tier: standard | Reasoning: medium - coordinate tokenized layout motion across nested rows,
+time bands, and days without changing the active Pan or the collapse-owned scroll position.
+
+- Keep the viewport offset stable when a source gap closes; do not counter-scroll the timeline.
+- After the Pan finalizes and an optimistic move begins, animate affected row, band, and day
+  geometry with Reanimated and the registered settle spring (damping 47, stiffness 280).
+- Disable the transition outside the short settle window so drag activation never animates or
+  reconfigures a native ancestor beneath the active finger.
+- Respect the system reduced-motion preference and leave persistence/rollback behavior unchanged.
+- Extend focused component and screen coverage for the settle-window wiring.
 
 ## Task 7 — release gate
 
