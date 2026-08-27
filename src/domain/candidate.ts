@@ -105,7 +105,16 @@ export interface OpenQuestion {
 }
 
 export interface Candidate {
-  /** Client-generated (see src/utils/id.ts) and tray-local — never persisted. */
+  /**
+   * Client-generated (see src/utils/id.ts) and tray-local: it identifies the candidate
+   * while it sits in the tray and is never written to RTDB — the records a commit creates
+   * get their own ids.
+   *
+   * It IS persisted, to MMKV, because the tray is (src/lib/addTray.ts). That is what lets
+   * "remove this one" still mean something after the app has been killed and reopened.
+   * It is not stable across rebuilds of the same place: src/lib/resolveCache.ts caches the
+   * provider response rather than built candidates for exactly that reason.
+   */
   id: string;
   type: CandidateType;
   typeConfidence: TypeConfidence;
