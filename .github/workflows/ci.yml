@@ -1,0 +1,26 @@
+name: Pull request checks
+
+on:
+  pull_request:
+    # `master` is this repo's default branch; `main` is listed too so a rename
+    # does not silently stop these checks from running.
+    branches: [dev, master, main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Test, type-check, and bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test -- --runInBand
+      - run: npx tsc --noEmit
+      - run: npx expo export --platform ios --output-dir /tmp/verify

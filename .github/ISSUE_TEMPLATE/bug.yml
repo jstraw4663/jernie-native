@@ -1,0 +1,38 @@
+name: Bug report
+description: Record a reproducible defect with its expected behavior.
+title: "fix: "
+labels: [bug]
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Actual and expected behavior
+      description: State what happened, what should happen, and the user impact.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Give the smallest reliable sequence, environment, and frequency.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Attach screenshots, logs, stack traces, or related PRs when available.
+  - type: textarea
+    id: validation
+    attributes:
+      label: Fix validation
+      description: State the test, device check, or evidence required to close this issue.
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk
+      options: [Low, Medium, High]
+    validations:
+      required: true

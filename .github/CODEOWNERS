@@ -1,0 +1,12 @@
+# GitHub branch protection should require review for these owners.
+# @jstraw4663 is the repository owner shown by origin; update if ownership changes.
+
+* @jstraw4663
+/app/ @jstraw4663
+/src/domain/ @jstraw4663
+/src/platform/ @jstraw4663
+/src/design/ @jstraw4663
+/database.rules.json @jstraw4663
+/eas.json @jstraw4663
+/app.json @jstraw4663
+/package.json @jstraw4663

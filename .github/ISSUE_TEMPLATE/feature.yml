@@ -1,0 +1,49 @@
+name: Feature
+description: Deliver a user-visible capability or planned engineering improvement.
+title: "feat: "
+labels: [feature]
+body:
+  - type: markdown
+    attributes:
+      value: "Create sub-issues for independently mergeable implementation work."
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Intended outcome
+      description: What user or product outcome will this issue deliver?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List observable conditions that define done.
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and non-goals
+      description: State affected areas and explicitly excluded work.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation
+      description: Tests, device checks, or evidence required before merge.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and blockers
+      description: Link parent issue, blocking issues, designs, or specifications.
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk
+      options: [Low, Medium, High]
+    validations:
+      required: true

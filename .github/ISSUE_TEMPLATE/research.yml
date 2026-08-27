@@ -1,0 +1,26 @@
+name: Research or spike
+description: Time-box discovery that must produce a decision or follow-up issue.
+title: "research: "
+labels: [research]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Decision to unlock
+      description: State the concrete question this research will answer.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence to collect
+      description: List primary sources, code paths, experiments, or comparisons.
+    validations:
+      required: true
+  - type: textarea
+    id: deliverable
+    attributes:
+      label: Deliverable and timebox
+      description: Name the recommendation, ADR, or follow-up issues and a stopping point.
+    validations:
+      required: true
