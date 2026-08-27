@@ -274,11 +274,16 @@ export async function chargeQuota(
   } catch (err) {
     if (err instanceof QuotaExceeded) {
       log(uid, endpoint, 'quota_exceeded', { scope: err.scope, ...err.denial });
+      // `details` carries the scope as DATA, not just prose. The code alone cannot tell a
+      // client whether this caller is out of budget or the whole service is, and those
+      // want different words on screen — the client should not have to pattern-match an
+      // English sentence to find out which. See describeCallableError in the root app.
       throw new HttpsError(
         'resource-exhausted',
         err.scope === 'global'
           ? 'This service is temporarily at capacity. Please try again later.'
           : "You've reached today's lookup limit. It resets at midnight UTC.",
+        { scope: err.scope },
       );
     }
 

@@ -175,15 +175,43 @@ describe('StopForm', () => {
     expect(submitDisabled(tree)).toBe(true);
   });
 
-  test('a thrown/rejected geocode call shows an inline error and leaves submit disabled', async () => {
+  test('a thrown/rejected lookup shows an inline error and leaves submit disabled', async () => {
     mockSearchStops.mockRejectedValue(new Error('network failure'));
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
     typeCity(tree, 'Portland, ME');
     await pressFind(tree);
 
-    expect(JSON.stringify(tree.toJSON())).toContain('network failure');
+    expect(JSON.stringify(tree.toJSON())).toContain("Couldn't look up that city");
     expect(submitDisabled(tree)).toBe(true);
+  });
+
+  // The regression that put "NOT FOUND" on screen: an undeployed callable rejects with a
+  // gRPC status, and printing err.message showed the status to the traveller.
+  test('a callable status never reaches the screen as raw text', async () => {
+    mockSearchStops.mockRejectedValue(Object.assign(new Error('NOT FOUND'), { code: 'not-found' }));
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
+
+    typeCity(tree, 'Portland, ME');
+    await pressFind(tree);
+
+    const rendered = JSON.stringify(tree.toJSON());
+    expect(rendered).not.toContain('NOT FOUND');
+    expect(rendered).toContain('unavailable right now');
+  });
+
+  test('a quota refusal says what was hit, not RESOURCE EXHAUSTED', async () => {
+    mockSearchStops.mockRejectedValue(
+      Object.assign(new Error('RESOURCE EXHAUSTED'), { code: 'resource-exhausted', details: { scope: 'user' } }),
+    );
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
+
+    typeCity(tree, 'Portland, ME');
+    await pressFind(tree);
+
+    const rendered = JSON.stringify(tree.toJSON());
+    expect(rendered).not.toContain('RESOURCE EXHAUSTED');
+    expect(rendered).toContain("today's lookup limit");
   });
 
   test('retry after a failure re-invokes searchStops and can succeed', async () => {
@@ -317,7 +345,11 @@ describe('StopForm', () => {
     pickDay(tree, '2026-08-14');
     await pressSubmit(tree);
 
-    expect(JSON.stringify(tree.toJSON())).toContain('database/permission-denied');
+    // The raw RTDB code is no more use to a traveller than a gRPC status was — what
+    // reaches the screen is words, and the code stays in the log.
+    const rendered = JSON.stringify(tree.toJSON());
+    expect(rendered).not.toContain('database/permission-denied');
+    expect(rendered).toContain("Couldn't save this stop");
     // Still resolved + dated — submit is enabled again so the user can just retry.
     expect(submitDisabled(tree)).toBe(false);
   });
@@ -333,13 +365,13 @@ describe('StopForm', () => {
     pickDay(tree, '2026-08-14');
     await pressSubmit(tree);
 
-    expect(JSON.stringify(tree.toJSON())).toContain('database/permission-denied');
+    expect(JSON.stringify(tree.toJSON())).toContain("Couldn't save this stop");
 
     // Picking a new day after the failed submit is the user starting a correction — the old
     // failure message shouldn't linger and imply nothing has changed.
     pickDay(tree, '2026-08-20');
 
-    expect(JSON.stringify(tree.toJSON())).not.toContain('database/permission-denied');
+    expect(JSON.stringify(tree.toJSON())).not.toContain("Couldn't save this stop");
   });
 
   test('editing the city field after a submit failure clears the stale submit error', async () => {
@@ -353,11 +385,11 @@ describe('StopForm', () => {
     pickDay(tree, '2026-08-14');
     await pressSubmit(tree);
 
-    expect(JSON.stringify(tree.toJSON())).toContain('database/permission-denied');
+    expect(JSON.stringify(tree.toJSON())).toContain("Couldn't save this stop");
 
     typeCity(tree, 'Portland, MEX');
 
-    expect(JSON.stringify(tree.toJSON())).not.toContain('database/permission-denied');
+    expect(JSON.stringify(tree.toJSON())).not.toContain("Couldn't save this stop");
   });
 
   test('editing the city field after a geocode failure clears the geocode error (existing behavior stays intact)', async () => {

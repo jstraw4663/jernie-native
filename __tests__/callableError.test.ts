@@ -1,4 +1,4 @@
-import { isOverQuota } from '@/src/domain/callableError';
+import { isOverQuota, describeCallableError } from '@/src/domain/callableError';
 
 // The client half of functions/src/quota.ts. `resource-exhausted` is the one callable
 // failure that is knowably permanent for a while: the answer will be "no" until the
@@ -38,5 +38,60 @@ describe('isOverQuota', () => {
 
   test.each([null, undefined, 'resource-exhausted', 42, {}])('%p is not a quota refusal', value => {
     expect(isOverQuota(value)).toBe(false);
+  });
+});
+
+// The reason this exists: an undeployed callable reached a user's screen as the words
+// "NOT FOUND". A gRPC status is not a sentence, and a traveller cannot act on one.
+describe('describeCallableError', () => {
+  const FALLBACK = "Couldn't look up that city — try again.";
+
+  function err(code: string, message = '', details?: unknown) {
+    return Object.assign(new Error(message), { code, details });
+  }
+
+  // The two quota refusals differ in what the person should DO — wait a day, or wait a
+  // few minutes for someone else's traffic to clear — so they must not share wording.
+  test('a personal quota refusal says the limit is theirs', () => {
+    const text = describeCallableError(err('resource-exhausted', '', { scope: 'user' }), FALLBACK);
+
+    expect(text).toMatch(/limit/i);
+    expect(text).not.toMatch(/capacity/i);
+  });
+
+  test('a global quota refusal says the service is busy, not that they did something', () => {
+    const text = describeCallableError(err('resource-exhausted', '', { scope: 'global' }), FALLBACK);
+
+    expect(text).toMatch(/capacity|busy/i);
+    expect(text).not.toMatch(/your|you've/i);
+  });
+
+  // Older deployments predate the details field, so the scope can be missing.
+  test('a quota refusal with no scope still reads as a limit, not as the fallback', () => {
+    const text = describeCallableError(err('resource-exhausted'), FALLBACK);
+
+    expect(text).not.toBe(FALLBACK);
+    expect(text).toMatch(/limit|capacity|busy/i);
+  });
+
+  test('never lets a raw gRPC status through', () => {
+    ['not-found', 'internal', 'unauthenticated', 'permission-denied', 'deadline-exceeded', 'unavailable']
+      .forEach(code => {
+        const text = describeCallableError(err(code, code.toUpperCase().replace('-', ' ')), FALLBACK);
+        expect(text).not.toMatch(/NOT FOUND|INTERNAL|UNAUTHENTICATED|DEADLINE/);
+        expect(text.length).toBeGreaterThan(10);
+      });
+  });
+
+  test('an unrecognised code falls back to the caller’s own wording', () => {
+    expect(describeCallableError(err('teapot'), FALLBACK)).toBe(FALLBACK);
+  });
+
+  test('a plain network error with no code falls back too', () => {
+    expect(describeCallableError(new Error('Network request failed'), FALLBACK)).toBe(FALLBACK);
+  });
+
+  test.each([null, undefined, 42, 'resource-exhausted'])('%p falls back', value => {
+    expect(describeCallableError(value, FALLBACK)).toBe(FALLBACK);
   });
 });

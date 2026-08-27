@@ -277,4 +277,42 @@ describe('chargeQuota', () => {
       });
     });
   });
+  // a client should not be pattern-matching it. `details` carries the distinction as data.
+  describe('chargeQuota — what a refusal tells the client', () => {
+    test('a personal refusal is marked as the user\'s own', async () => {
+      mockGetAll.mockResolvedValue([
+        snapshot({ usage: { resolveQuery: { day: 300, minuteBucket: '2026-08-26T14:03', minute: 0 } } }),
+        snapshot(undefined),
+      ]);
+
+      await expect(chargeQuota('uid-jeremy', 'resolveQuery', 1, NOW)).rejects.toMatchObject({
+        code: 'resource-exhausted',
+        details: { scope: 'user' },
+      });
+    });
+
+    test('a global refusal is marked as the service being at capacity', async () => {
+      mockGetAll.mockResolvedValue([
+        snapshot(undefined),
+        snapshot({ usage: { all: { day: 3000, minuteBucket: '2026-08-26T14:03', minute: 0 } } }),
+      ]);
+
+      await expect(chargeQuota('uid-jeremy', 'resolveQuery', 1, NOW)).rejects.toMatchObject({
+        code: 'resource-exhausted',
+        details: { scope: 'global' },
+      });
+    });
+
+    test('a ledger failure is not dressed up as either', async () => {
+      mockRunTransaction.mockRejectedValue(new Error('Firestore unavailable'));
+
+      await expect(chargeQuota('uid-jeremy', 'resolveQuery', 1, NOW)).rejects.toMatchObject({
+        code: 'unavailable',
+      });
+    });
+  });
 });
+
+// The code alone cannot tell a caller whether THEY are out of budget or the whole service
+// is, and those need different words on screen — "you've hit your limit today" versus
+// "we're at capacity". The message says which, but a message is prose meant for humans and

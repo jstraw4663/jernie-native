@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet 
 import { Calendar } from 'react-native-calendars';
 import type { DateData } from 'react-native-calendars';
 import { searchStops, type StopSearchResult } from '@/src/lib/stopSearchClient';
+import { describeCallableError } from '@/src/domain/callableError';
 import { formatDateRange } from '@/src/utils/dates';
 import { ListRow } from '@/src/ui';
 import { Core, Radius, Semantic, Spacing, Typography } from '@/src/design/tokens';
@@ -198,7 +199,9 @@ export function StopForm({ onSubmit, onCancel, submitLabel = 'Continue', initial
       setResolved(null);
       setResolvedFor(null);
       setSearchStatus('error');
-      setSearchError(err instanceof Error ? err.message : "Couldn't look up that city — try again.");
+      // Never `err.message`: a callable rejects with a gRPC status, and printing it put the
+      // words "NOT FOUND" on a traveller's screen when searchStops was not yet deployed.
+      setSearchError(describeCallableError(err, "Couldn't look up that city — try again."));
     }
   };
 
@@ -215,7 +218,7 @@ export function StopForm({ onSubmit, onCancel, submitLabel = 'Continue', initial
         dates: { start: startDate, end: endDate },
       });
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Couldn't save this stop — try again.");
+      setSubmitError(describeCallableError(err, "Couldn't save this stop — try again."));
     } finally {
       setSubmitting(false);
     }
