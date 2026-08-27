@@ -88,6 +88,11 @@ function pickDay(tree: renderer.ReactTestRenderer, dateString: string) {
 }
 async function pressFind(tree: renderer.ReactTestRenderer) {
   await act(async () => { await tree.root.findByProps({ testID: 'stop-form-find-button' }).props.onPress(); });
+  // A search resolves nothing on its own now — every match is offered as a card, so the
+  // journey to a resolved stop always includes tapping one. See StopForm's doc comment.
+  await act(async () => {
+    await tree.root.findAllByProps({ testID: 'stop-form-result-0' })[0].props.onPress();
+  });
 }
 async function pressSubmit(tree: renderer.ReactTestRenderer) {
   await act(async () => { await tree.root.findByProps({ testID: 'stop-form-submit-button' }).props.onPress(); });

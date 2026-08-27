@@ -52,6 +52,25 @@ async function pressSubmit(tree: renderer.ReactTestRenderer) {
 function submitDisabled(tree: renderer.ReactTestRenderer): boolean {
   return !!tree.root.findByProps({ testID: 'stop-form-submit-button' }).props.disabled;
 }
+// Rows carry indexed testIDs, matching BookingForm's leg rows — react-test-renderer
+// surfaces a testID on every composite AND host node beneath a TouchableOpacity (five per
+// row), so a shared id could not address one row unambiguously.
+function resultRowCount(tree: renderer.ReactTestRenderer): number {
+  let count = 0;
+  while (tree.root.findAllByProps({ testID: `stop-form-result-${count}` }).length > 0) count++;
+  return count;
+}
+async function pickResult(tree: renderer.ReactTestRenderer, index: number) {
+  await act(async () => {
+    await tree.root.findAllByProps({ testID: `stop-form-result-${index}` })[0].props.onPress();
+  });
+}
+// A search now resolves nothing on its own, so every journey that needs a resolved stop
+// presses Find and then taps a card.
+async function findAndPick(tree: renderer.ReactTestRenderer, index = 0) {
+  await pressFind(tree);
+  await pickResult(tree, index);
+}
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -124,7 +143,7 @@ describe('StopForm', () => {
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
     typeCity(tree, 'Portland, ME');
-    await pressFind(tree);
+    await findAndPick(tree);
     expect(mockSearchStops).toHaveBeenCalledWith('Portland, ME');
     expect(submitDisabled(tree)).toBe(true); // geocoded, but no dates yet
 
@@ -174,12 +193,15 @@ describe('StopForm', () => {
     typeCity(tree, 'Portland, ME');
     pickDay(tree, '2026-08-10');
     pickDay(tree, '2026-08-14');
+    // The first search matches nothing, so there is no card to tap — that is the failure
+    // this test is retrying from.
     await pressFind(tree);
+    expect(resultRowCount(tree)).toBe(0);
     expect(submitDisabled(tree)).toBe(true);
 
     mockSearchStops.mockResolvedValueOnce([{ name: 'Portland', region: 'ME', lat: 43.66, lon: -70.26 }]);
     // The retry button is the same element as Find, just relabeled.
-    await pressFind(tree);
+    await findAndPick(tree);
 
     expect(mockSearchStops).toHaveBeenCalledTimes(2);
     expect(submitDisabled(tree)).toBe(false);
@@ -192,7 +214,7 @@ describe('StopForm', () => {
     typeCity(tree, 'Portland, ME');
     pickDay(tree, '2026-08-10');
     pickDay(tree, '2026-08-14');
-    await pressFind(tree);
+    await findAndPick(tree);
     expect(submitDisabled(tree)).toBe(false);
 
     // User edits the city text after the geocode already succeeded — the resolved lat/lon no
@@ -207,7 +229,7 @@ describe('StopForm', () => {
     const tree = renderForm(<StopForm onSubmit={onSubmit} />);
 
     typeCity(tree, 'Portland, ME');
-    await pressFind(tree);
+    await findAndPick(tree);
     pickDay(tree, '2026-08-14');
     pickDay(tree, '2026-08-10');
 
@@ -223,7 +245,7 @@ describe('StopForm', () => {
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
     typeCity(tree, 'Portland, ME');
-    await pressFind(tree);
+    await findAndPick(tree);
     pickDay(tree, '2026-08-10');
     pickDay(tree, '2026-08-14');
     expect(submitDisabled(tree)).toBe(false);
@@ -239,7 +261,7 @@ describe('StopForm', () => {
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
     typeCity(tree, 'Portland, ME');
-    await pressFind(tree);
+    await findAndPick(tree);
     // 2028 is a leap year, so Feb 29 is a real, valid date.
     pickDay(tree, '2028-02-29');
     pickDay(tree, '2028-03-01');
@@ -253,7 +275,7 @@ describe('StopForm', () => {
     const tree = renderForm(<StopForm onSubmit={onSubmit} />);
 
     typeCity(tree, 'Portland, ME');
-    await pressFind(tree);
+    await findAndPick(tree);
     pickDay(tree, '2026-08-10');
     pickDay(tree, '2026-08-14');
     await pressSubmit(tree);
@@ -273,7 +295,7 @@ describe('StopForm', () => {
     const tree = renderForm(<StopForm onSubmit={onSubmit} />);
 
     typeCity(tree, 'Some Remote Village');
-    await pressFind(tree);
+    await findAndPick(tree);
     pickDay(tree, '2026-08-10');
     pickDay(tree, '2026-08-14');
     await pressSubmit(tree);
@@ -290,7 +312,7 @@ describe('StopForm', () => {
     const tree = renderForm(<StopForm onSubmit={onSubmit} />);
 
     typeCity(tree, 'Portland, ME');
-    await pressFind(tree);
+    await findAndPick(tree);
     pickDay(tree, '2026-08-10');
     pickDay(tree, '2026-08-14');
     await pressSubmit(tree);
@@ -306,7 +328,7 @@ describe('StopForm', () => {
     const tree = renderForm(<StopForm onSubmit={onSubmit} />);
 
     typeCity(tree, 'Portland, ME');
-    await pressFind(tree);
+    await findAndPick(tree);
     pickDay(tree, '2026-08-10');
     pickDay(tree, '2026-08-14');
     await pressSubmit(tree);
@@ -326,7 +348,7 @@ describe('StopForm', () => {
     const tree = renderForm(<StopForm onSubmit={onSubmit} />);
 
     typeCity(tree, 'Portland, ME');
-    await pressFind(tree);
+    await findAndPick(tree);
     pickDay(tree, '2026-08-10');
     pickDay(tree, '2026-08-14');
     await pressSubmit(tree);
@@ -379,21 +401,6 @@ describe('StopForm — choosing between ambiguous matches', () => {
     { name: 'Portland', region: 'OR', lat: 45.5152, lon: -122.6784, context: 'Oregon, United States' },
     { name: 'Portland', region: 'VIC', lat: -38.3453, lon: 141.6045, context: 'Victoria, Australia' },
   ];
-
-  // Rows carry indexed testIDs, matching BookingForm's leg rows — react-test-renderer
-  // surfaces a testID on every composite AND host node beneath a TouchableOpacity (five
-  // per row), so a shared id could not address one row unambiguously.
-  function resultRowCount(tree: renderer.ReactTestRenderer): number {
-    let count = 0;
-    while (tree.root.findAllByProps({ testID: `stop-form-result-${count}` }).length > 0) count++;
-    return count;
-  }
-
-  async function pickResult(tree: renderer.ReactTestRenderer, index: number) {
-    await act(async () => {
-      await tree.root.findAllByProps({ testID: `stop-form-result-${index}` })[0].props.onPress();
-    });
-  }
 
   test('renders one row per match, in the order the provider ranked them', async () => {
     mockSearchStops.mockResolvedValue(PORTLANDS);
@@ -455,10 +462,16 @@ describe('StopForm — choosing between ambiguous matches', () => {
     expect(resultRowCount(tree)).toBe(0);
   });
 
-  // An unambiguous query is the common case, and there is nothing to choose between when
-  // exactly one town matches — making the user tap it would be a tap that carries no
-  // information. This is what keeps "Bar Harbor, ME" a one-press flow, as it was before.
-  test('a single match needs no choosing and resolves itself', async () => {
+  // This used to auto-resolve, on the reasoning that one match means nothing to choose
+  // between. Live data killed that: an unanchored "camden" returns exactly one result and
+  // it is Camden, SOUTH CAROLINA — one result means one result RANKED, not one that
+  // exists. Auto-resolving it silently commits the trip to a town the user never saw,
+  // which is the precise failure the old single-result geocode had and this replaced.
+  //
+  // So a single match is shown, not assumed. It costs one tap and makes the choice
+  // visible, which is also what makes the flow consistent: every search answers with
+  // cards.
+  test('a single match is offered as a card rather than resolved silently', async () => {
     mockSearchStops.mockResolvedValue([PORTLANDS[0]]);
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
@@ -467,8 +480,24 @@ describe('StopForm — choosing between ambiguous matches', () => {
     pickDay(tree, '2026-08-10');
     pickDay(tree, '2026-08-14');
 
+    expect(resultRowCount(tree)).toBe(1);
+    expect(submitDisabled(tree)).toBe(true);
+  });
+
+  test('tapping that single card resolves it', async () => {
+    mockSearchStops.mockResolvedValue([PORTLANDS[0]]);
+    const onSubmit = jest.fn();
+    const tree = renderForm(<StopForm onSubmit={onSubmit} />);
+
+    typeCity(tree, 'Portland, ME');
+    await pressFind(tree);
+    await pickResult(tree, 0);
+    pickDay(tree, '2026-08-10');
+    pickDay(tree, '2026-08-14');
+    await pressSubmit(tree);
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ city: 'Portland', region: 'ME' }));
     expect(resultRowCount(tree)).toBe(0);
-    expect(submitDisabled(tree)).toBe(false);
   });
 
   test('editing the city after choosing clears the stale choice and its list', async () => {
@@ -543,7 +572,7 @@ describe('StopForm — choosing between ambiguous matches', () => {
     const tree = renderForm(<StopForm onSubmit={onSubmit} />);
 
     typeCity(tree, 'Chamonix');
-    await pressFind(tree);
+    await findAndPick(tree);
     pickDay(tree, '2026-08-10');
     pickDay(tree, '2026-08-14');
     await pressSubmit(tree);
@@ -588,7 +617,7 @@ describe('StopForm — edit mode (initialValues)', () => {
     expect(submitDisabled(tree)).toBe(true);
 
     mockSearchStops.mockResolvedValue([{ name: 'Bangor', region: 'ME', lat: 44.8, lon: -68.77 }]);
-    await pressFind(tree);
+    await findAndPick(tree);
     expect(submitDisabled(tree)).toBe(false);
   });
 

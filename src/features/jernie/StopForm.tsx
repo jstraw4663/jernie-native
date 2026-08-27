@@ -74,16 +74,18 @@ function addDaysISO(dateStr: string, days: number): string {
  * sheet and the onboarding wizard's first-stop step both render this directly and just supply a
  * different `onSubmit`.
  *
- * Resolution takes one of two shapes, because a search returns a ranked list rather than the
- * single answer the Google geocode this replaced gave:
+ * EVERY search answers with cards, and resolves nothing until one is tapped — however few
+ * matches come back.
  *
- *   - Exactly one match resolves itself. There is nothing to choose between, so asking for a
- *     tap would be asking for a tap that carries no information, and the common case ("Bar
- *     Harbor, ME") stays as short as it was before.
- *   - Several matches are offered as rows and resolve nothing until one is tapped. This is the
- *     entire reason for the change: "Portland" is a town in Maine, another in Oregon and
- *     another in Victoria, and picking by provider rank meant committing to a city the user
- *     never chose, with nothing on screen to say a choice had been made.
+ * The single-match case briefly auto-resolved, on the reasoning that one result leaves
+ * nothing to choose between. That reasoning was wrong, and live data is what showed it: an
+ * unanchored search for "camden" returns exactly one result and it is Camden, SOUTH
+ * CAROLINA, not the Camden in Maine that was meant. One result means one result RANKED, not
+ * one that exists — so auto-resolving commits the trip to a town the user never saw, which
+ * is the precise failure of the single-result Google geocode this replaced.
+ *
+ * The cost is one tap on an unambiguous query. What it buys is that the app never silently
+ * decides which Portland you meant, and that the flow looks the same every time.
  *
  * The search is unanchored — `searchStops` accepts a proximity anchor and this does not pass
  * one. A stop is searched for by name, and the trip's other stops are not evidence about where
@@ -179,24 +181,17 @@ export function StopForm({ onSubmit, onCancel, submitLabel = 'Continue', initial
     try {
       const matches = await searchStops(trimmedCity);
 
-      if (matches.length === 1) {
-        // Nothing to choose between — see the component doc for why this does not ask.
-        resolveTo(matches[0], trimmedCity);
-        return;
-      }
+      // A search RESOLVES NOTHING on its own, however few matches come back. See the
+      // component doc for why one result is not the same as one candidate.
+      setResolved(null);
+      setResolvedFor(null);
 
       if (matches.length === 0) {
-        setResolved(null);
-        setResolvedFor(null);
         setSearchStatus('error');
         setSearchError("Couldn't find that city — check the spelling and try again.");
         return;
       }
 
-      // Several matches. Deliberately resolves NOTHING: submit stays blocked until a
-      // human has said which Portland they mean.
-      setResolved(null);
-      setResolvedFor(null);
       setResults(matches);
       setSearchStatus('choosing');
     } catch (err) {

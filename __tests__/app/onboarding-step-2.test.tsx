@@ -78,6 +78,11 @@ describe('app/onboarding/step-2', () => {
     await act(async () => {
       await tree.root.findByProps({ testID: 'stop-form-find-button' }).props.onPress();
     });
+    // A search resolves nothing on its own now — every match is offered as a card, even a
+    // lone one, so the wizard's happy path includes tapping it. See StopForm's doc comment.
+    await act(async () => {
+      await tree.root.findAllByProps({ testID: 'stop-form-result-0' })[0].props.onPress();
+    });
     pickDay(tree, '2026-08-10');
     pickDay(tree, '2026-08-14');
     await act(async () => {
