@@ -2,12 +2,13 @@
 
 Updated: 2026-08-27
 Agent: Claude, add-flow data layer
-Branch: `dev` at `04f00a7`, pushed. `master` is still `0a25e97` (v0.7.0) — not yet promoted.
+Branch: `dev` at `a9d3a6e`, pushed. `master` is still `0a25e97` (v0.7.0) — not yet promoted.
 
 ## Current objective
 
-The add-flow data layer (`.claude/plans/great-this-makes-sense-cozy-fox.md`) is complete and
-deployed except for step §7, the MMKV tray. The sheet UI remains a separate, unwritten plan.
+The add-flow data layer (`.claude/plans/great-this-makes-sense-cozy-fox.md`) is **complete** —
+all eight steps, including §7's MMKV tray — and a housekeeping sweep is done. The sheet UI is
+the next piece and remains a separate, unwritten plan.
 
 ## Verified state
 
@@ -48,18 +49,19 @@ deployed except for step §7, the MMKV tray. The sheet UI remains a separate, un
    - Foursquare returns 0 results for the two-word query "lobster pound" while "lobster"
      returns 10 and "thurstons lobster pound" returns 3, at the same anchor and radius.
      Not our bug, but the search box will feel broken on some plausible phrasings.
-2. **MMKV tray** (plan §7). `commitCandidates`/`undoCommit` exist in `src/lib/addFlowWrites.ts`
-   with no store behind them, so a half-built batch does not survive an app kill.
-3. **Callable errors reach users raw.** `StopForm.tsx:206` prints `err.message`, which is why
-   an undeployed function showed "NOT FOUND". Once quotas bite, a user sees
-   "RESOURCE EXHAUSTED". `isOverQuota` in `src/domain/callableError.ts` is the place to build on.
-4. `geocodeCity` is still deployed and orphaned — `firebase functions:delete geocodeCity`,
-   then `GOOGLE_PLACES_API_KEY` can be deprovisioned.
-5. `route_cache` TTL is still broken: `cachedAt` is epoch millis and Firestore TTL needs a
-   Timestamp. `quotaExpiresAt()` in `functions/src/quota.ts` is the working template.
-6. **Node 20 is decommissioned 2026-10-30** (pinned in `functions/package.json`);
-   `firebase-functions` is 7.2.5 against 7.3.2. `FIREBASE_TOKEN` auth is deprecated.
-7. App Check is deployed but NOT enforcing (`ENFORCE_APP_CHECK=false`). Rollout order is in
+2. **Nothing since `980896f` has been deployed.** `dev` now carries the quota refusal
+   `details`, `route_cache`'s `expiresAt`, Node 22 and firebase-functions 7.3.2. Deploy is
+   the only real test of the runtime bump.
+3. **Console steps nobody has run yet**, in order:
+   - `npx firebase deploy --only functions,firestore:rules --project jernie-native-dev`
+   - `gcloud firestore fields ttls update expiresAt --collection-group=route_cache --enable-ttl`
+     — without it nothing is ever deleted; `expiresAt` exists only so the policy has a
+     Timestamp to read.
+   - `npx firebase functions:delete geocodeCity --project jernie-native-dev` (still deployed
+     and orphaned — absence from the bundle is not deletion), then deprovision
+     `GOOGLE_PLACES_API_KEY`.
+4. `FIREBASE_TOKEN` auth is deprecated; a service account is the durable replacement.
+5. App Check is deployed but NOT enforcing (`ENFORCE_APP_CHECK=false`). Rollout order is in
    `functions/src/appCheck.ts`. Debug token is registered.
-8. The provisioned `MAPBOX_ACCESS_TOKEN` is a public `pk.` token where `secrets.ts` documents
+6. The provisioned `MAPBOX_ACCESS_TOKEN` is a public `pk.` token where `secrets.ts` documents
    an `sk.` one. It works and is unrestricted, but cannot be scope-limited.
