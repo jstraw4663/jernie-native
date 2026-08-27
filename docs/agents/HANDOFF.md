@@ -36,11 +36,18 @@ deployed except for step §7, the MMKV tray. The sheet UI remains a separate, un
 
 ## Remaining work and concerns
 
-1. **`resolveQuery` and `routeBetween` have never been called live.** This matters more than
-   it sounds: `searchStops` passed every unit test and was still broken in production —
-   Mapbox ranks POIs and regions above towns, so filtering after the fact returned nothing
-   for "portland". Only a live call found it (`1db133c`). The Directions response shape is
-   still documentation-derived. Verify both before building UI on them.
+1. **All four callables' providers are now confirmed live** (2026-08-27). Mapbox Directions
+   returns `code: "Ok"` and NO `geometry` under `overview=false`, which is the property
+   `route_cache` depends on. Foursquare search returns Pro fields only — no hours, rating,
+   price or photos — so search stays on the free tier, and every category string it emitted
+   classifies correctly (pinned in `functions/__tests__/classify.test.ts`).
+   Two provider behaviours worth knowing before building the sheet UI:
+   - The 20km radius EXCLUDES Thurston's Lobster Pound (20.3km from Bar Harbor), so the
+     plan's stated acceptance case fails. Kept deliberately — see the comment on
+     `SEARCH_AREA_RADIUS_METERS`; that is a 45-minute drive and belongs to its own stop.
+   - Foursquare returns 0 results for the two-word query "lobster pound" while "lobster"
+     returns 10 and "thurstons lobster pound" returns 3, at the same anchor and radius.
+     Not our bug, but the search box will feel broken on some plausible phrasings.
 2. **MMKV tray** (plan §7). `commitCandidates`/`undoCommit` exist in `src/lib/addFlowWrites.ts`
    with no store behind them, so a half-built batch does not survive an app kill.
 3. **Callable errors reach users raw.** `StopForm.tsx:206` prints `err.message`, which is why

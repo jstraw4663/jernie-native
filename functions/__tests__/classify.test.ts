@@ -130,3 +130,19 @@ describe('classifyQueryText — flight numbers', () => {
     expect(classifyQueryText(query)).not.toBe('flight');
   });
 });
+
+// Category strings observed in a REAL Foursquare response near Bar Harbor on 2026-08-27,
+// not invented for the test. The classifier is a word-list over a provider's taxonomy, and
+// a taxonomy is not ours to control — pinning what it actually emits is what turns "these
+// rules look sensible" into "these rules handle the input we get".
+describe('resolveType against categories Foursquare really returns', () => {
+  test.each([
+    ['Hotel', 'stay'],
+    ['Bed and Breakfast', 'stay'],
+    ['Hiking Trail', 'do'],
+    ['Mountain', 'do'],
+    ['Coffee Shop', 'eat'],
+  ])('%s is a %s', (category, expected) => {
+    expect(resolveType(null, category, 'anything').resolvedType).toBe(expected);
+  });
+});

@@ -233,9 +233,21 @@ export const fetchFoursquareMatch: ProviderAdapter = async (input) => {
 // beyond 200m, because a wrong match silently corrupts an existing record. Searching RANKS
 // places the user has no coordinates for, so both of those behaviours would be bugs here.
 
-// Wide enough to cover everywhere a traveller would drive to from the stop they are
-// planning — a restaurant in Bernard is a legitimate result for someone based in Bar
-// Harbor, 12km away.
+// The radius a stop can answer for, and deliberately not larger.
+//
+// Measured, not estimated: Thurston's Lobster Pound in Bernard is 20.3km from Bar Harbor,
+// so it falls outside this by 300 metres and a live search for "thurston" anchored on Bar
+// Harbor returns nothing. That was checked on 2026-08-27 and kept anyway — an earlier
+// version of this comment claimed Bernard was 12km away and therefore a legitimate result,
+// and both halves of that were wrong.
+//
+// It is a 45-minute drive each way. Somewhere that far is not a place you eat while based
+// in Bar Harbor; it is a reason to add Southwest Harbor as its own stop, which is exactly
+// what the add flow is for. Widening this to catch it would make every stop's results
+// bleed into its neighbours' and make "near this stop" mean nothing.
+//
+// Cost is not the constraint here — radius does not change the price of a call — so if
+// this is ever revisited, revisit it on whether the results still feel local.
 const SEARCH_AREA_RADIUS_METERS = 20000;
 
 const SEARCH_RESULT_LIMIT = 10;
