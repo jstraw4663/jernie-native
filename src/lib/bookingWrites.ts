@@ -2,7 +2,9 @@ import { database, getAuthedUser } from '@/src/lib/firebase';
 import { generateId } from '@/src/utils/id';
 import { stripUndefined } from '@/src/utils/stripUndefined';
 import { buildBookingRemovalUpdates, parseItineraryFromSnapshot } from '@/src/domain/cascade';
-import type { Booking, FlightBooking, HotelBooking, RentalBooking, RestaurantBooking } from '@/src/types';
+import type {
+  Booking, FlightBooking, HotelBooking, RentalBooking, RestaurantBooking,
+} from '@/src/types';
 
 export type NewBooking =
   | Omit<FlightBooking, 'id' | 'tripId'>

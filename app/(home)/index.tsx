@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUserTrips } from '@/src/hooks/useUserTrips';
 import { useTripAdmin } from '@/src/hooks/useTripAdmin';
 import { TripLoadingScreen } from '@/src/features/jernie/TripLoadingScreen';
-import { Brand, Core, Radius, Spacing, Typography } from '@/src/design/tokens';
+import { Core, Radius, Spacing, Typography } from '@/src/design/tokens';
 
 export default function MyTripsScreen() {
   const router = useRouter();
@@ -94,50 +94,50 @@ export default function MyTripsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Core.bg },
+  screen: { flex: 1, backgroundColor: Core.surface },
   container: { padding: Spacing.xl },
-  title: { ...Typography.roles.h1, color: Core.text, marginBottom: Spacing.lg },
-  sub: { ...Typography.roles.meta, color: Core.textMuted },
+  title: { ...Typography.roles.display, color: Core.text, marginBottom: Spacing.lg },
+  sub: { ...Typography.roles.sub, color: Core.textMuted },
   row: {
     backgroundColor: Core.surface,
-    borderRadius: Radius.list,
+    borderRadius: Radius.tile,
     borderWidth: 1,
     borderColor: Core.border,
     paddingVertical: Spacing.base,
     paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.sm,
   },
-  rowTitle: { ...Typography.roles.h3, color: Core.text },
-  rowMeta: { ...Typography.roles.meta, color: Core.textMuted, marginTop: Spacing.xxs, textTransform: 'capitalize' },
+  rowTitle: { ...Typography.roles.section, color: Core.text },
+  rowMeta: { ...Typography.roles.sub, color: Core.textMuted, marginTop: Spacing.xxs, textTransform: 'capitalize' },
   createButton: {
     marginTop: Spacing.xxl,
-    backgroundColor: Brand.gold,
-    borderRadius: Radius.md,
+    backgroundColor: Core.action,
+    borderRadius: Radius.icon,
     paddingVertical: Spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  createButtonText: { ...Typography.roles.button, color: Brand.navy },
+  createButtonText: { ...Typography.roles.button, color: Core.textInverse },
   deletedSection: { marginTop: Spacing.xxl },
-  deletedHeading: { ...Typography.roles.label, color: Core.textMuted, marginBottom: Spacing.sm },
+  deletedHeading: { ...Typography.roles.chip, color: Core.textMuted, marginBottom: Spacing.sm },
   deletedRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: Radius.list,
+    borderRadius: Radius.tile,
     borderWidth: 1,
     borderColor: Core.border,
     paddingVertical: Spacing.base,
     paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.sm,
   },
-  deletedRowTitle: { ...Typography.roles.h3, color: Core.textMuted },
+  deletedRowTitle: { ...Typography.roles.section, color: Core.textMuted },
   restoreButton: {
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.md,
-    borderRadius: Radius.sm,
+    borderRadius: Radius.icon,
     borderWidth: 1,
     borderColor: Core.border,
   },
-  restoreButtonText: { ...Typography.roles.label, color: Core.action },
+  restoreButtonText: { ...Typography.roles.chip, color: Core.action },
 });

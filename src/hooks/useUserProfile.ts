@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { database, getAuthedUser } from '@/src/lib/firebase';
+import type { MapsAppId } from '@/src/types';
 
 export interface UserProfileState {
   displayName: string | null;
   email: string | null;
   plan: string | undefined;
+  preferredMapsApp: MapsAppId | undefined;
   status: 'loading' | 'ready' | 'error';
   refetch: () => void;
 }
@@ -18,22 +20,28 @@ export interface UserProfileState {
  */
 export function useUserProfile(uid: string | null): UserProfileState {
   const [state, setState] = useState<Omit<UserProfileState, 'refetch'>>({
-    displayName: null, email: null, plan: undefined, status: 'loading',
+    displayName: null, email: null, plan: undefined, preferredMapsApp: undefined, status: 'loading',
   });
 
   const load = useCallback(async () => {
     if (!uid) {
-      setState({ displayName: null, email: null, plan: undefined, status: 'ready' });
+      setState({ displayName: null, email: null, plan: undefined, preferredMapsApp: undefined, status: 'ready' });
       return;
     }
     try {
       await getAuthedUser();
       const snap = await database().ref(`users/${uid}`).once('value');
-      const val = (snap.val() ?? {}) as { displayName?: string; email?: string; plan?: string };
+      const val = (snap.val() ?? {}) as {
+        displayName?: string;
+        email?: string;
+        plan?: string;
+        preferredMapsApp?: MapsAppId;
+      };
       setState({
         displayName: val.displayName ?? null,
         email: val.email ?? null,
         plan: val.plan,
+        preferredMapsApp: val.preferredMapsApp,
         status: 'ready',
       });
     } catch {

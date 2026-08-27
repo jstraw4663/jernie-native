@@ -165,10 +165,10 @@ test('isTodayBooking: restaurant returns false on other dates', () => {
 
 test('getBookingDisplay: flight returns correct structure', () => {
   const display = getBookingDisplay(testFlightBooking, '2026-07-10');
-  expect(display).toHaveProperty('emoji');
+  expect(display).toHaveProperty('category');
   expect(display).toHaveProperty('label');
   expect(display).toHaveProperty('meta');
-  expect(display.emoji).toBe('✈️');
+  expect(display.category).toBe('flight');
 });
 
 test('getBookingDisplay: flight label includes airline and flight number', () => {
@@ -201,7 +201,7 @@ test('getBookingDisplay: multi-leg flight shows first and last leg', () => {
 
 test('getBookingDisplay: hotel returns correct structure', () => {
   const display = getBookingDisplay(testHotelBooking, '2026-07-10');
-  expect(display.emoji).toBe('🏨');
+  expect(display.category).toBe('stay');
   expect(display).toHaveProperty('label');
   expect(display).toHaveProperty('meta');
 });
@@ -219,7 +219,7 @@ test('getBookingDisplay: hotel meta includes check-in and check-out dates', () =
 
 test('getBookingDisplay: rental returns correct structure', () => {
   const display = getBookingDisplay(testRentalBooking, '2026-07-10');
-  expect(display.emoji).toBe('🚗');
+  expect(display.category).toBe('car');
   expect(display).toHaveProperty('label');
   expect(display).toHaveProperty('meta');
 });
@@ -238,7 +238,7 @@ test('getBookingDisplay: rental meta includes pickup and dropoff dates', () => {
 
 test('getBookingDisplay: restaurant returns correct structure', () => {
   const display = getBookingDisplay(testRestaurantBooking, '2026-07-10');
-  expect(display.emoji).toBe('🍽️');
+  expect(display.category).toBe('food');
   expect(display).toHaveProperty('label');
   expect(display).toHaveProperty('meta');
 });

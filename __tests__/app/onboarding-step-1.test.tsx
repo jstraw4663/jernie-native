@@ -124,7 +124,7 @@ describe('app/onboarding/step-1', () => {
 
     expect(mockSetName).toHaveBeenCalledWith('NYC Summer');
     expect(mockSetOrganizerHandle).toHaveBeenCalledWith('Jeremy');
-    expect(mockSetPills).toHaveBeenCalledWith(['🦞 Seafood', '🏖️ Beach']);
+    expect(mockSetPills).toHaveBeenCalledWith(['Seafood', 'Beach']);
     expect(mockPush).toHaveBeenCalledWith('/onboarding/step-2');
   });
 

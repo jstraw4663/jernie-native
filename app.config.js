@@ -21,7 +21,7 @@ module.exports = {
   expo: {
     name: "Jernie",
     slug: "jernie-native",
-    version: "0.6.1",
+    version: "0.7.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
@@ -38,6 +38,7 @@ module.exports = {
       googleServicesFile:
         process.env.GOOGLE_SERVICES_IOS ?? "./GoogleService-Info.plist",
       infoPlist: {
+        LSApplicationQueriesSchemes: ["comgooglemaps", "waze"],
         NSLocationWhenInUseUsageDescription:
           "Jernie uses your location to show nearby places.",
         ITSAppUsesNonExemptEncryption: false,
@@ -54,9 +55,11 @@ module.exports = {
         process.env.GOOGLE_SERVICES_ANDROID ?? "./google-services.json",
     },
     plugins: [
+      "./plugins/withMapsAppQueries",
       "expo-apple-authentication",
       "expo-router",
       "expo-font",
+      "expo-image",
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
       [

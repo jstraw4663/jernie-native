@@ -1,3 +1,4 @@
+import { CaretRightIcon } from 'phosphor-react-native/src/icons/CaretRight';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Core, Radius, Spacing, Typography } from '@/src/design/tokens';
@@ -27,7 +28,7 @@ export function ProfileHeader({ tripName, accentColor, onSwitchTrip }: ProfileHe
         accessibilityLabel={`Current trip: ${tripName}. Switch trip.`}
       >
         <Text style={[styles.badgeText, { color: accentColor }]} numberOfLines={1}>{tripName}</Text>
-        <Text style={[styles.chevron, { color: accentColor }]} allowFontScaling={false}>›</Text>
+        <CaretRightIcon size={16} color={accentColor} style={styles.chevron} />
       </Pressable>
     </View>
   );
@@ -56,6 +57,6 @@ const styles = StyleSheet.create({
     maxWidth: '55%',
   },
   badgePressed: { opacity: 0.7 },
-  badgeText: { ...Typography.roles.label, flexShrink: 1 },
+  badgeText: { ...Typography.roles.chip, flexShrink: 1 },
   chevron: { fontSize: 18, fontFamily: Typography.family.sans },
 });

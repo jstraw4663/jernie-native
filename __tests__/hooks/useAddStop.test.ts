@@ -71,7 +71,7 @@ describe('useAddStop', () => {
       tripId: 'trip-1',
       city: 'Brooklyn',
       region: 'NY',
-      emoji: '📍',
+      emoji: '',
       lat: 40.6782,
       lon: -73.9442,
       dates: { start: '2026-08-15', end: '2026-08-18' },

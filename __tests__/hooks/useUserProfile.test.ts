@@ -12,11 +12,15 @@ beforeEach(() => { jest.clearAllMocks(); });
 
 describe('useUserProfile', () => {
   it('reads the caller own record and exposes displayName, email and plan', async () => {
-    mockOnce.mockResolvedValueOnce({ val: () => ({ displayName: 'Ada', email: 'a@b.c', plan: 'free' }) });
+    mockOnce.mockResolvedValueOnce({ val: () => ({
+      displayName: 'Ada', email: 'a@b.c', plan: 'free', preferredMapsApp: 'google',
+    }) });
     const { result } = renderHook(() => useUserProfile('uid-1'));
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(mockRef).toHaveBeenCalledWith('users/uid-1');
-    expect(result.current).toMatchObject({ displayName: 'Ada', email: 'a@b.c', plan: 'free' });
+    expect(result.current).toMatchObject({
+      displayName: 'Ada', email: 'a@b.c', plan: 'free', preferredMapsApp: 'google',
+    });
   });
 
   it('resolves to empty for a null uid without touching the database', async () => {

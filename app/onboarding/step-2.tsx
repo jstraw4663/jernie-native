@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Brand, Core, Typography, Spacing } from '@/src/design/tokens';
+import { Core, Spacing, Typography } from '@/src/design/tokens';
 import { StopForm, type ResolvedStop } from '@/src/features/jernie/StopForm';
 import { useOnboardingDraft } from '@/src/contexts/OnboardingDraftContext';
 
@@ -31,24 +31,23 @@ export default function OnboardingStep2() {
 }
 
 const styles = StyleSheet.create({
-  // Core.bg (light) rather than Brand.navy — StopForm's own inputs/text are styled for a light
-  // surface (Core.text, Core.surfaceMuted; see StopFormSheet's identical Core.bg host), so this
-  // screen matches that instead of forcing StopForm onto a dark background it wasn't built for.
+  // Every wizard step is Core.surface now — the design's wizard is white throughout, and
+  // StopForm's own inputs and text were already styled for a light surface.
   container: {
     flex: 1,
-    backgroundColor: Core.bg,
+    backgroundColor: Core.surface,
   },
   header: {
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.xxxl,
   },
   eyebrow: {
-    ...Typography.roles.labelCaps,
-    color: Brand.gold,
+    ...Typography.roles.caps,
+    color: Core.action,
     marginBottom: Spacing.sm,
   },
   title: {
-    ...Typography.roles.h1,
+    ...Typography.roles.display,
     color: Core.text,
   },
   scrollContent: {

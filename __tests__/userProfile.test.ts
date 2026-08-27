@@ -5,7 +5,10 @@ jest.mock('@/src/lib/firebase', () => ({
 }));
 
 import { mockRef, mockUpdate, mockOnce } from '@react-native-firebase/database';
-import { ensureAnonProfile, writeLinkedProfile, readAnonCreatedAt, updateDisplayName } from '@/src/lib/userProfile';
+import {
+  ensureAnonProfile, writeLinkedProfile, readAnonCreatedAt, updateDisplayName,
+  updatePreferredMapsApp,
+} from '@/src/lib/userProfile';
 
 beforeEach(() => { jest.clearAllMocks(); });
 
@@ -83,5 +86,18 @@ describe('updateDisplayName', () => {
     await expect(updateDisplayName('uid-1', '   ')).rejects.toThrow();
     await expect(updateDisplayName('uid-1', '')).rejects.toThrow();
     expect(mockUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe('updatePreferredMapsApp', () => {
+  it('patches only the self-owned maps preference', async () => {
+    await updatePreferredMapsApp('uid-1', 'google');
+    expect(mockRef).toHaveBeenCalledWith('users/uid-1');
+    expect(mockUpdate).toHaveBeenCalledWith({ preferredMapsApp: 'google' });
+  });
+
+  it('removes the preference with null so the chooser returns', async () => {
+    await updatePreferredMapsApp('uid-1', null);
+    expect(mockUpdate).toHaveBeenCalledWith({ preferredMapsApp: null });
   });
 });

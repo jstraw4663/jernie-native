@@ -12,7 +12,7 @@ export const TRIP_COLOR_PACKS: TripColorPack[] = [
     name: 'Coastal',
     description: 'Northeast, Pacific coast, maritime',
     stopColors: ['#2C5880', '#1E7B8C', '#2F6B47', '#3A5E72'],
-    heroGradient: ['#0D2B3E', '#2C5880'],
+    heroGradient: ['#14201B', '#2C5880'],
   },
   {
     id: 'desert',

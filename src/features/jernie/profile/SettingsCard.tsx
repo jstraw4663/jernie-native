@@ -16,7 +16,7 @@ export function SettingsCard({ title, footer, children }: SettingsCardProps) {
   return (
     <View style={styles.wrap}>
       {title ? <Text style={styles.title}>{title}</Text> : null}
-      <View style={[styles.card, Shadow.cardResting]}>
+      <View style={[styles.card, Shadow.row]}>
         {rows.map((row, i) => (
           <View key={i}>
             {i > 0 ? <View style={styles.separator} /> : null}
@@ -31,7 +31,7 @@ export function SettingsCard({ title, footer, children }: SettingsCardProps) {
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.sm },
-  title: { ...Typography.roles.labelCaps, color: Core.textMuted, paddingHorizontal: Spacing.xs },
+  title: { ...Typography.roles.caps, color: Core.textMuted, paddingHorizontal: Spacing.xs },
   card: {
     backgroundColor: Core.surface,
     borderRadius: Radius.card,

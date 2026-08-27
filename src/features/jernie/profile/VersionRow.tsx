@@ -32,6 +32,6 @@ export function VersionRow({ onFeedback }: VersionRowProps) {
 
 const styles = StyleSheet.create({
   wrap: { alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.base },
-  build: { ...Typography.roles.mono, color: Core.textFaint, textAlign: 'center' },
+  build: { ...Typography.roles.data, color: Core.textFaint, textAlign: 'center' },
   action: { ...Typography.roles.button, color: Core.action },
 });

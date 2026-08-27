@@ -1,3 +1,100 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`TripErrorScreen renders without crashing 1`] = `null`;
+exports[`TripErrorScreen renders without crashing 1`] = `
+<View
+  style={
+    {
+      "alignItems": "center",
+      "backgroundColor": "#FFFFFF",
+      "flex": 1,
+      "justifyContent": "center",
+      "paddingHorizontal": 32,
+    }
+  }
+>
+  <Text
+    style={
+      {
+        "color": "#1B1B1B",
+        "fontFamily": "Fraunces",
+        "fontSize": 24,
+        "fontWeight": "400",
+        "lineHeight": 25,
+        "marginBottom": 8,
+        "textAlign": "center",
+      }
+    }
+  >
+    Couldn't load your trip
+  </Text>
+  <Text
+    style={
+      {
+        "color": "#717171",
+        "fontFamily": "DMSans",
+        "fontSize": 13,
+        "fontWeight": "400",
+        "lineHeight": 21,
+        "marginBottom": 32,
+        "textAlign": "center",
+      }
+    }
+  >
+    Check your connection and try again.
+  </Text>
+  <View
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": undefined,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
+    collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      {
+        "backgroundColor": "#0F7B6C",
+        "borderRadius": 9999,
+        "paddingHorizontal": 24,
+        "paddingVertical": 12,
+      }
+    }
+    testID="retry-button"
+  >
+    <Text
+      style={
+        {
+          "color": "#FFFFFF",
+          "fontFamily": "DMSans-SemiBold",
+          "fontSize": 15,
+          "fontWeight": "600",
+          "lineHeight": 15,
+        }
+      }
+    >
+      Try again
+    </Text>
+  </View>
+</View>
+`;

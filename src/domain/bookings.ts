@@ -1,9 +1,13 @@
 // Domain logic for booking data transformations.
 
 import type { Booking, FlightBooking, FlightLeg } from '@/src/types';
+import type { ItemCategory } from '@/src/design/icons';
+import { bookingCategory } from './taxonomy';
 
 export interface BookingDisplay {
-  emoji: string;
+  /** Resolve to a glyph with `iconFor(category)`. The domain names the thing; the view
+   *  layer decides how to draw it. */
+  category: ItemCategory;
   label: string;
   meta: string;
 }
@@ -83,7 +87,7 @@ export function isTodayBooking(b: Booking, todayIso: string): boolean {
 /**
  * Get display information for a booking.
  *
- * Returns emoji, label, and meta string suitable for UI rendering.
+ * Returns category, label, and meta string suitable for UI rendering.
  * For multi-leg flights, uses first leg's origin/departure and last leg's destination/arrival.
  */
 export function getBookingDisplay(b: Booking, todayIso: string): BookingDisplay {
@@ -91,7 +95,7 @@ export function getBookingDisplay(b: Booking, todayIso: string): BookingDisplay 
     case 'flight': {
       const { firstLeg, lastLeg } = getFlightEndpoints(b);
       return {
-        emoji: '✈️',
+        category: bookingCategory(b),
         label: `${firstLeg.airline} · ${firstLeg.flightNumber}`,
         meta: `${firstLeg.origin} → ${lastLeg.destination} · ${firstLeg.departureTime} → ${lastLeg.arrivalTime}`,
       };
@@ -99,21 +103,21 @@ export function getBookingDisplay(b: Booking, todayIso: string): BookingDisplay 
 
     case 'hotel':
       return {
-        emoji: '🏨',
+        category: bookingCategory(b),
         label: b.hotelName,
         meta: `${b.checkIn} – ${b.checkOut}`,
       };
 
     case 'rental':
       return {
-        emoji: '🚗',
+        category: bookingCategory(b),
         label: b.carType ? `${b.company} · ${b.carType}` : b.company,
         meta: `${b.pickupDate} – ${b.dropoffDate}`,
       };
 
     case 'restaurant':
       return {
-        emoji: '🍽️',
+        category: bookingCategory(b),
         label: b.restaurantName,
         meta: `${b.date}${b.time ? ` · ${b.time}` : ''}`,
       };

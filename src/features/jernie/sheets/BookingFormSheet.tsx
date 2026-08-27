@@ -6,7 +6,7 @@ import { useSheetContext } from '@/src/contexts/SheetContext';
 import { useBooking } from '@/src/hooks/useBooking';
 import { confirmDelete } from '@/src/utils/confirmDelete';
 import { BookingForm, type BookingFormValues } from '@/src/features/jernie/BookingForm';
-import { Core, Semantic, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { Core, Radius, Semantic, Spacing, Typography } from '@/src/design/tokens';
 import type { NewBooking, BookingPatch } from '@/src/lib/bookingWrites';
 import type { Booking, BookingType } from '@/src/types';
 
@@ -55,7 +55,7 @@ function toFormValues(booking: Booking): BookingFormValues {
 /**
  * Bottom-sheet wrapper around `BookingForm`. Unlike `StopFormSheet` — whose mode is fixed by a
  * prop — the type/stop/booking here varies per invocation, so the payload rides on `present()`,
- * matching `EntityDetailSheet`'s pattern. Everything else (backdrop, spring configs, the
+ * matching `DetailSheet`'s pattern. Everything else (backdrop, spring configs, the
  * `SheetContext` open-count, dynamic sizing) is `StopFormSheet`'s chrome unchanged.
  *
  * All RTDB-write logic lives in `useBooking()`; `BookingForm` itself has no RTDB or bottom-sheet
@@ -176,10 +176,10 @@ export const BookingFormSheet = React.forwardRef<BookingFormSheetRef, BookingFor
 
 const s = StyleSheet.create({
   handle:     { backgroundColor: Core.textFaint, width: 44, height: 5 },
-  background: { backgroundColor: Core.bg, borderRadius: 24 },
+  background: { backgroundColor: Core.surface, borderRadius: 24 },
   content:    { paddingBottom: 24 },
   title: {
-    ...Typography.roles.h2,
+    ...Typography.roles.title,
     color: Core.text,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
@@ -188,10 +188,10 @@ const s = StyleSheet.create({
     alignSelf: 'center',
     marginTop: Spacing.md,
     marginBottom: Spacing.lg,
-    backgroundColor: Semantic.errorTint,
+    backgroundColor: Semantic.errorSoft,
     borderWidth: 1,
     borderColor: Semantic.error,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.lg,
   },

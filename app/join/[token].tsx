@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Brand, Core, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { Core, Radius, Spacing, Typography } from '@/src/design/tokens';
 import { useJoinTrip } from '@/src/hooks/useJoinTrip';
 
 export default function JoinTripScreen() {
@@ -40,7 +40,7 @@ export default function JoinTripScreen() {
       <TextInput
         style={styles.input}
         placeholder="Your name"
-        placeholderTextColor="rgba(255,255,255,0.4)"
+        placeholderTextColor={Core.textFaint}
         value={handle}
         onChangeText={setHandle}
         autoFocus
@@ -59,7 +59,7 @@ export default function JoinTripScreen() {
         disabled={status === 'joining' || status === 'success'}
       >
         {status === 'joining' || status === 'success' ? (
-          <ActivityIndicator color={Brand.navy} />
+          <ActivityIndicator color={Core.action} />
         ) : (
           <Text style={styles.joinButtonText}>Join trip</Text>
         )}
@@ -82,43 +82,43 @@ export function joinErrorMessage(error: Error | null): string {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Brand.navy,
+    backgroundColor: Core.surface,
     justifyContent: 'center',
     paddingHorizontal: Spacing.xl,
   },
   eyebrow: {
-    ...Typography.roles.labelCaps,
-    color: Brand.gold,
+    ...Typography.roles.caps,
+    color: Core.action,
     marginBottom: Spacing.sm,
   },
   title: {
-    ...Typography.roles.h1,
-    color: Core.white,
+    ...Typography.roles.display,
+    color: Core.text,
     marginBottom: Spacing.sm,
   },
   sub: {
     ...Typography.roles.body,
-    color: 'rgba(255,255,255,0.65)',
+    color: Core.textMuted,
     marginBottom: Spacing.xl,
   },
   input: {
     ...Typography.roles.body,
-    color: Core.white,
+    color: Core.text,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-    borderRadius: Radius.md,
+    borderColor: Core.border,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.md,
     marginBottom: Spacing.base,
   },
   errorText: {
-    ...Typography.roles.meta,
+    ...Typography.roles.sub,
     color: '#F5A9B8',
     marginBottom: Spacing.base,
   },
   joinButton: {
-    backgroundColor: Brand.gold,
-    borderRadius: Radius.md,
+    backgroundColor: Core.action,
+    borderRadius: Radius.icon,
     paddingVertical: Spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -128,6 +128,6 @@ const styles = StyleSheet.create({
   },
   joinButtonText: {
     ...Typography.roles.button,
-    color: Brand.navy,
+    color: Core.textInverse,
   },
 });

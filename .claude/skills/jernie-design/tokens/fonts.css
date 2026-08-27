@@ -1,0 +1,10 @@
+/* Fraunces (display), DM Sans (UI), DM Mono (data).
+   The native app loads the same three families from assets/fonts via expo-font.
+   Web/HTML surfaces use the Google Fonts CDN — same families, same weights. */
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Mono:wght@400;500&display=swap");
+
+:root {
+  --font-display: Fraunces, Georgia, serif;
+  --font-ui: "DM Sans", system-ui, -apple-system, sans-serif;
+  --font-data: "DM Mono", ui-monospace, Menlo, monospace;
+}

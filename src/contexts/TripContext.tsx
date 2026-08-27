@@ -140,13 +140,13 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: Semantic.warningTint,
+    backgroundColor: Semantic.warningSoft,
     paddingBottom: Spacing.sm,
     paddingHorizontal: Spacing.base,
     alignItems: 'center',
   },
   bannerText: {
-    ...Typography.roles.meta,
+    ...Typography.roles.sub,
     color: Semantic.warning,
   },
 });

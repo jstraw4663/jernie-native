@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<style>
+  [data-jw] { --surface:#fff; --sunken:#FAFAFA; --line:#EBEBEB; --line-soft:#F4F4F4; --chip:#F4F4F4;
+    --ink:#1B1B1B; --ink2:#717171; --ink3:#B0B0B0; --ink4:#C4C4C4;
+    --teal:#0F7B6C; --tealSoft:rgba(15,123,108,.09); --tealLine:rgba(15,123,108,.22);
+    --amber:#B56B00; --amberSoft:rgba(181,107,0,.06); --amberLine:rgba(181,107,0,.4); --amberInk:#8A6320;
+    --shadow:rgba(0,0,0,.12); --imgFade:rgba(20,32,27,.9); }
+  [data-jw="dark"] { --surface:#201C1A; --sunken:#191614; --line:#332E2B; --line-soft:#2A2624; --chip:#2A2624;
+    --ink:#F5F1ED; --ink2:#A79E97; --ink3:#6E655F; --ink4:#4A4340;
+    --teal:#5CCBB4; --tealSoft:rgba(92,203,180,.13); --tealLine:rgba(92,203,180,.28);
+    --amber:#E0A244; --amberSoft:rgba(224,162,68,.11); --amberLine:rgba(224,162,68,.38); --amberInk:#E0A244;
+    --shadow:rgba(0,0,0,.5); --imgFade:rgba(14,12,11,.94); }
+  [data-jw] i[class^="ph"] { display:inline-block; line-height:1; }
+</style>
+</helmet>
+
+<div data-jw="{{ theme }}" style="width:390px;height:844px;border-radius:44px;background:#0b1016;padding:9px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.08);flex-shrink:0">
+  <div style="height:100%;border-radius:36px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column;position:relative;color:var(--ink);font-family:'DM Sans',system-ui,sans-serif">
+
+    <sc-if value="{{ inWizard }}" hint-placeholder-val="{{ true }}">
+      <div style="flex-shrink:0;padding:52px 20px 0;display:flex;align-items:center;gap:14px">
+        <span onClick="{{ back }}" style="width:34px;height:34px;border-radius:17px;border:1px solid var(--line);display:grid;place-items:center;color:var(--ink);cursor:pointer;opacity:{{ backOp }}"><i class="ph ph-arrow-left" style="font-size:16px"></i></span>
+        <span style="flex:1;display:flex;gap:5px">
+          <sc-for list="{{ segments }}" as="sg" hint-placeholder-count="4">
+            <span style="flex:1;height:4px;border-radius:2px;background:{{ sg.bg }}"></span>
+          </sc-for>
+        </span>
+        <span onClick="{{ askExit }}" style="width:34px;height:34px;border-radius:17px;border:1px solid var(--line);display:grid;place-items:center;color:var(--ink2);cursor:pointer"><i class="ph ph-x" style="font-size:15px"></i></span>
+      </div>
+      <div style="flex-shrink:0;padding:10px 20px 0;display:flex;align-items:center;justify-content:space-between">
+        <span style="font:600 10.5px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:var(--teal)">{{ stepKicker }}</span>
+        <span style="font:400 11px/1 'DM Sans';color:var(--ink3)">{{ stepTime }}</span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 20px 0">
+        <div style="font-family:Fraunces,serif;font-size:31px;font-weight:400;line-height:1.06;color:var(--ink);letter-spacing:-.012em">Where are you going?</div>
+        <div style="font:400 13px/1.6 'DM Sans';color:var(--ink2);margin-top:9px">Pick your first stop. You can add more now or later — most people add as they go.</div>
+
+        <div style="display:flex;align-items:center;gap:10px;height:50px;border:1.5px solid var(--line);border-radius:15px;padding:0 14px;margin-top:18px;background:var(--sunken)">
+          <i class="ph ph-magnifying-glass" style="font-size:17px;color:var(--ink2)"></i>
+          <span style="flex:1;font:400 14px/1 'DM Sans';color:var(--ink3)">City, park, or region</span>
+        </div>
+
+        <sc-if value="{{ noStops }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:20px">
+            <div style="font:700 10px/1 'DM Sans';letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);margin-bottom:11px">Popular right now</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ suggestions }}" as="sg" hint-placeholder-count="4">
+                <div onClick="{{ sg.add }}" style="display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:15px;padding:10px 12px;cursor:pointer">
+                  <span style="width:44px;height:44px;border-radius:12px;overflow:hidden;flex-shrink:0"><img src="{{ sg.img }}" style="width:100%;height:100%;object-fit:cover" alt=""></span>
+                  <span style="flex:1;min-width:0"><span style="display:block;font:700 13.5px/16px 'DM Sans';color:var(--ink)">{{ sg.name }}</span><span style="display:block;font:400 11px/14px 'DM Sans';color:var(--ink2);margin-top:3px">{{ sg.meta }}</span></span>
+                  <i class="ph ph-plus" style="font-size:15px;color:var(--ink3)"></i>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasStops }}" hint-placeholder-val="{{ true }}">
+          <div style="margin-top:20px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:11px">
+              <span style="font:700 10px/1 'DM Sans';letter-spacing:.13em;text-transform:uppercase;color:var(--ink3)">Your stops</span>
+              <span style="font:400 11px/1 'DM Sans';color:var(--ink3)">{{ stopsMeta }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ stops }}" as="s" hint-placeholder-count="1">
+                <div style="display:flex;align-items:center;gap:12px;border:1.5px solid var(--tealLine);background:var(--tealSoft);border-radius:15px;padding:10px 12px">
+                  <span style="width:44px;height:44px;border-radius:12px;overflow:hidden;flex-shrink:0"><img src="{{ s.img }}" style="width:100%;height:100%;object-fit:cover" alt=""></span>
+                  <span style="flex:1;min-width:0"><span style="display:block;font:700 13.5px/16px 'DM Sans';color:var(--ink)">{{ s.name }}</span><span style="display:block;font:400 11px/14px 'DM Sans';color:var(--teal);margin-top:3px">{{ s.meta }}</span></span>
+                  <span onClick="{{ s.remove }}" style="width:28px;height:28px;border-radius:14px;display:grid;place-items:center;color:var(--ink3);cursor:pointer"><i class="ph ph-x" style="font-size:13px"></i></span>
+                </div>
+              </sc-for>
+              <div onClick="{{ addNext }}" style="display:flex;align-items:center;gap:12px;border:1.5px dashed var(--line);border-radius:15px;padding:11px 12px;cursor:pointer">
+                <span style="width:44px;height:44px;border-radius:12px;background:var(--chip);display:grid;place-items:center;color:var(--ink2);flex-shrink:0"><i class="ph ph-plus" style="font-size:19px"></i></span>
+                <span style="flex:1;min-width:0"><span style="display:block;font:700 13.5px/16px 'DM Sans';color:var(--ink)">Add another stop</span><span style="display:block;font:400 11px/14px 'DM Sans';color:var(--ink2);margin-top:3px">Optional · you can do this any time</span></span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <div style="display:flex;align-items:center;gap:11px;margin-top:18px;padding:12px 13px;border-radius:15px;background:var(--chip)">
+          <span style="width:32px;height:32px;border-radius:10px;background:var(--surface);display:grid;place-items:center;color:var(--ink);flex-shrink:0"><i class="ph-fill ph-envelope-simple-open" style="font-size:16px"></i></span>
+          <span style="flex:1;min-width:0"><span style="display:block;font:700 12.5px/16px 'DM Sans';color:var(--ink)">Already booked something?</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:2px">Paste a confirmation and we'll fill this in</span></span>
+          <i class="ph ph-caret-right" style="font-size:13px;color:var(--ink4)"></i>
+        </div>
+        <div style="height:20px"></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 20px 0">
+        <div style="font-family:Fraunces,serif;font-size:31px;font-weight:400;line-height:1.06;color:var(--ink);letter-spacing:-.012em">When, and what kind of trip?</div>
+        <div style="font:400 13px/1.6 'DM Sans';color:var(--ink2);margin-top:9px">Rough dates are fine. We use the vibe to decide what to suggest.</div>
+
+        <div style="display:flex;gap:8px;margin-top:18px">
+          <div style="flex:1;border:1.5px solid var(--tealLine);background:var(--tealSoft);border-radius:15px;padding:11px 13px">
+            <div style="font:700 9.5px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)">Start</div>
+            <div style="font:700 15px/1.2 'DM Sans';color:var(--ink);margin-top:7px">Fri, May 22</div>
+          </div>
+          <div style="flex:1;border:1px solid var(--line);border-radius:15px;padding:11px 13px">
+            <div style="font:700 9.5px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)">End</div>
+            <div style="font:700 15px/1.2 'DM Sans';color:var(--ink);margin-top:7px">Fri, May 29</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;margin-top:9px">
+          <span style="height:28px;padding:0 11px;border-radius:14px;background:var(--ink);display:flex;align-items:center;font:600 11.5px/1 'DM Sans';color:var(--surface)">8 nights</span>
+          <span style="height:28px;padding:0 11px;border-radius:14px;background:var(--chip);display:flex;align-items:center;font:600 11.5px/1 'DM Sans';color:var(--ink2)">A long weekend</span>
+          <span style="height:28px;padding:0 11px;border-radius:14px;background:var(--chip);display:flex;align-items:center;font:600 11.5px/1 'DM Sans';color:var(--ink2)">Not sure yet</span>
+        </div>
+
+        <div style="margin-top:20px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:11px">
+            <span style="font:700 10px/1 'DM Sans';letter-spacing:.13em;text-transform:uppercase;color:var(--ink3)">Vibe</span>
+            <span style="font:400 11px/1 'DM Sans';color:var(--ink3)">{{ vibeMeta }}</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <sc-for list="{{ vibes }}" as="v" hint-placeholder-count="8">
+              <span onClick="{{ v.toggle }}" style="height:36px;padding:0 13px;border-radius:18px;border:1px solid {{ v.line }};background:{{ v.bg }};display:flex;align-items:center;gap:7px;font:600 12.5px/1 'DM Sans';color:{{ v.fg }};cursor:pointer"><i class="{{ v.icon }}" style="font-size:14px"></i>{{ v.name }}</span>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:flex-start;gap:9px;margin-top:18px;padding:11px 13px;border-radius:14px;background:var(--tealSoft)">
+          <i class="ph-fill ph-sparkle" style="font-size:15px;color:var(--teal);flex-shrink:0;margin-top:1px"></i>
+          <span style="font:400 11.5px/15px 'DM Sans';color:var(--ink2)"><span style="color:var(--teal);font-weight:600">Seafood and hiking</span> in Bar Harbor in late May means Jordan Pond, Cadillac sunrise, and lobster pounds. We'll start you there.</span>
+        </div>
+        <div style="height:20px"></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isStep3 }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 20px 0">
+        <div style="font-family:Fraunces,serif;font-size:31px;font-weight:400;line-height:1.06;color:var(--ink);letter-spacing:-.012em">Save what you've built</div>
+        <div style="font:400 13px/1.6 'DM Sans';color:var(--ink2);margin-top:9px">Your trip exists now. Signing in keeps it if you change phones, and lets you invite people to it.</div>
+
+        <div style="margin-top:18px;border:1px solid var(--line);border-radius:16px;overflow:hidden">
+          <div style="height:96px;position:relative;background:#1B2A24">
+            <img src="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=600&q=70" style="width:100%;height:100%;object-fit:cover" alt="">
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(16,24,20,.2),rgba(16,24,20,.75))"></div>
+            <div style="position:absolute;left:14px;bottom:11px">
+              <div style="font-family:Fraunces,serif;font-size:20px;font-weight:400;color:#fff;line-height:1.1">Maine Coast</div>
+              <div style="font:400 11px/1 'DM Sans';color:rgba(255,255,255,.75);margin-top:5px">May 22 – 29 · 2 stops · 8 nights</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;padding:10px 13px">
+            <i class="ph-fill ph-check-circle" style="font-size:15px;color:var(--teal)"></i>
+            <span style="font:600 11.5px/1.4 'DM Sans';color:var(--ink2)">Saved on this phone already</span>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:9px;margin-top:18px">
+          <span onClick="{{ next }}" style="height:50px;border-radius:14px;background:#000;display:flex;align-items:center;justify-content:center;gap:9px;font:600 15px/1 'DM Sans';color:#fff;cursor:pointer"><i class="ph-fill ph-apple-logo" style="font-size:18px"></i>Continue with Apple</span>
+          <span onClick="{{ next }}" style="height:50px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;gap:9px;font:600 15px/1 'DM Sans';color:var(--ink);cursor:pointer"><i class="ph-fill ph-google-logo" style="font-size:17px"></i>Continue with Google</span>
+          <span onClick="{{ openEmail }}" style="height:50px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;gap:9px;font:600 15px/1 'DM Sans';color:var(--ink);cursor:pointer"><i class="ph ph-envelope-simple" style="font-size:17px"></i>Email me a link</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;margin-top:16px;justify-content:center">
+          <i class="ph ph-lock-simple" style="font-size:13px;color:var(--ink3)"></i>
+          <span style="font:400 11px/1.4 'DM Sans';color:var(--ink3)">No passwords, ever. We never post anything.</span>
+        </div>
+      </div>
+      <div style="flex-shrink:0;padding:0 20px 26px;display:flex;justify-content:center">
+        <span onClick="{{ next }}" style="font:600 13px/1 'DM Sans';color:var(--ink2);text-decoration:underline;cursor:pointer">Save later — keep it on this phone</span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isStep4 }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 20px 0">
+        <div style="font-family:Fraunces,serif;font-size:31px;font-weight:400;line-height:1.06;color:var(--ink);letter-spacing:-.012em">What's already booked?</div>
+        <div style="font:400 13px/1.6 'DM Sans';color:var(--ink2);margin-top:9px">We'll build your list from what's missing. Nothing booked yet is a perfectly normal answer.</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px">
+          <sc-for list="{{ tiles }}" as="ti" hint-placeholder-count="4">
+            <div onClick="{{ ti.toggle }}" style="border:1.5px solid {{ ti.line }};background:{{ ti.bg }};border-radius:16px;padding:14px 13px;cursor:pointer;position:relative">
+              <span style="width:36px;height:36px;border-radius:11px;background:{{ ti.iconBg }};display:grid;place-items:center;color:{{ ti.iconFg }}"><i class="{{ ti.icon }}" style="font-size:18px"></i></span>
+              <div style="font:700 14px/1.2 'DM Sans';color:var(--ink);margin-top:11px">{{ ti.name }}</div>
+              <div style="font:400 11px/1.35 'DM Sans';color:var(--ink2);margin-top:4px">{{ ti.sub }}</div>
+              <span style="position:absolute;top:12px;right:12px;width:22px;height:22px;border-radius:11px;border:1.5px solid {{ ti.checkLine }};background:{{ ti.checkBg }};display:grid;place-items:center;color:#fff"><i class="{{ ti.checkIcon }}" style="font-size:11px"></i></span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex;align-items:flex-start;gap:9px;margin-top:16px;padding:11px 13px;border-radius:14px;background:var(--chip)">
+          <i class="ph-fill ph-list-checks" style="font-size:15px;color:var(--ink2);flex-shrink:0;margin-top:1px"></i>
+          <span style="font:400 11.5px/15px 'DM Sans';color:var(--ink2)">{{ tilesSummary }}</span>
+        </div>
+        <div style="height:20px"></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;overflow-y:auto;overflow-x:hidden">
+        <div style="position:relative;height:250px;background:#1B2A24">
+          <img src="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=800&q=70" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" alt="">
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(16,24,20,.5) 0%,rgba(16,24,20,.12) 40%,var(--imgFade) 100%)"></div>
+          <div style="position:absolute;top:52px;left:20px;right:20px;display:flex;align-items:center;justify-content:space-between">
+            <span style="font:600 10.5px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.75)">In 12 days</span>
+            <span style="width:32px;height:32px;border-radius:16px;background:rgba(255,255,255,.18);backdrop-filter:blur(8px);display:grid;place-items:center;color:#fff"><i class="ph ph-bell" style="font-size:15px"></i></span>
+          </div>
+          <div style="position:absolute;left:20px;right:20px;bottom:58px">
+            <div style="font-family:Fraunces,serif;font-size:33px;font-weight:400;line-height:1.02;color:#fff;letter-spacing:-.015em">Maine Coast</div>
+            <div style="font:400 12.5px/1 'DM Sans';color:rgba(255,255,255,.72);margin-top:8px">May 22 – 29 · 2 stops · nothing booked yet</div>
+          </div>
+        </div>
+
+        <div style="margin:-40px 14px 0;position:relative;z-index:2;background:var(--surface);border-radius:18px;box-shadow:0 10px 30px var(--shadow);padding:14px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="flex:1;font:700 14px/1.2 'DM Sans';color:var(--ink)">Your trip is 1 of 6 steps in</span>
+            <span style="font:500 11px/1 'DM Mono',ui-monospace;color:var(--teal)">17%</span>
+          </div>
+          <div style="height:6px;border-radius:3px;background:var(--chip);margin-top:10px;overflow:hidden"><span style="display:block;width:17%;height:100%;background:var(--teal)"></span></div>
+          <div style="font:400 11px/1.5 'DM Sans';color:var(--ink2);margin-top:9px">Add a stay and a way to get there and you're most of the way to a real plan.</div>
+        </div>
+
+        <div style="padding:18px 20px 0">
+          <div style="font:700 15px/1.1 'DM Sans';letter-spacing:-.25px;color:var(--ink);margin-bottom:11px">Start here</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ prompts }}" as="pr" hint-placeholder-count="4">
+              <div onClick="{{ pr.tap }}" style="display:flex;align-items:center;gap:12px;border:1.5px dashed {{ pr.line }};background:{{ pr.bg }};border-radius:15px;padding:11px 12px;cursor:pointer">
+                <span style="width:40px;height:40px;border-radius:12px;background:{{ pr.iconBg }};display:grid;place-items:center;color:{{ pr.iconFg }};flex-shrink:0"><i class="{{ pr.icon }}" style="font-size:19px"></i></span>
+                <span style="flex:1;min-width:0"><span style="display:block;font:700 13.5px/16px 'DM Sans';color:var(--ink)">{{ pr.title }}</span><span style="display:block;font:400 11px/14px 'DM Sans';color:{{ pr.subFg }};margin-top:3px">{{ pr.sub }}</span></span>
+                <span style="height:28px;padding:0 11px;border-radius:14px;background:var(--ink);display:flex;align-items:center;font:700 11px/1 'DM Sans';color:var(--surface);flex-shrink:0">{{ pr.action }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="padding:18px 20px 0">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:11px">
+            <span style="font:700 15px/1.1 'DM Sans';letter-spacing:-.25px;color:var(--ink)">Because you said seafood</span>
+            <span style="font:600 11.5px/1 'DM Sans';color:var(--teal)">Explore</span>
+          </div>
+          <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px">
+            <div style="width:150px;flex-shrink:0"><div style="height:100px;border-radius:14px;overflow:hidden"><img src="https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?auto=format&fit=crop&w=340&q=70" style="width:100%;height:100%;object-fit:cover" alt=""></div><div style="font:700 12.5px/1.2 'DM Sans';color:var(--ink);margin-top:7px">Thurston's Lobster</div><div style="font:400 10.5px/1 'DM Sans';color:var(--ink2);margin-top:4px">Seafood · $$</div></div>
+            <div style="width:150px;flex-shrink:0"><div style="height:100px;border-radius:14px;overflow:hidden"><img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=340&q=70" style="width:100%;height:100%;object-fit:cover" alt=""></div><div style="font:700 12.5px/1.2 'DM Sans';color:var(--ink);margin-top:7px">Jordan Pond House</div><div style="font:400 10.5px/1 'DM Sans';color:var(--ink2);margin-top:4px">Cafe · $$</div></div>
+            <div style="width:150px;flex-shrink:0"><div style="height:100px;border-radius:14px;overflow:hidden"><img src="https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=340&q=70" style="width:100%;height:100%;object-fit:cover" alt=""></div><div style="font:700 12.5px/1.2 'DM Sans';color:var(--ink);margin-top:7px">Jordan Pond Loop</div><div style="font:400 10.5px/1 'DM Sans';color:var(--ink2);margin-top:4px">Hike · easy</div></div>
+          </div>
+        </div>
+        <div style="height:24px"></div>
+      </div>
+
+      <div style="height:84px;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:8px 0 24px;flex-shrink:0">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--teal)"><i class="ph-fill ph-compass" style="font-size:23px"></i><span style="font:600 10px/1 'DM Sans'">Jernie</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink3)"><i class="ph ph-calendar-dots" style="font-size:23px"></i><span style="font:600 10px/1 'DM Sans'">Agenda</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink3)"><i class="ph ph-magnifying-glass" style="font-size:23px"></i><span style="font:600 10px/1 'DM Sans'">Explore</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink3)"><i class="ph ph-map-trifold" style="font-size:23px"></i><span style="font:600 10px/1 'DM Sans'">Map</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink3)"><i class="ph ph-user-circle" style="font-size:23px"></i><span style="font:600 10px/1 'DM Sans'">Profile</span></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showFooter }}" hint-placeholder-val="{{ true }}">
+      <div style="flex-shrink:0;padding:12px 20px 26px;border-top:1px solid var(--line-soft);display:flex;flex-direction:column;gap:9px">
+        <span onClick="{{ next }}" style="height:52px;border-radius:15px;background:{{ ctaBg }};display:flex;align-items:center;justify-content:center;gap:8px;font:600 15.5px/1 'DM Sans';color:{{ ctaFg }};cursor:pointer;opacity:{{ ctaOp }}">{{ ctaLabel }}<i class="{{ ctaIcon }}" style="font-size:16px"></i></span>
+        <sc-if value="{{ hasSkip }}" hint-placeholder-val="{{ false }}">
+          <span onClick="{{ next }}" style="text-align:center;font:600 12.5px/1 'DM Sans';color:var(--ink2);cursor:pointer;padding:4px 0">{{ skipLabel }}</span>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;z-index:8;background:rgba(10,14,12,.55);cursor:pointer"></div>
+    </sc-if>
+
+    <sc-if value="{{ isExitSheet }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-radius:24px 24px 0 0;box-shadow:0 -14px 44px rgba(0,0,0,.4);padding:9px 20px 26px">
+        <div style="width:38px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 16px"></div>
+        <div style="font-family:Fraunces,serif;font-size:23px;font-weight:400;line-height:1.12;color:var(--ink)">Keep this for later?</div>
+        <div style="font:400 12.5px/1.6 'DM Sans';color:var(--ink2);margin-top:8px">Maine Coast, 2 stops, May 22 – 29. We'll hold it for 30 days and drop you back on this step.</div>
+        <div style="display:flex;flex-direction:column;gap:9px;margin-top:18px">
+          <span onClick="{{ closeSheet }}" style="height:50px;border-radius:14px;background:var(--ink);display:flex;align-items:center;justify-content:center;gap:8px;font:600 15px/1 'DM Sans';color:var(--surface);cursor:pointer"><i class="ph-fill ph-bookmark-simple" style="font-size:16px"></i>Save draft and exit</span>
+          <span onClick="{{ closeSheet }}" style="height:50px;border-radius:14px;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font:600 15px/1 'DM Sans';color:var(--ink);cursor:pointer">Keep going</span>
+          <span onClick="{{ closeSheet }}" style="text-align:center;font:600 12.5px/1 'DM Sans';color:#C4544B;cursor:pointer;padding:8px 0">Discard this trip</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isEmailSheet }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-radius:24px 24px 0 0;box-shadow:0 -14px 44px rgba(0,0,0,.4);padding:9px 20px 26px">
+        <div style="width:38px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 16px"></div>
+        <div style="font-family:Fraunces,serif;font-size:23px;font-weight:400;line-height:1.12;color:var(--ink)">What's your email?</div>
+        <div style="font:400 12.5px/1.6 'DM Sans';color:var(--ink2);margin-top:8px">We'll send a link that signs you in. No password to make up or forget.</div>
+        <div style="display:flex;align-items:center;gap:10px;height:52px;border:1.5px solid var(--tealLine);background:var(--tealSoft);border-radius:15px;padding:0 14px;margin-top:16px">
+          <i class="ph ph-envelope-simple" style="font-size:17px;color:var(--teal)"></i>
+          <span style="flex:1;font:500 14.5px/1 'DM Sans';color:var(--ink)">alex.rowan@hey.com</span>
+          <span style="width:2px;height:20px;background:var(--teal)"></span>
+        </div>
+        <span onClick="{{ sendLink }}" style="height:50px;border-radius:14px;background:var(--ink);display:flex;align-items:center;justify-content:center;gap:8px;font:600 15px/1 'DM Sans';color:var(--surface);cursor:pointer;margin-top:12px">Send the link<i class="ph ph-arrow-right" style="font-size:15px"></i></span>
+        <div style="font:400 10.5px/1.5 'DM Sans';color:var(--ink3);text-align:center;margin-top:12px">By continuing you agree to the terms. Your trip stays on this phone either way.</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSentSheet }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-radius:24px 24px 0 0;box-shadow:0 -14px 44px rgba(0,0,0,.4);padding:9px 20px 26px">
+        <div style="width:38px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 16px"></div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="width:44px;height:44px;border-radius:14px;background:var(--tealSoft);display:grid;place-items:center;color:var(--teal);flex-shrink:0"><i class="ph-fill ph-paper-plane-tilt" style="font-size:21px"></i></span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:Fraunces,serif;font-size:22px;font-weight:400;line-height:1.12;color:var(--ink)">Check your email</div>
+            <div style="font:400 11.5px/1.4 'DM Sans';color:var(--ink2);margin-top:4px">Sent to alex.rowan@hey.com</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:9px;margin-top:16px;padding:11px 13px;border-radius:14px;background:var(--chip)">
+          <i class="ph-fill ph-info" style="font-size:15px;color:var(--ink2);flex-shrink:0;margin-top:1px"></i>
+          <span style="font:400 11.5px/15px 'DM Sans';color:var(--ink2)">Your trip is safe on this phone while you're gone. Come back to this screen and it'll be waiting.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:9px;margin-top:14px">
+          <span onClick="{{ next }}" style="height:50px;border-radius:14px;background:var(--ink);display:flex;align-items:center;justify-content:center;gap:8px;font:600 15px/1 'DM Sans';color:var(--surface);cursor:pointer"><i class="ph-fill ph-envelope-open" style="font-size:16px"></i>Open Mail</span>
+          <div style="display:flex;gap:9px">
+            <span onClick="{{ closeSheet }}" style="flex:1;height:46px;border-radius:14px;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font:600 13.5px/1 'DM Sans';color:var(--ink);cursor:pointer">Resend</span>
+            <span onClick="{{ openEmail }}" style="flex:1;height:46px;border-radius:14px;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font:600 13.5px/1 'DM Sans';color:var(--ink);cursor:pointer">Change address</span>
+          </div>
+          <span onClick="{{ next }}" style="text-align:center;font:600 12.5px/1 'DM Sans';color:var(--ink2);cursor:pointer;padding:6px 0">Continue without signing in</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isNotifySheet }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-radius:24px 24px 0 0;box-shadow:0 -14px 44px rgba(0,0,0,.4);padding:9px 20px 26px">
+        <div style="width:38px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 16px"></div>
+        <div style="display:flex;align-items:center;gap:11px;margin-bottom:14px">
+          <span style="width:40px;height:40px;border-radius:12px;overflow:hidden;flex-shrink:0"><img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=140&q=70" style="width:100%;height:100%;object-fit:cover" alt=""></span>
+          <span style="flex:1;min-width:0"><span style="display:block;font:700 13px/16px 'DM Sans';color:var(--ink)">Jordan Pond House added</span><span style="display:block;font:400 11px/14px 'DM Sans';color:var(--teal);margin-top:2px">Monday 12:10 · Bar Harbor</span></span>
+        </div>
+        <div style="font-family:Fraunces,serif;font-size:22px;font-weight:400;line-height:1.14;color:var(--ink)">Want a nudge before it starts?</div>
+        <div style="font:400 12.5px/1.6 'DM Sans';color:var(--ink2);margin-top:8px">One reminder an hour ahead, and a heads-up if a booking changes. Nothing else.</div>
+        <div style="display:flex;flex-direction:column;gap:1px;margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:11px;padding:11px 13px">
+            <i class="ph-fill ph-clock" style="font-size:16px;color:var(--ink2)"></i>
+            <span style="flex:1;font:600 12.5px/1 'DM Sans';color:var(--ink)">Before something starts</span>
+            <span style="width:40px;height:24px;border-radius:12px;background:var(--teal);display:flex;align-items:center;justify-content:flex-end;padding:2px"><span style="width:20px;height:20px;border-radius:10px;background:#fff"></span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:11px;padding:11px 13px;border-top:1px solid var(--line-soft)">
+            <i class="ph-fill ph-warning-circle" style="font-size:16px;color:var(--ink2)"></i>
+            <span style="flex:1;font:600 12.5px/1 'DM Sans';color:var(--ink)">If a booking changes</span>
+            <span style="width:40px;height:24px;border-radius:12px;background:var(--teal);display:flex;align-items:center;justify-content:flex-end;padding:2px"><span style="width:20px;height:20px;border-radius:10px;background:#fff"></span></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:11px;padding:11px 13px;border-top:1px solid var(--line-soft)">
+            <i class="ph-fill ph-users-three" style="font-size:16px;color:var(--ink2)"></i>
+            <span style="flex:1;font:600 12.5px/1 'DM Sans';color:var(--ink)">When someone adds a plan</span>
+            <span style="width:40px;height:24px;border-radius:12px;background:var(--chip);display:flex;align-items:center;padding:2px"><span style="width:20px;height:20px;border-radius:10px;background:var(--surface);box-shadow:0 1px 3px var(--shadow)"></span></span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:9px;margin-top:14px">
+          <span onClick="{{ closeSheet }}" style="height:50px;border-radius:14px;background:var(--ink);display:flex;align-items:center;justify-content:center;font:600 15px/1 'DM Sans';color:var(--surface);cursor:pointer">Turn these on</span>
+          <span onClick="{{ closeSheet }}" style="text-align:center;font:600 12.5px/1 'DM Sans';color:var(--ink2);cursor:pointer;padding:6px 0">Not now</span>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844},&quot;step&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;,&quot;done&quot;],&quot;default&quot;:&quot;1&quot;,&quot;tsType&quot;:&quot;number | string&quot;},&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;new&quot;,&quot;second&quot;],&quot;default&quot;:&quot;new&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;sheet&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;none&quot;,&quot;exit&quot;,&quot;email&quot;,&quot;sent&quot;,&quot;notify&quot;],&quot;default&quot;:&quot;none&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;pinned&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const WIMG = {
+  bar: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=200&q=70',
+  port: 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=200&q=70',
+  sw: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=200&q=70',
+  hike: 'https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=200&q=70'
+};
+const SUGGEST = [
+  { name: 'Bar Harbor, Maine', meta: 'Acadia National Park · 4h from Boston', img: WIMG.bar },
+  { name: 'Portland, Maine', meta: 'Old Port · food and coast', img: WIMG.port },
+  { name: 'Southwest Harbor', meta: 'Quiet side of Mount Desert Island', img: WIMG.sw },
+  { name: 'Camden, Maine', meta: 'Harbour town · midcoast', img: WIMG.hike }
+];
+const VIBES = [
+  { name: 'Seafood', icon: 'ph-fill ph-fish' }, { name: 'Hiking', icon: 'ph-fill ph-person-simple-hike' },
+  { name: 'Beach', icon: 'ph-fill ph-umbrella' }, { name: 'Wine', icon: 'ph-fill ph-wine' },
+  { name: 'City', icon: 'ph-fill ph-buildings' }, { name: 'Family', icon: 'ph-fill ph-users-three' },
+  { name: 'Romantic', icon: 'ph-fill ph-heart' }, { name: 'Road trip', icon: 'ph-fill ph-car-profile' },
+  { name: 'Camping', icon: 'ph-fill ph-tent' }, { name: 'Relax', icon: 'ph-fill ph-flower-lotus' }
+];
+const TILE_DEFS = [
+  { key: 'flights', name: 'Flights', sub: 'Or trains and ferries', icon: 'ph-fill ph-airplane-tilt' },
+  { key: 'stays', name: 'Stays', sub: 'Hotels and rentals', icon: 'ph-fill ph-bed' },
+  { key: 'car', name: 'Car', sub: 'Rental or your own', icon: 'ph-fill ph-car-profile' },
+  { key: 'tables', name: 'Tables', sub: 'Restaurant bookings', icon: 'ph-fill ph-fork-knife' }
+];
+
+class Component extends DCLogic {
+  state = { step: 1, sheet: 'none', stops: ['Bar Harbor, Maine'], vibes: ['Seafood', 'Hiking'], booked: {} };
+
+  componentDidUpdate(prev) {
+    if (this.props.resetSignal !== prev.resetSignal) {
+      this.setState({ step: 1, sheet: 'none', stops: ['Bar Harbor, Maine'], vibes: ['Seafood', 'Hiking'], booked: {} });
+    }
+  }
+
+  val(k) {
+    const p = this.props;
+    if (p.pinned) return p[k] !== undefined ? p[k] : this.state[k];
+    return this.state[k];
+  }
+
+  set(patch) { if (!this.props.pinned) this.setState(patch); }
+
+  renderVals() {
+    const p = this.props;
+    const theme = p.theme || 'light';
+    const variant = p.variant || 'new';
+    const second = variant === 'second';
+    const step = this.val('step');
+    const sheet = this.val('sheet');
+    const stops = this.state.stops;
+    const picked = this.state.vibes;
+    const booked = this.state.booked;
+
+    const tealC = theme === 'dark' ? '#5CCBB4' : '#0F7B6C';
+    const inkC = theme === 'dark' ? '#F5F1ED' : '#1B1B1B';
+    const surfC = theme === 'dark' ? '#201C1A' : '#FFFFFF';
+    const ink2 = theme === 'dark' ? '#A79E97' : '#717171';
+    const ink3 = theme === 'dark' ? '#6E655F' : '#B0B0B0';
+
+    const total = second ? 3 : 4;
+    const stepOf = second && step >= 3 ? step - 1 : step;
+    const inWizard = step >= 1 && step <= 4;
+
+    const kickers = second
+      ? { 1: 'Step 1 of 3 · Where', 2: 'Step 2 of 3 · When', 4: 'Step 3 of 3 · Booked' }
+      : { 1: 'Step 1 of 4 · Where', 2: 'Step 2 of 4 · When', 3: 'Step 3 of 4 · Save it', 4: 'Step 4 of 4 · Booked' };
+    const times = { 1: 'about 20 seconds', 2: 'about 15 seconds', 3: 'one tap', 4: 'last one' };
+
+    const goto = (n) => () => this.set({ step: n, sheet: 'none' });
+    const advance = () => {
+      let n = step + 1;
+      if (second && n === 3) n = 4;
+      if (n > 4) n = 'done';
+      this.set({ step: n, sheet: 'none' });
+    };
+    const goBack = () => {
+      let n = step - 1;
+      if (second && n === 3) n = 2;
+      if (n < 1) n = 1;
+      this.set({ step: n, sheet: 'none' });
+    };
+
+    const ctaByStep = {
+      1: { label: stops.length ? 'Continue' : 'Pick a stop to continue', icon: 'ph ph-arrow-right', on: stops.length > 0 },
+      2: { label: 'Continue', icon: 'ph ph-arrow-right', on: true },
+      3: { label: '', icon: '', on: true },
+      4: { label: 'Build my trip', icon: 'ph-fill ph-sparkle', on: true }
+    };
+    const cta = ctaByStep[step] || { label: '', icon: '', on: true };
+
+    return {
+      theme,
+      inWizard, isStep1: step === 1, isStep2: step === 2, isStep3: step === 3 && !second,
+      isStep4: step === 4, isDone: step === 'done',
+      showFooter: inWizard && step !== 3,
+      segments: Array.from({ length: total }, (_, i) => ({
+        bg: i < stepOf ? tealC : (theme === 'dark' ? '#332E2B' : '#EBEBEB')
+      })),
+      stepKicker: kickers[step] || '', stepTime: times[step] || '',
+      backOp: step === 1 ? 0.35 : 1,
+      back: goBack, next: advance, goto,
+      askExit: () => this.set({ sheet: 'exit' }),
+      closeSheet: () => this.set({ sheet: 'none' }),
+      openEmail: () => this.set({ sheet: 'email' }),
+      sendLink: () => this.set({ sheet: 'sent' }),
+      sheetOpen: sheet !== 'none',
+      isExitSheet: sheet === 'exit', isEmailSheet: sheet === 'email',
+      isSentSheet: sheet === 'sent', isNotifySheet: sheet === 'notify',
+
+      hasStops: stops.length > 0, noStops: stops.length === 0,
+      stopsMeta: stops.length === 1 ? '1 stop' : stops.length + ' stops',
+      stops: stops.map((name, i) => {
+        const s = SUGGEST.find((x) => x.name === name) || SUGGEST[0];
+        return { name: s.name, meta: i === 0 ? 'First stop' : 'Stop ' + (i + 1), img: s.img,
+          remove: () => this.set({ stops: stops.filter((_, j) => j !== i) }) };
+      }),
+      suggestions: SUGGEST.map((s) => ({ ...s, add: () => this.set({ stops: [s.name] }) })),
+      addNext: () => {
+        const nextStop = SUGGEST.find((s) => !stops.includes(s.name));
+        if (nextStop) this.set({ stops: stops.concat(nextStop.name) });
+      },
+
+      vibes: VIBES.map((v) => {
+        const on = picked.includes(v.name);
+        return { name: v.name, icon: v.icon,
+          bg: on ? tealC : 'transparent', fg: on ? '#fff' : ink2,
+          line: on ? tealC : (theme === 'dark' ? '#332E2B' : '#EBEBEB'),
+          toggle: () => this.set({ vibes: on ? picked.filter((x) => x !== v.name) : picked.concat(v.name) }) };
+      }),
+      vibeMeta: picked.length ? picked.length + ' picked · optional' : 'Optional',
+
+      tiles: TILE_DEFS.map((t) => {
+        const on = !!booked[t.key];
+        return { name: t.name, sub: t.sub, icon: t.icon,
+          bg: on ? 'var(--tealSoft)' : 'transparent',
+          line: on ? tealC : (theme === 'dark' ? '#332E2B' : '#EBEBEB'),
+          iconBg: on ? surfC : 'var(--chip)', iconFg: on ? tealC : ink2,
+          checkBg: on ? tealC : 'transparent', checkLine: on ? tealC : (theme === 'dark' ? '#4A4340' : '#DEDEDE'),
+          checkIcon: on ? 'ph-fill ph-check' : 'ph ph-plus',
+          toggle: () => this.set({ booked: Object.assign({}, booked, { [t.key]: !on }) }) };
+      }),
+      tilesSummary: Object.values(booked).some(Boolean)
+        ? 'We’ll ask for the details later and only chase what’s missing.'
+        : 'Nothing selected — your list will start with all four, and we’ll help you work through them.',
+
+      ctaLabel: cta.label, ctaIcon: cta.icon,
+      ctaBg: cta.on ? inkC : (theme === 'dark' ? '#2A2624' : '#EBEBEB'),
+      ctaFg: cta.on ? surfC : ink3,
+      ctaOp: cta.on ? 1 : 0.75,
+      hasSkip: step === 4, skipLabel: 'Nothing booked yet',
+
+      prompts: [
+        { title: 'Where are you staying?', sub: 'Bar Harbor · 3 nights unbooked', action: 'Add', icon: 'ph-fill ph-bed',
+          line: 'var(--amberLine)', bg: 'var(--amberSoft)', iconBg: 'var(--amberSoft)', iconFg: 'var(--amber)', subFg: 'var(--amber)',
+          tap: () => this.set({ sheet: 'notify' }) },
+        { title: 'How are you getting there?', sub: 'Flight, car, or ferry', action: 'Add', icon: 'ph-fill ph-airplane-tilt',
+          line: 'var(--line)', bg: 'transparent', iconBg: 'var(--chip)', iconFg: 'var(--ink2)', subFg: 'var(--ink2)',
+          tap: () => this.set({ sheet: 'notify' }) },
+        { title: 'Anything you already booked?', sub: 'Paste a confirmation email', action: 'Paste', icon: 'ph-fill ph-envelope-simple-open',
+          line: 'var(--line)', bg: 'transparent', iconBg: 'var(--chip)', iconFg: 'var(--ink2)', subFg: 'var(--ink2)',
+          tap: () => this.set({ sheet: 'notify' }) },
+        { title: 'Travelling with anyone?', sub: 'They can add plans too', action: 'Invite', icon: 'ph-fill ph-users-three',
+          line: 'var(--line)', bg: 'transparent', iconBg: 'var(--chip)', iconFg: 'var(--ink2)', subFg: 'var(--ink2)',
+          tap: () => this.set({ sheet: 'notify' }) }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

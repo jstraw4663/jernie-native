@@ -1,4 +1,5 @@
 import { database } from '@/src/lib/firebase';
+import type { MapsAppId } from '@/src/types';
 
 /**
  * Stamps the anonymous lifecycle marker exactly once per uid. initAuth() runs on every
@@ -46,4 +47,12 @@ export async function updateDisplayName(uid: string, displayName: string): Promi
   // and the edit field it would have to be fixed from is empty too.
   if (!trimmed) throw new Error('Display name cannot be empty');
   await database().ref(`users/${uid}`).update({ displayName: trimmed });
+}
+
+/** Saves the self-owned navigation preference. Null removes it and restores the chooser. */
+export async function updatePreferredMapsApp(
+  uid: string,
+  preferredMapsApp: MapsAppId | null,
+): Promise<void> {
+  await database().ref(`users/${uid}`).update({ preferredMapsApp });
 }

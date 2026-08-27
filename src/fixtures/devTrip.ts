@@ -12,7 +12,7 @@ export const DEV_TRIP: Trip = {
   colorPack: {
     id: 'coastal',
     stopColors: ['#2C5880', '#2F6B47'],
-    heroGradient: ['#0D2B3E', '#2C5880'],
+    heroGradient: ['#14201B', '#2C5880'],
   },
   setupIntent: { flights: true, stays: true, car: false, restaurants: false },
 };
@@ -23,7 +23,7 @@ export const DEV_STOPS: Stop[] = [
     tripId: 'dev-trip-001',
     city: 'Portland',
     region: 'ME',
-    emoji: '🦞',
+    emoji: '',
     lat: 43.6615,
     lon: -70.2553,
     dates: { start: '2026-07-10', end: '2026-07-12' },
@@ -34,7 +34,7 @@ export const DEV_STOPS: Stop[] = [
     tripId: 'dev-trip-001',
     city: 'Bar Harbor',
     region: 'ME',
-    emoji: '⛵',
+    emoji: '',
     lat: 44.3876,
     lon: -68.2039,
     dates: { start: '2026-07-12', end: '2026-07-15' },

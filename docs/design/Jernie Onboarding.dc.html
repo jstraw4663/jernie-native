@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<style>
+  *, *::before, *::after { box-sizing:border-box; }
+  html { background:#0b1016; }
+  body { margin:0; background:#0b1016; font-family:'DM Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#C89A2B; text-decoration:none; }
+  a:hover { color:#e0b448; }
+  i[class^="ph"] { display:inline-block; line-height:1; }
+</style>
+</helmet>
+
+<div style="max-width:1320px;margin:0 auto;padding:56px 48px 100px">
+
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:40px;flex-wrap:wrap;margin-bottom:14px">
+    <div style="max-width:660px">
+      <div style="font:700 11px/1 'DM Sans';letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:14px">Jernie · Onboarding &amp; trip creation</div>
+      <h1 style="font-family:Fraunces,serif;font-size:56px;font-weight:400;line-height:1;color:#fff;margin:0 0 18px;letter-spacing:-.012em">Four steps,<br>and a trip that already exists.</h1>
+      <p style="font:400 14px/1.7 'DM Sans';color:rgba(255,255,255,.45);margin:0;text-wrap:pretty">The shipped wizard asks for a trip name before it has given anything, then asks you to sign in twice. This one starts with the destination, creates the trip locally on step one, and only asks for an account once there is something to lose. Passwords are gone: Apple, Google, or a link in your email.</p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;padding-top:8px">
+      <div>
+        <div style="font:700 9.5px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px">Theme</div>
+        <div style="display:flex;gap:4px;padding:4px;background:rgba(255,255,255,.06);border-radius:11px">
+          <span onClick="{{ setLight }}" style="height:32px;padding:0 16px;border-radius:8px;display:flex;align-items:center;gap:7px;font:600 12.5px/1 'DM Sans';cursor:pointer;background:{{ bgLight }};color:{{ fgLight }}"><i class="ph-fill ph-sun" style="font-size:14px"></i>Light</span>
+          <span onClick="{{ setDark }}" style="height:32px;padding:0 16px;border-radius:8px;display:flex;align-items:center;gap:7px;font:600 12.5px/1 'DM Sans';cursor:pointer;background:{{ bgDark }};color:{{ fgDark }}"><i class="ph-fill ph-moon" style="font-size:14px"></i>Dark</span>
+        </div>
+      </div>
+      <div>
+        <div style="font:700 9.5px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px">Who's onboarding</div>
+        <div style="display:flex;gap:4px;padding:4px;background:rgba(255,255,255,.06);border-radius:11px">
+          <span onClick="{{ setNew }}" style="height:32px;padding:0 14px;border-radius:8px;display:flex;align-items:center;font:600 12.5px/1 'DM Sans';cursor:pointer;background:{{ bgNew }};color:{{ fgNew }}">New user</span>
+          <span onClick="{{ setSecond }}" style="height:32px;padding:0 14px;border-radius:8px;display:flex;align-items:center;font:600 12.5px/1 'DM Sans';cursor:pointer;background:{{ bgSecond }};color:{{ fgSecond }}">Second trip</span>
+        </div>
+      </div>
+      <div>
+        <div style="font:700 9.5px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px">Prototype</div>
+        <span onClick="{{ reset }}" style="height:40px;padding:0 15px;border-radius:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);display:inline-flex;align-items:center;gap:8px;font:600 12.5px/1 'DM Sans';color:rgba(255,255,255,.85);cursor:pointer"><i class="ph ph-arrow-counter-clockwise" style="font-size:15px"></i>Start the wizard over</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:1px;background:rgba(255,255,255,.08);margin:26px 0 40px"></div>
+
+  <div style="display:flex;gap:44px;align-items:flex-start;flex-wrap:wrap;margin-bottom:70px">
+    <dc-import name="Jernie Wizard" theme="{{ theme }}" variant="{{ variant }}" reset-signal="{{ resetSignal }}" hint-size="390px,844px"></dc-import>
+
+    <div style="flex:1;min-width:340px;max-width:540px;padding-top:8px">
+      <div style="display:inline-flex;align-items:center;gap:8px;height:26px;padding:0 11px;border-radius:13px;background:rgba(15,123,108,.16);color:#4FD1B5;font:700 10px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px">Live prototype</div>
+      <h2 style="font-family:Fraunces,serif;font-size:30px;font-weight:400;line-height:1.1;color:#fff;margin:0 0 14px">Walk the whole flow</h2>
+      <p style="font:400 13.5px/1.75 'DM Sans';color:rgba(255,255,255,.45);margin:0 0 22px;text-wrap:pretty">Pick a stop, add another if you like, choose dates and a vibe, then sign in — or don't. Email me a link opens the sheet flow. The close button opens the exit sheet. On the first-run home, any prompt opens the notification sheet.</p>
+
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <sc-for list="{{ tips }}" as="t" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:11px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)">
+            <span style="width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.07);display:grid;place-items:center;color:rgba(255,255,255,.6);flex-shrink:0"><i class="{{ t.icon }}" style="font-size:14px"></i></span>
+            <span style="font:400 12.5px/1.5 'DM Sans';color:rgba(255,255,255,.5)">{{ t.text }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="margin-top:26px;border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden">
+        <div style="display:flex;gap:12px;padding:11px 16px;background:rgba(255,255,255,.03)">
+          <span style="width:120px;font:700 9.5px/1.4 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35)">Shipped today</span>
+          <span style="flex:1;font:700 9.5px/1.4 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35)">This redesign</span>
+        </div>
+        <sc-for list="{{ deltas }}" as="d" hint-placeholder-count="5">
+          <div style="display:flex;gap:12px;padding:10px 16px;border-top:1px solid rgba(255,255,255,.06)">
+            <span style="width:120px;font:400 11.5px/1.5 'DM Sans';color:rgba(255,255,255,.35)">{{ d.was }}</span>
+            <span style="flex:1;font:400 11.5px/1.5 'DM Sans';color:rgba(255,255,255,.6)">{{ d.now }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px">
+    <span style="font:600 10px/1 ui-monospace,Menlo,monospace;padding:5px 9px;background:#1a1a1a;color:#fff;border-radius:5px">01</span>
+    <span style="font-family:Fraunces,serif;font-size:28px;font-weight:400;color:#fff">The flow, step by step</span>
+  </div>
+  <p style="font:400 13.5px/1.6 'DM Sans';color:rgba(255,255,255,.42);max-width:700px;margin:0 0 36px">Four screens for a new user, three for an existing one. Every step is skippable except the first, and the trip is real from the moment a stop is picked.</p>
+
+  <div style="display:flex;flex-direction:column;gap:56px;margin-bottom:80px">
+    <sc-for list="{{ steps }}" as="st" hint-placeholder-count="4">
+      <div style="display:flex;gap:44px;align-items:flex-start;flex-wrap:wrap">
+        <dc-import name="Jernie Wizard" theme="{{ theme }}" variant="{{ st.variant }}" step="{{ st.step }}" sheet="{{ st.sheet }}" pinned="{{ yes }}" hint-size="390px,844px"></dc-import>
+        <div style="flex:1;min-width:340px;max-width:560px">
+          <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px">
+            <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:rgba(255,255,255,.1);color:#fff;border-radius:5px">{{ st.tag }}</span>
+            <span style="font-family:Fraunces,serif;font-size:26px;font-weight:400;color:#fff">{{ st.title }}</span>
+          </div>
+          <p style="font:400 14px/1.6 'DM Sans';color:rgba(255,255,255,.72);margin:0 0 18px">{{ st.intent }}</p>
+
+          <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:9px">Decisions</div>
+          <div style="font:400 12.5px/1.75 'DM Sans';color:rgba(255,255,255,.5);margin-bottom:20px">
+            <sc-for list="{{ st.notes }}" as="n" hint-placeholder-count="3">
+              <div style="margin-bottom:8px">{{ n.text }}</div>
+            </sc-for>
+          </div>
+
+          <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:9px">{{ st.tableTitle }}</div>
+          <div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden">
+            <sc-for list="{{ st.rows }}" as="r" hint-placeholder-count="3">
+              <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)">
+                <span style="width:104px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">{{ r.k }}</span>
+                <span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">{{ r.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px">
+    <span style="font:600 10px/1 ui-monospace,Menlo,monospace;padding:5px 9px;background:#1a1a1a;color:#fff;border-radius:5px">02</span>
+    <span style="font-family:Fraunces,serif;font-size:28px;font-weight:400;color:#fff">Sheets, not detours</span>
+  </div>
+  <p style="font:400 13.5px/1.6 'DM Sans';color:rgba(255,255,255,.42);max-width:700px;margin:0 0 36px">Every decision that could end the flow happens in a sheet with the wizard still visible behind it. Leaving, waiting for an email, and turning on notifications are all reversible in one tap.</p>
+
+  <div style="display:flex;gap:28px;flex-wrap:wrap;margin-bottom:80px">
+    <sc-for list="{{ sheets }}" as="sh" hint-placeholder-count="4">
+      <div style="width:390px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:baseline;gap:9px">
+          <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:rgba(255,255,255,.1);color:#fff;border-radius:5px">{{ sh.tag }}</span>
+          <span style="font:600 13px/1.3 'DM Sans';color:#fff">{{ sh.title }}</span>
+        </div>
+        <dc-import name="Jernie Wizard" theme="{{ theme }}" variant="{{ sh.variant }}" step="{{ sh.step }}" sheet="{{ sh.sheet }}" pinned="{{ yes }}" hint-size="390px,844px"></dc-import>
+        <div style="font:400 12px/1.65 'DM Sans';color:rgba(255,255,255,.45);width:390px">{{ sh.note }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px">
+    <span style="font:600 10px/1 ui-monospace,Menlo,monospace;padding:5px 9px;background:#1a1a1a;color:#fff;border-radius:5px">03</span>
+    <span style="font-family:Fraunces,serif;font-size:28px;font-weight:400;color:#fff">Keeping people in</span>
+  </div>
+  <p style="font:400 13.5px/1.6 'DM Sans';color:rgba(255,255,255,.42);max-width:700px;margin:0 0 24px">Six mechanisms, each aimed at a specific place the current flow loses someone.</p>
+
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:70px">
+    <sc-for list="{{ retention }}" as="r" hint-placeholder-count="6">
+      <div style="width:calc(33.333% - 11px);min-width:290px;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 18px">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px">
+          <span style="width:28px;height:28px;border-radius:9px;background:rgba(79,209,181,.12);display:grid;place-items:center;color:#4FD1B5"><i class="{{ r.icon }}" style="font-size:15px"></i></span>
+          <span style="font:700 13.5px/1.3 'DM Sans';color:#fff">{{ r.title }}</span>
+        </div>
+        <div style="font:400 12.5px/1.7 'DM Sans';color:rgba(255,255,255,.45);margin-bottom:10px">{{ r.body }}</div>
+        <div style="font:400 11.5px/1.5 'DM Sans';color:rgba(255,255,255,.3);padding-top:10px;border-top:1px solid rgba(255,255,255,.07)"><span style="color:rgba(255,255,255,.5);font-weight:600">Loses people today:</span> {{ r.today }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px">
+    <span style="font:600 10px/1 ui-monospace,Menlo,monospace;padding:5px 9px;background:#1a1a1a;color:#fff;border-radius:5px">04</span>
+    <span style="font-family:Fraunces,serif;font-size:28px;font-weight:400;color:#fff">Auth model</span>
+  </div>
+  <p style="font:400 13.5px/1.6 'DM Sans';color:rgba(255,255,255,.42);max-width:700px;margin:0 0 24px">No passwords anywhere. The anonymous account is created silently on step one and upgraded in place, which is what makes "sign in later" safe.</p>
+
+  <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:40px">
+    <div style="flex:1;min-width:420px;border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden">
+      <div style="display:flex;gap:12px;padding:11px 16px;background:rgba(255,255,255,.03)">
+        <span style="width:132px;font:700 9.5px/1.4 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35)">Moment</span>
+        <span style="flex:1;font:700 9.5px/1.4 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35)">What happens to the account</span>
+      </div>
+      <sc-for list="{{ auth }}" as="a" hint-placeholder-count="6">
+        <div style="display:flex;gap:12px;padding:10px 16px;border-top:1px solid rgba(255,255,255,.06)">
+          <span style="width:132px;font:500 11px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">{{ a.k }}</span>
+          <span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">{{ a.v }}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="flex:1;min-width:340px;display:flex;flex-direction:column;gap:14px">
+      <div style="border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 18px">
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:12px">Collision case</div>
+        <div style="font:400 12.5px/1.75 'DM Sans';color:rgba(255,255,255,.5)">Someone builds a trip anonymously, then signs in with an Apple ID that already has trips. The existing code handles this with an adopt prompt. Keep it, but only show it when the anonymous side has something in it — a trip with at least one stop. Otherwise sign in silently.</div>
+      </div>
+      <div style="border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 18px">
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:12px">Second trip</div>
+        <div style="font:400 12.5px/1.75 'DM Sans';color:rgba(255,255,255,.5)">Three steps. Sign-in is gone entirely, units, currency and notification preferences carry over, and the progress bar says three rather than four so the flow visibly costs less than the first one did.</div>
+      </div>
+      <div style="border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 18px">
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:12px">Still open</div>
+        <div style="font:400 12.5px/1.75 'DM Sans';color:rgba(255,255,255,.5)">Draft expiry is written as 30 days — needs a real answer. And paste-a-confirmation appears twice (step 1 and the first-run home) but the parser itself isn't designed yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <p style="font:400 12.5px/1.6 'DM Sans';color:rgba(255,255,255,.35);margin:36px 0 0;max-width:700px">Decided screens live in <a href="./Jernie Spec.dc.html">Jernie Spec</a>; rejected options in <a href="./Jernie Redesign.dc.html">Jernie Redesign</a>. Repo files this replaces: app/onboarding/step-1..4.tsx and src/contexts/OnboardingDraftContext.tsx.</p>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;defaultTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype defaults&quot;},&quot;defaultVariant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;new&quot;,&quot;second&quot;],&quot;default&quot;:&quot;new&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype defaults&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { theme: props.defaultTheme || 'light', variant: props.defaultVariant || 'new', resetSignal: 0 };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const on = 'rgba(255,255,255,.94)', onFg = '#0b1016', off = 'transparent', offFg = 'rgba(255,255,255,.55)';
+    const pick = (a, b) => (a === b ? on : off);
+    const pickFg = (a, b) => (a === b ? onFg : offFg);
+
+    return {
+      theme: s.theme, variant: s.variant, yes: true,
+      resetSignal: s.resetSignal,
+      reset: () => this.setState({ resetSignal: s.resetSignal + 1 }),
+      setLight: () => this.setState({ theme: 'light' }),
+      setDark: () => this.setState({ theme: 'dark' }),
+      setNew: () => this.setState({ variant: 'new' }),
+      setSecond: () => this.setState({ variant: 'second' }),
+      bgLight: pick('light', s.theme), fgLight: pickFg('light', s.theme),
+      bgDark: pick('dark', s.theme), fgDark: pickFg('dark', s.theme),
+      bgNew: pick('new', s.variant), fgNew: pickFg('new', s.variant),
+      bgSecond: pick('second', s.variant), fgSecond: pickFg('second', s.variant),
+
+      tips: [
+        { icon: 'ph ph-hand-tap', text: 'Tap a suggested place to add it, then Add another stop for a multi-stop trip' },
+        { icon: 'ph ph-envelope-simple', text: 'Email me a link → address sheet → check-your-email sheet, all over the wizard' },
+        { icon: 'ph ph-x', text: 'The close button opens the exit sheet: save draft, keep going, or discard' },
+        { icon: 'ph ph-bell', text: 'On the first-run home, any prompt row opens the notification sheet' }
+      ],
+
+      deltas: [
+        { was: 'Trip name first', now: 'Destination first — the name is suggested from it and editable later' },
+        { was: 'Sign-in on steps 1 and 3', now: 'Once, on step 3, after the trip exists' },
+        { was: 'Apple only', now: 'Apple, Google, or an email link. No passwords anywhere.' },
+        { was: 'Draft in memory only', now: 'Draft persists; exiting offers to save it and returns you to the same step' },
+        { was: 'No progress shown', now: 'Four segments and a time estimate per step' },
+        { was: 'One stop, no way to add', now: 'Add-another-stop row, always present, never required' }
+      ],
+
+      steps: [
+        {
+          step: 1, sheet: 'none', variant: s.variant, tag: 'Step 1', title: 'Where are you going?',
+          intent: 'Give the trip a place before asking anything of the person.',
+          notes: [
+            { text: 'Destination first. The trip name is derived from the region ("Maine Coast") and can be changed later from Profile — nobody is blocked on naming something they have not planned yet.' },
+            { text: 'Picking a stop creates the trip locally and silently. Everything after this point is editing a thing that exists, which is why sign-in can wait and why exiting can offer a draft.' },
+            { text: 'Add another stop sits in the list as a dashed row: visible for the multi-stop planner, ignorable for everyone else. Adding stops later from Agenda is the same interaction.' },
+            { text: 'Paste a confirmation is offered here as a shortcut for people who arrive with bookings in hand, not as the primary path.' }
+          ],
+          tableTitle: 'Rules',
+          rows: [
+            { k: 'Required', v: 'One stop. Continue is disabled and says why until then.' },
+            { k: 'Search', v: 'Cities, parks, and regions. A region resolves to a bounding area, not a point.' },
+            { k: 'Suggestions', v: 'Seeded from season and distance from the phone location, not a static list.' },
+            { k: 'Creates', v: 'Anonymous account plus a draft trip, on this device, before step 2.' }
+          ]
+        },
+        {
+          step: 2, sheet: 'none', variant: s.variant, tag: 'Step 2', title: 'When, and what kind of trip?',
+          intent: 'Dates make the itinerary real; the vibe makes the suggestions worth reading.',
+          notes: [
+            { text: 'Dates and vibe share a step because neither is heavy and both are skippable. "Not sure yet" is a first-class answer — the trip just has no day structure until dates arrive.' },
+            { text: 'Vibe pills keep their role from the shipped build but lose the emoji, gaining Phosphor icons and a Maine-specific confirmation line so the choice visibly does something.' },
+            { text: 'The preview line under the pills is the payoff for answering: it names actual places the picks will produce.' }
+          ],
+          tableTitle: 'Rules',
+          rows: [
+            { k: 'Required', v: 'Nothing. Continue is always enabled.' },
+            { k: 'Date entry', v: 'Tapping either field opens the range picker; quick chips cover the common cases.' },
+            { k: 'Vibe', v: 'Multi-select, no cap. Feeds Explore ranking and the first-run suggestions.' },
+            { k: 'Second trip', v: 'Vibe pre-selected from the last trip, still editable.' }
+          ]
+        },
+        {
+          step: 3, sheet: 'none', variant: 'new', tag: 'Step 3 · new users only', title: 'Save what you’ve built',
+          intent: 'Ask for the account at the only moment it is obviously worth it. Existing users never see this screen — the flow is three steps for them.',
+          notes: [
+            { text: 'The trip card above the buttons is the argument. You are not signing up for an app, you are keeping a thing you just made.' },
+            { text: 'Three passwordless options, weighted by tap cost: Apple, Google, then email link. The lock line answers the two questions people actually have.' },
+            { text: '"Saved on this phone already" removes the fear that skipping loses everything — which makes the skip honest and, in testing terms, makes the sign-in rate meaningful rather than coerced.' },
+            { text: 'Skipped entirely for an existing user. The step does not render and the progress bar reads three.' }
+          ],
+          tableTitle: 'Rules',
+          rows: [
+            { k: 'Skip', v: '"Save later" — trip stays local, banner appears on the home screen until resolved.' },
+            { k: 'Apple / Google', v: 'Links the anonymous account in place; no data migration, no re-entry.' },
+            { k: 'Email', v: 'Opens the address sheet, then the sent sheet. Never leaves the wizard.' },
+            { k: 'Collision', v: 'Adopt prompt only when the anonymous side holds a trip with a stop.' }
+          ]
+        },
+        {
+          step: 4, sheet: 'none', variant: s.variant, tag: 'Step 4', title: 'What’s already booked?',
+          intent: 'Turn the answer into the first-run home, rather than a form to fill.',
+          notes: [
+            { text: 'Tiles start unselected, the opposite of the shipped default. Selecting means "I have this already"; the checklist is built from what is left, so the lazy path produces the most helpful result.' },
+            { text: '"Nothing booked yet" is offered as an explicit skip under the button, because it is the honest answer for most new trips and should not feel like failure.' },
+            { text: 'The summary line under the tiles tells you what the answer will do before you commit to it.' }
+          ],
+          tableTitle: 'Rules',
+          rows: [
+            { k: 'Required', v: 'Nothing. Both paths lead to the same home, seeded differently.' },
+            { k: 'Selected', v: 'We ask for details later, and never chase it in the gap list.' },
+            { k: 'Unselected', v: 'Becomes a prompt row on the first-run home and a gap in Agenda.' },
+            { k: 'On submit', v: 'Draft is committed, trip id issued, wizard unmounts.' }
+          ]
+        },
+        {
+          step: 'done', sheet: 'none', variant: s.variant, tag: 'After', title: 'First-run home',
+          intent: 'The Jernie tab, with prompts where the plans will go.',
+          notes: [
+            { text: 'Same layout as the real home — hero, stop rail, list — so nothing has to be relearned when the prompts turn into plans. The empty state is the app, not a poster.' },
+            { text: 'Progress is stated once, at the top, with a plain-language next action. It disappears at 100% and never returns.' },
+            { text: 'Prompt rows are the gap rows from Agenda, in dashed amber for the urgent one and plain for the rest. Each writes a real item, so the screen visibly fills in as you go.' },
+            { text: 'The "because you said seafood" carousel closes the loop on the vibe step within thirty seconds of answering it.' }
+          ],
+          tableTitle: 'Rules',
+          rows: [
+            { k: 'Order', v: 'Stay first, then transport — the two that generate gaps. Then paste, then invite.' },
+            { k: 'Progress', v: 'Six steps: stay, transport, one meal, one activity, dates confirmed, one companion or dismiss.' },
+            { k: 'Dismissal', v: 'Any prompt can be dismissed for the trip. Progress recalculates rather than stalling.' },
+            { k: 'Notifications', v: 'Sheet fires after the first booking is added here, never during the wizard.' }
+          ]
+        }
+      ],
+
+      sheets: [
+        { tag: 'Sheet', title: 'Leaving the flow', step: 2, sheet: 'exit', variant: s.variant,
+          note: 'Fired by the close button. Names what would be lost in the user’s own terms — "Maine Coast, 2 stops, May 22 – 29" — and puts Save draft first. Discard is text, in red, at the bottom, and asks once more.' },
+        { tag: 'Sheet · new users', title: 'Email address', step: 3, sheet: 'email', variant: 'new',
+          note: 'The magic-link path never leaves the wizard. One field, one button, and a line making clear the trip is safe regardless of what happens next.' },
+        { tag: 'Sheet · new users', title: 'Waiting for the link', step: 3, sheet: 'sent', variant: 'new',
+          note: 'The riskiest moment in the flow: the user is about to leave the app. Open Mail is the primary action, resend and change-address sit under it, and "continue without signing in" is always available so the wait is never a wall.' },
+        { tag: 'Sheet', title: 'Notifications', step: 'done', sheet: 'notify', variant: s.variant,
+          note: 'Fires after the first booking is added, not during onboarding. It shows what was just added, names the three notification types, and pre-answers two of them — so the OS dialog only ever appears after a yes.' }
+      ],
+
+      retention: [
+        { icon: 'ph-fill ph-target', title: 'Value before cost', body: 'The first screen gives a destination and a trip; the first ask that costs anything is step three.', today: 'Step 1 opens with two empty text fields and a keyboard.' },
+        { icon: 'ph-fill ph-chart-bar-horizontal', title: 'Visible end', body: 'Four segments, a step count in the kicker, and a time estimate that never exceeds twenty seconds.', today: 'No progress indicator — the flow could be four steps or fourteen.' },
+        { icon: 'ph-fill ph-bookmark-simple', title: 'Draft survives', body: 'Exiting saves the draft and returns to the same step. The trip is on the device from step one.', today: 'The draft is in-memory and torn down the moment you leave the wizard.' },
+        { icon: 'ph-fill ph-arrow-u-up-left', title: 'Reversible', body: 'Back on every step, close always opens a sheet rather than acting, and no answer is permanent.', today: 'No back affordance; sign-in errors surface raw Firebase strings.' },
+        { icon: 'ph-fill ph-key', title: 'One auth ask', body: 'Sign-in appears once, after the trip exists, with three passwordless options and an honest skip.', today: 'Asked on step 1 and again on step 3, Apple only, before there is anything to save.' },
+        { icon: 'ph-fill ph-seal-check', title: 'Ends somewhere useful', body: 'The last tap lands on the real home with four prompts and a suggestion row, not an empty screen.', today: 'Lands on the Jernie tab with an empty itinerary and no next action.' }
+      ],
+
+      auth: [
+        { k: 'Step 1 · pick stop', v: 'Anonymous account created silently. Trip written locally with a draft flag.' },
+        { k: 'Step 2 · dates', v: 'No auth change. Draft updated in place.' },
+        { k: 'Step 3 · Apple', v: 'Anonymous account linked to the Apple credential. Same uid, same trip.' },
+        { k: 'Step 3 · Google', v: 'Identical to Apple. Provider recorded for the sign-in hint next time.' },
+        { k: 'Step 3 · email', v: 'Link sent; account links when the link is opened. The wizard continues meanwhile.' },
+        { k: 'Step 3 · skip', v: 'Stays anonymous. Home shows a save banner; every later prompt to sign in is dismissible.' },
+        { k: 'Step 4 · submit', v: 'Draft flag cleared, trip committed and synced if the account is linked.' },
+        { k: 'Second trip', v: 'Already authenticated — step 3 never renders and the progress bar reads three.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

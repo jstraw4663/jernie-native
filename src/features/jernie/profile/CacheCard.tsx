@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { Core, Semantic, Radius, Shadow, Spacing, Typography } from '@/src/design/tokens';
+import { Core, Radius, Semantic, Shadow, Spacing, Typography } from '@/src/design/tokens';
 import type { CacheState } from '@/src/domain/profile';
 
 export interface CacheRow {
@@ -15,9 +15,9 @@ interface CacheCardProps {
 // Colour carries the same meaning in every row, so the mapping lives once rather than at
 // each call site.
 const STATE_COLOR: Record<CacheState, string> = {
-  live: Semantic.success,
+  live: Core.action,
   connecting: Core.textMuted,
-  cached: Semantic.confirmed,
+  cached: Core.action,
   stale: Semantic.warning,
 };
 
@@ -32,7 +32,7 @@ export function CacheCard({ rows }: CacheCardProps) {
   return (
     <View style={styles.wrap}>
       <Text style={styles.title}>Offline & cache</Text>
-      <View style={[styles.card, Shadow.cardResting]}>
+      <View style={[styles.card, Shadow.row]}>
         {rows.map((row, i) => {
           const color = STATE_COLOR[row.state];
           return (
@@ -54,7 +54,7 @@ export function CacheCard({ rows }: CacheCardProps) {
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.sm },
-  title: { ...Typography.roles.labelCaps, color: Core.textMuted, paddingHorizontal: Spacing.xs },
+  title: { ...Typography.roles.caps, color: Core.textMuted, paddingHorizontal: Spacing.xs },
   card: { backgroundColor: Core.surface, borderRadius: Radius.card, overflow: 'hidden' },
   row: {
     flexDirection: 'row',
@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   rowDivided: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Core.border },
   labels: { flex: 1, gap: 1 },
   label: { ...Typography.roles.body, lineHeight: 20, color: Core.text },
-  detail: { ...Typography.roles.meta, color: Core.textMuted },
+  detail: { ...Typography.roles.sub, color: Core.textMuted },
   badge: { borderWidth: 1, borderRadius: Radius.full, paddingHorizontal: Spacing.sm, paddingVertical: 2 },
-  badgeText: { ...Typography.roles.labelCaps, fontSize: 10, letterSpacing: 0.8 },
+  badgeText: { ...Typography.roles.caps, fontSize: 10, letterSpacing: 0.8 },
 });

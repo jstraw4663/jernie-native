@@ -1,3 +1,4 @@
+import { CaretDownIcon } from 'phosphor-react-native/src/icons/CaretDown';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, type LayoutChangeEvent } from 'react-native';
 import Animated, {
@@ -10,7 +11,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import type { ItineraryDay, ItineraryItem, ItineraryItemCategory } from '@/src/types';
-import { Core, TypeColors, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { Core, Radius, Spacing, TypeColors, Typography } from '@/src/design/tokens';
 import { hexWithAlpha } from '@/src/utils/colors';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -109,7 +110,7 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
         <View style={styles.headerRight}>
           <Text style={styles.itemCount}>{day.items.length} item{day.items.length !== 1 ? 's' : ''}</Text>
           <Animated.View style={chevronStyle}>
-            <Text style={styles.chevron}>⌄</Text>
+            <CaretDownIcon size={13} color={Core.textFaint} style={styles.chevron} />
           </Animated.View>
         </View>
       </TouchableOpacity>
@@ -147,7 +148,7 @@ export function ItineraryDayRow({ day, dayNumber, stopColor, isExpanded, onPress
 
 const styles = StyleSheet.create({
   wrapper: {
-    borderRadius: Radius.lg,
+    borderRadius: Radius.tile,
     backgroundColor: Core.surface,
     borderWidth: 1,
     borderColor: Core.border,
@@ -162,10 +163,10 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   dot: { width: 10, height: 10, borderRadius: 5 },
-  dayLabel:  { ...Typography.roles.label, color: Core.text },
-  dateLabel: { ...Typography.roles.meta,  color: Core.textMuted },
+  dayLabel:  { ...Typography.roles.chip, color: Core.text },
+  dateLabel: { ...Typography.roles.sub,  color: Core.textMuted },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  itemCount:  { ...Typography.roles.meta, color: Core.textMuted },
+  itemCount:  { ...Typography.roles.sub, color: Core.textMuted },
   chevron:    { fontSize: 18, color: Core.textMuted, lineHeight: 22 },
   animatedContainer: { overflow: 'hidden' },
   // position:absolute takes itemList out of the flex flow so Yoga measures its natural
@@ -191,7 +192,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   itemTime: {
-    ...Typography.roles.mono,
+    ...Typography.roles.data,
     width: 52,
     fontWeight: '600',
     fontSize: 13,
@@ -204,5 +205,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   catPill:  { paddingHorizontal: 7, paddingVertical: 3, borderRadius: Radius.full },
-  catText:  { ...Typography.roles.labelCaps, color: Core.white },
+  catText:  { ...Typography.roles.caps, color: Core.white },
 });

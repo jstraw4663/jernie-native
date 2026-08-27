@@ -4,7 +4,7 @@ import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView, useBottomSheetS
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import { useSheetContext } from '@/src/contexts/SheetContext';
 import { Avatar } from '@/src/features/jernie/profile/Avatar';
-import { Core, Semantic, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { Core, Radius, Spacing, Typography } from '@/src/design/tokens';
 import type { Group, TripMember } from '@/src/types';
 
 export type MemberSheetRef = {
@@ -125,20 +125,20 @@ MemberSheet.displayName = 'MemberSheet';
 
 const s = StyleSheet.create({
   handle:     { backgroundColor: Core.textFaint, width: 44, height: 5 },
-  background: { backgroundColor: Core.bg, borderRadius: 24 },
+  background: { backgroundColor: Core.surface, borderRadius: 24 },
   content:    { paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, paddingBottom: Spacing.xxl, gap: Spacing.base },
   header:     { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   identity:   { flex: 1, gap: Spacing.xxs },
-  name:       { ...Typography.roles.h2, color: Core.text },
-  role:       { ...Typography.roles.meta, color: Core.textMuted },
+  name:       { ...Typography.roles.title, color: Core.text },
+  role:       { ...Typography.roles.sub, color: Core.textMuted },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: Spacing.md,
     backgroundColor: Core.surface,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.tile,
     padding: Spacing.md,
   },
-  detailLabel: { ...Typography.roles.label, color: Core.textMuted, width: 64 },
+  detailLabel: { ...Typography.roles.chip, color: Core.textMuted, width: 64 },
   detailValue: { ...Typography.roles.body, color: Core.text, flex: 1, lineHeight: 22 },
 });

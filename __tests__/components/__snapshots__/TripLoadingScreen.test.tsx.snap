@@ -1,3 +1,44 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`TripLoadingScreen renders without crashing 1`] = `null`;
+exports[`TripLoadingScreen renders without crashing 1`] = `
+<View
+  style={
+    {
+      "alignItems": "center",
+      "backgroundColor": "#FFFFFF",
+      "flex": 1,
+      "justifyContent": "center",
+    }
+  }
+>
+  <View
+    style={
+      [
+        {
+          "borderColor": "#0F7B6C",
+          "borderRadius": 24,
+          "borderTopColor": "transparent",
+          "borderWidth": 2.5,
+          "height": 48,
+          "width": 48,
+        },
+        {},
+      ]
+    }
+  />
+  <Text
+    style={
+      {
+        "color": "#717171",
+        "fontFamily": "Fraunces",
+        "fontSize": 24,
+        "fontWeight": "400",
+        "lineHeight": 25,
+        "marginTop": 16,
+      }
+    }
+  >
+    jernie
+  </Text>
+</View>
+`;

@@ -4,6 +4,7 @@
 export type PlaceCategory = 'restaurant' | 'activity' | 'sight' | 'hike' | 'bar' | 'flight' | 'other';
 export type BugPriority = 'high' | 'medium' | 'low';
 export type UserPlan = 'anonymous' | 'free' | 'pro';
+export type MapsAppId = 'apple' | 'google' | 'waze' | 'system';
 export type TripMemberRole = 'organizer' | 'traveler';
 export type PlaceSuggestionStatus = 'pending' | 'approved' | 'rejected';
 export type ExploreSuggestionStatus = 'pending' | 'added' | 'dismissed';
@@ -21,6 +22,8 @@ export interface UserProfile {
   // Denormalized read index only — the authoritative role always lives at
   // trips/{tripId}/members/{uid}.role.
   trips: Record<string, { role: TripMemberRole; joinedAt: number }>;
+  /** Omitted means ask on every navigation handoff. */
+  preferredMapsApp?: MapsAppId;
 }
 
 // ── Trip ────────────────────────────────────────────────────────────────────
@@ -60,6 +63,10 @@ export interface Stop {
   tripId: string;
   city: string;
   region: string;
+  /** @deprecated Unrendered since the icon sweep — a stop's glyph now comes from
+   *  `iconFor()` in src/design/icons.ts. The field stays because `trips/{tripId}` is
+   *  create-once and immutable at the top level by RTDB rule, so existing records keep it.
+   *  Still written on create to satisfy the rule; never read. */
   emoji: string;
   lat: number;
   lon: number;
@@ -101,6 +108,7 @@ export interface Place {
   distance?: string;
   photoUrl?: string;
   subcategory?: string;
+  /** @deprecated See `Stop.emoji`. Resolve a place's glyph with `iconFor(category)`. */
   emoji?: string;
 }
 
@@ -168,7 +176,23 @@ export type Booking = FlightBooking | HotelBooking | RentalBooking | RestaurantB
 
 // ── Itinerary ───────────────────────────────────────────────────────────────
 
-export type ItineraryItemCategory = PlaceCategory | 'transport' | 'custom';
+/**
+ * What an itinerary item is, in any spelling the app has ever written.
+ *
+ * Widened in Session 5 to reach the canonical ten of `docs/redesign-plan.md` §8 —
+ * `src/domain/taxonomy.ts` normalises the whole union down to those ten (or to `null`), and
+ * the role it derives from them is what decides Agenda's group and the gap rule. Without
+ * `stay` here, "staying with friends" was inexpressible and therefore a permanent stay gap.
+ *
+ * **Nothing new is written.** No writer offers the added values yet; this only stops the
+ * type from forbidding what the domain already understands. The legacy spellings stay
+ * because they are what is in RTDB: `restaurant`→`food`, `bar`→`bars`, `transport`→`car`,
+ * and `other`/`custom`→ no category at all.
+ */
+export type ItineraryItemCategory =
+  | PlaceCategory
+  | 'transit' | 'car' | 'stay' | 'food' | 'bars' | 'shopping'
+  | 'transport' | 'custom';
 
 export interface ItineraryItem {
   id: string;

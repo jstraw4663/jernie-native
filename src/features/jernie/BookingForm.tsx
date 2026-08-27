@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import type { DateData } from 'react-native-calendars';
-import { Core, Semantic, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { Core, Radius, Semantic, Spacing, Typography } from '@/src/design/tokens';
 import type { NewBooking } from '@/src/lib/bookingWrites';
 import type {
   BookingType, FlightLeg, FlightBooking, HotelBooking, RentalBooking, RestaurantBooking,
@@ -420,7 +420,7 @@ const s = StyleSheet.create({
   container: { padding: Spacing.lg },
   field: { marginBottom: Spacing.base },
   label: {
-    ...Typography.roles.label,
+    ...Typography.roles.chip,
     color: Core.textMuted,
     marginBottom: Spacing.sm,
   },
@@ -433,13 +433,13 @@ const s = StyleSheet.create({
     ...Typography.roles.body,
     color: Core.text,
     backgroundColor: Core.surfaceMuted,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.sm,
   },
   dateTrigger: {
     backgroundColor: Core.surfaceMuted,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.md,
   },
@@ -453,13 +453,13 @@ const s = StyleSheet.create({
     color: Core.textFaint,
   },
   calendar: {
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     marginTop: Spacing.sm,
   },
   legBlock: {
     borderWidth: 1,
     borderColor: Core.surfaceMuted,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     padding: Spacing.base,
     marginBottom: Spacing.base,
   },
@@ -470,11 +470,11 @@ const s = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   legTitle: {
-    ...Typography.roles.label,
+    ...Typography.roles.chip,
     color: Core.text,
   },
   legRemoveText: {
-    ...Typography.roles.label,
+    ...Typography.roles.chip,
     color: Semantic.error,
   },
   addLegButton: {
@@ -487,7 +487,7 @@ const s = StyleSheet.create({
     color: Core.action,
   },
   errorText: {
-    ...Typography.roles.meta,
+    ...Typography.roles.sub,
     color: Semantic.error,
     marginTop: Spacing.sm,
   },
@@ -505,7 +505,7 @@ const s = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: Core.action,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.md,
     minWidth: 120,

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Brand, Core, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { Core, Radius, Spacing, Typography } from '@/src/design/tokens';
 import { useOnboardingDraft } from '@/src/contexts/OnboardingDraftContext';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useCollisionSignIn } from '@/src/hooks/useCollisionSignIn';
@@ -101,23 +101,23 @@ export default function OnboardingStep3() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Brand.navy, justifyContent: 'center', paddingHorizontal: Spacing.xl },
-  eyebrow: { ...Typography.roles.labelCaps, color: Brand.gold, marginBottom: Spacing.sm },
-  title: { ...Typography.roles.h1, color: Core.white, marginBottom: Spacing.sm },
-  sub: { ...Typography.roles.body, color: 'rgba(255,255,255,0.65)', marginBottom: Spacing.xl },
+  container: { flex: 1, backgroundColor: Core.surface, justifyContent: 'center', paddingHorizontal: Spacing.xl },
+  eyebrow: { ...Typography.roles.caps, color: Core.action, marginBottom: Spacing.sm },
+  title: { ...Typography.roles.display, color: Core.text, marginBottom: Spacing.sm },
+  sub: { ...Typography.roles.body, color: Core.textMuted, marginBottom: Spacing.xl },
   previewCard: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.xl,
+    borderWidth: 1, borderRadius: Radius.tile, padding: Spacing.lg, marginBottom: Spacing.xl,
   },
-  swatch: { width: 32, height: 32, borderRadius: Radius.sm },
-  previewName: { ...Typography.roles.h2, color: Core.white, flexShrink: 1 },
+  swatch: { width: 32, height: 32, borderRadius: Radius.icon },
+  previewName: { ...Typography.roles.title, color: Core.text, flexShrink: 1 },
   appleButton: {
-    backgroundColor: '#000000', borderRadius: Radius.md,
+    backgroundColor: '#000000', borderRadius: Radius.icon,
     paddingVertical: Spacing.md, alignItems: 'center', justifyContent: 'center',
   },
-  appleButtonText: { ...Typography.roles.button, color: Core.white },
+  appleButtonText: { ...Typography.roles.button, color: Core.text },
   buttonDisabled: { opacity: 0.5 },
   skip: { alignItems: 'center', paddingVertical: Spacing.md, marginTop: Spacing.sm },
-  skipText: { ...Typography.roles.body, color: 'rgba(255,255,255,0.55)', textDecorationLine: 'underline' },
-  errorText: { ...Typography.roles.meta, color: '#F5A9B8', marginBottom: Spacing.base },
+  skipText: { ...Typography.roles.body, color: Core.textFaint, textDecorationLine: 'underline' },
+  errorText: { ...Typography.roles.sub, color: '#F5A9B8', marginBottom: Spacing.base },
 });

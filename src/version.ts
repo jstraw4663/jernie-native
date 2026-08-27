@@ -4,7 +4,7 @@ import Constants from 'expo-constants';
 // naming convention (e.g. docs/superpowers/plans/2026-07-06-data-model-foundation.md).
 // It's just a human-readable label — the git branch/commit below is what actually
 // proves which code is running, since this string won't auto-update.
-export const MILESTONE = 'auth-durability';
+export const MILESTONE = 'redesign-through-explore';
 
 export interface BuildInfo {
   gitBranch: string;

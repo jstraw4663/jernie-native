@@ -4,7 +4,7 @@ import { BottomSheetModal, BottomSheetBackdrop, BottomSheetScrollView, useBottom
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import { useSheetContext } from '@/src/contexts/SheetContext';
 import { submitFeedback, TITLE_MAX_LENGTH } from '@/src/lib/feedbackWrites';
-import { Core, Semantic, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { Core, Radius, Semantic, Spacing, Typography } from '@/src/design/tokens';
 import type { BugPriority } from '@/src/types';
 
 export type FeedbackSheetRef = {
@@ -187,18 +187,18 @@ FeedbackSheet.displayName = 'FeedbackSheet';
 
 const s = StyleSheet.create({
   handle:     { backgroundColor: Core.textFaint, width: 44, height: 5 },
-  background: { backgroundColor: Core.bg, borderRadius: 24 },
+  background: { backgroundColor: Core.surface, borderRadius: 24 },
   content:    { paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg, paddingBottom: Spacing.xxl, gap: Spacing.sm },
-  title:      { ...Typography.roles.h2, color: Core.text },
-  subtitle:   { ...Typography.roles.meta, color: Core.textMuted, marginBottom: Spacing.sm },
-  label:      { ...Typography.roles.label, color: Core.textMuted, marginTop: Spacing.sm },
+  title:      { ...Typography.roles.title, color: Core.text },
+  subtitle:   { ...Typography.roles.sub, color: Core.textMuted, marginBottom: Spacing.sm },
+  label:      { ...Typography.roles.chip, color: Core.textMuted, marginTop: Spacing.sm },
   input: {
     ...Typography.roles.body,
     color: Core.text,
     backgroundColor: Core.surface,
     borderWidth: 1,
     borderColor: Core.border,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
   },
@@ -212,13 +212,13 @@ const s = StyleSheet.create({
     borderRadius: Radius.full,
     paddingVertical: Spacing.sm,
   },
-  priorityText: { ...Typography.roles.label, color: Core.textMuted },
-  error:      { ...Typography.roles.meta, color: Semantic.error, marginTop: Spacing.xs },
-  sent:       { ...Typography.roles.body, color: Semantic.success, paddingVertical: Spacing.xl, textAlign: 'center' },
+  priorityText: { ...Typography.roles.chip, color: Core.textMuted },
+  error:      { ...Typography.roles.sub, color: Semantic.error, marginTop: Spacing.xs },
+  sent:       { ...Typography.roles.body, color: Core.action, paddingVertical: Spacing.xl, textAlign: 'center' },
   sendButton: {
     marginTop: Spacing.base,
     backgroundColor: Core.action,
-    borderRadius: Radius.md,
+    borderRadius: Radius.icon,
     paddingVertical: Spacing.md,
     alignItems: 'center',
   },

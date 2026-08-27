@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<style>
+  *, *::before, *::after { box-sizing:border-box; }
+  html { background:#0b1016; }
+  body { margin:0; background:#0b1016; font-family:'DM Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#C89A2B; text-decoration:none; }
+  a:hover { color:#e0b448; }
+  i[class^="ph"] { display:inline-block; line-height:1; }
+</style>
+</helmet>
+
+<div style="max-width:1320px;margin:0 auto;padding:56px 48px 100px">
+
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:40px;flex-wrap:wrap;margin-bottom:14px">
+    <div style="max-width:640px">
+      <div style="font:700 11px/1 'DM Sans';letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:14px">Jernie · Redesign · Decisions</div>
+      <h1 style="font-family:Fraunces,serif;font-size:56px;font-weight:400;line-height:1;color:#fff;margin:0 0 18px;letter-spacing:-.012em">What we decided,<br>and what it does.</h1>
+      <p style="font:400 14px/1.7 'DM Sans';color:rgba(255,255,255,.45);margin:0;text-wrap:pretty">Every screen below is the chosen direction from ten rounds of exploration, rendered from one component with live sample data. Click through the prototype to check the flow; use the toggles to see any screen in dark mode or at a different point in the trip. Both toggles drive every phone on this page at once.</p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;padding-top:8px">
+      <div>
+        <div style="font:700 9.5px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px">Theme</div>
+        <div style="display:flex;gap:4px;padding:4px;background:rgba(255,255,255,.06);border-radius:11px">
+          <span onClick="{{ setLight }}" style="height:32px;padding:0 16px;border-radius:8px;display:flex;align-items:center;gap:7px;font:600 12.5px/1 'DM Sans';cursor:pointer;background:{{ bgLight }};color:{{ fgLight }}"><i class="ph-fill ph-sun" style="font-size:14px"></i>Light</span>
+          <span onClick="{{ setDark }}" style="height:32px;padding:0 16px;border-radius:8px;display:flex;align-items:center;gap:7px;font:600 12.5px/1 'DM Sans';cursor:pointer;background:{{ bgDark }};color:{{ fgDark }}"><i class="ph-fill ph-moon" style="font-size:14px"></i>Dark</span>
+        </div>
+      </div>
+      <div>
+        <div style="font:700 9.5px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px">Trip state</div>
+        <div style="display:flex;gap:4px;padding:4px;background:rgba(255,255,255,.06);border-radius:11px">
+          <span onClick="{{ setEmpty }}" style="height:32px;padding:0 14px;border-radius:8px;display:flex;align-items:center;font:600 12.5px/1 'DM Sans';cursor:pointer;background:{{ bgEmpty }};color:{{ fgEmpty }}">No trip</span>
+          <span onClick="{{ setPlanned }}" style="height:32px;padding:0 14px;border-radius:8px;display:flex;align-items:center;font:600 12.5px/1 'DM Sans';cursor:pointer;background:{{ bgPlanned }};color:{{ fgPlanned }}">Planned</span>
+          <span onClick="{{ setTrip }}" style="height:32px;padding:0 14px;border-radius:8px;display:flex;align-items:center;font:600 12.5px/1 'DM Sans';cursor:pointer;background:{{ bgTrip }};color:{{ fgTrip }}">On the road</span>
+        </div>
+      </div>
+      <div>
+        <div style="font:700 9.5px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px">Prototype</div>
+        <div style="display:flex;gap:8px">
+          <span onClick="{{ reset }}" style="height:40px;padding:0 15px;border-radius:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;gap:8px;font:600 12.5px/1 'DM Sans';color:rgba(255,255,255,.85);cursor:pointer"><i class="ph ph-arrow-counter-clockwise" style="font-size:15px"></i>Start over</span>
+          <a href="./Jernie Onboarding.dc.html" style="height:40px;padding:0 15px;border-radius:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;gap:8px;font:600 12.5px/1 'DM Sans';color:rgba(255,255,255,.85)"><i class="ph ph-play" style="font-size:14px"></i>Run the wizard</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:1px;background:rgba(255,255,255,.08);margin:26px 0 40px"></div>
+
+  <div style="display:flex;gap:44px;align-items:flex-start;flex-wrap:wrap;margin-bottom:64px">
+    <dc-import name="Jernie Screen" screen="{{ tab }}" state="{{ state }}" theme="{{ theme }}" sheet-open="{{ sheet }}" reset-signal="{{ resetSignal }}" on-tab="{{ onTab }}" on-sheet="{{ onSheet }}" on-theme="{{ onTheme }}" hint-size="390px,844px"></dc-import>
+
+    <div style="flex:1;min-width:340px;max-width:520px;padding-top:8px">
+      <div style="display:inline-flex;align-items:center;gap:8px;height:26px;padding:0 11px;border-radius:13px;background:rgba(15,123,108,.16);color:#4FD1B5;font:700 10px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px">Live prototype</div>
+      <h2 style="font-family:Fraunces,serif;font-size:30px;font-weight:400;line-height:1.1;color:#fff;margin:0 0 14px">Click through it</h2>
+      <p style="font:400 13.5px/1.75 'DM Sans';color:rgba(255,255,255,.45);margin:0 0 22px;text-wrap:pretty">Five tabs are live. Tapping a place opens its detail sheet; the scrim or the close button returns you. Appearance inside Profile flips the theme for the whole page, the same way the real setting would.</p>
+
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:11px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)">
+          <span style="width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.07);display:grid;place-items:center;color:rgba(255,255,255,.6);flex-shrink:0"><i class="ph ph-hand-tap" style="font-size:14px"></i></span>
+          <span style="font:400 12.5px/1.5 'DM Sans';color:rgba(255,255,255,.5)">Tap any place row or card to open the detail sheet</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:11px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)">
+          <span style="width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.07);display:grid;place-items:center;color:rgba(255,255,255,.6);flex-shrink:0"><i class="ph ph-squares-four" style="font-size:14px"></i></span>
+          <span style="font:400 12.5px/1.5 'DM Sans';color:rgba(255,255,255,.5)">Currently showing <span style="color:#fff;font-weight:600">{{ tabLabel }}</span> · {{ stateLabel }} · {{ themeLabel }}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:11px;background:rgba(181,107,0,.09);border:1px solid rgba(181,107,0,.22)">
+          <span style="width:26px;height:26px;border-radius:8px;background:rgba(224,162,68,.14);display:grid;place-items:center;color:#E0A244;flex-shrink:0"><i class="ph ph-warning" style="font-size:14px"></i></span>
+          <span style="font:400 12.5px/1.5 'DM Sans';color:rgba(224,162,68,.85)">Not built: filters, add-to-itinerary, trip switcher, onboarding. Those are specced but static.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px">
+    <span style="font:600 10px/1 ui-monospace,Menlo,monospace;padding:5px 9px;background:#1a1a1a;color:#fff;border-radius:5px">01</span>
+    <span style="font-family:Fraunces,serif;font-size:28px;font-weight:400;color:#fff">Screen by screen</span>
+  </div>
+  <p style="font:400 13.5px/1.6 'DM Sans';color:rgba(255,255,255,.42);max-width:700px;margin:0 0 36px">Each screen with the decision that produced it and the interaction rules that go with it. Option ids refer back to the exploration file.</p>
+
+  <div style="display:flex;flex-direction:column;gap:56px;margin-bottom:80px">
+
+    <div style="display:flex;gap:44px;align-items:flex-start;flex-wrap:wrap">
+      <dc-import name="Jernie Screen" screen="home" state="{{ state }}" theme="{{ theme }}" hint-size="390px,844px"></dc-import>
+      <div style="flex:1;min-width:340px;max-width:560px">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px">
+          <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:rgba(255,255,255,.1);color:#fff;border-radius:5px">1b + 2a</span>
+          <span style="font-family:Fraunces,serif;font-size:26px;font-weight:400;color:#fff">Jernie · home</span>
+        </div>
+        <p style="font:400 14px/1.6 'DM Sans';color:rgba(255,255,255,.72);margin:0 0 18px">Where am I, what's next, what's broken.</p>
+
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:9px">Decisions</div>
+        <div style="font:400 12.5px/1.75 'DM Sans';color:rgba(255,255,255,.5);margin-bottom:20px">
+          <div>Photo hero carries the place; the stop rail is a white card lifted off it rather than an overlay, so text never fights the image.</div>
+          <div style="margin-top:8px">Dots are the only swipe affordance on the rail. No arrows, no peek of the next card — the dots plus the card edge were enough in review.</div>
+          <div style="margin-top:8px">Today's items are rows, not cards, because they're a queue rather than a gallery. Gaps appear inline in amber, using the same row shape as Agenda.</div>
+        </div>
+
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:9px">Interaction</div>
+        <div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden">
+          <div style="display:flex;gap:14px;padding:10px 14px;background:rgba(255,255,255,.03)"><span style="width:96px;flex-shrink:0;font:700 9.5px/1.4 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35)">Gesture</span><span style="flex:1;font:700 9.5px/1.4 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35)">Result</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Scroll 0→140</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Photo re-crops in place (no translate, so no black band), rail widens to full bleed and pins as the header</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Swipe rail</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Changes stop; hero photo cross-fades, item list re-queries. Does not change the trip date.</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Tap row</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Detail sheet at medium detent over the current screen</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:44px;align-items:flex-start;flex-wrap:wrap">
+      <dc-import name="Jernie Screen" screen="explore" state="{{ state }}" theme="{{ theme }}" hint-size="390px,844px"></dc-import>
+      <div style="flex:1;min-width:340px;max-width:560px">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px">
+          <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:rgba(255,255,255,.1);color:#fff;border-radius:5px">6b</span>
+          <span style="font-family:Fraunces,serif;font-size:26px;font-weight:400;color:#fff">Explore</span>
+        </div>
+        <p style="font:400 14px/1.6 'DM Sans';color:rgba(255,255,255,.72);margin:0 0 18px">Find something worth adding, near where you'll actually be.</p>
+
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:9px">Decisions</div>
+        <div style="font:400 12.5px/1.75 'DM Sans';color:rgba(255,255,255,.5);margin-bottom:20px">
+          <div>One filter bar, not two rows. Stop and type are dropdown bubbles because they're always set; everything else hides behind the icon with a count.</div>
+          <div style="margin-top:8px">Stop defaults to where you are, or the next stop if you're between them. Explore is never "anywhere" unless you have no trip.</div>
+          <div style="margin-top:8px">Carousels above, grid below: the carousel is editorial, the grid is exhaustive. One carousel maximum per screen.</div>
+        </div>
+
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:9px">Interaction</div>
+        <div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden">
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Tap bubble</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Inline dropdown, not a sheet. Selection applies immediately, no Apply button.</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Tap filter</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Full sheet with Apply, because multi-select needs a commit point</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Filter state</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Shared with Map. Switching tabs keeps the same result set.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:44px;align-items:flex-start;flex-wrap:wrap">
+      <dc-import name="Jernie Screen" screen="map" state="{{ state }}" theme="{{ theme }}" hint-size="390px,844px"></dc-import>
+      <div style="flex:1;min-width:340px;max-width:560px">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px">
+          <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:rgba(255,255,255,.1);color:#fff;border-radius:5px">7</span>
+          <span style="font-family:Fraunces,serif;font-size:26px;font-weight:400;color:#fff">Map</span>
+        </div>
+        <p style="font:400 14px/1.6 'DM Sans';color:rgba(255,255,255,.72);margin:0 0 18px">The trip as geography, with two modes on one surface.</p>
+
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:9px">Decisions</div>
+        <div style="font:400 12.5px/1.75 'DM Sans';color:rgba(255,255,255,.5);margin-bottom:20px">
+          <div>Route mode is the default and shows only booked items. Explore mode recesses the route to a faint line and surfaces place markers.</div>
+          <div style="margin-top:8px">One sheet serves both modes — the list re-queries, the sheet doesn't rebuild. Detent position survives the mode switch.</div>
+          <div style="margin-top:8px">Marker hierarchy is size, not colour: current location largest, booked items medium, suggestions small and outlined.</div>
+        </div>
+
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:9px">Interaction</div>
+        <div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden">
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Tap marker</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Sheet snaps to medium and scrolls that item into view, marker scales up</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Drag sheet</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Three detents: 120px peek, 55% medium, near-full. Map recentres to keep the active marker visible.</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Mode switch</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Route line fades to 25% opacity, place markers fade in over 200ms. No camera move.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:44px;align-items:flex-start;flex-wrap:wrap">
+      <dc-import name="Jernie Screen" screen="home" state="{{ state }}" theme="{{ theme }}" sheet-open="{{ yes }}" hint-size="390px,844px"></dc-import>
+      <div style="flex:1;min-width:340px;max-width:560px">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px">
+          <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:rgba(255,255,255,.1);color:#fff;border-radius:5px">5</span>
+          <span style="font-family:Fraunces,serif;font-size:26px;font-weight:400;color:#fff">Detail sheet</span>
+        </div>
+        <p style="font:400 14px/1.6 'DM Sans';color:rgba(255,255,255,.72);margin:0 0 18px">One shell, four content types, thirteen blocks.</p>
+
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:9px">Decisions</div>
+        <div style="font:400 12.5px/1.75 'DM Sans';color:rgba(255,255,255,.5);margin-bottom:20px">
+          <div>The shell owns detents, hero, title, and the footer action. Everything between title and footer is a block from the library.</div>
+          <div style="margin-top:8px">Each type declares its blocks in order: Restaurant, Stay, Activity, Travel. Adding a fifth type is a list, not a new screen.</div>
+          <div style="margin-top:8px">The footer action is always primary and always the same shape, so the sheet has one obvious exit into the itinerary.</div>
+        </div>
+
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:9px">Block order by type</div>
+        <div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden">
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Restaurant</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Stats · Description · Tags · Hours · Location · Reviews · Nearby</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Stay</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Booking · Stats · Amenities · Description · Location · Check-in</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Activity</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Difficulty · Stats · Description · Conditions · Location · Nearby</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Travel</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Booking · Timeline · Confirmation · Location · Documents</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:44px;align-items:flex-start;flex-wrap:wrap">
+      <dc-import name="Jernie Screen" screen="agenda" state="{{ state }}" theme="{{ theme }}" hint-size="390px,844px"></dc-import>
+      <div style="flex:1;min-width:340px;max-width:560px">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px">
+          <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:rgba(255,255,255,.1);color:#fff;border-radius:5px">9b + 9c</span>
+          <span style="font-family:Fraunces,serif;font-size:26px;font-weight:400;color:#fff">Agenda</span>
+        </div>
+        <p style="font:400 14px/1.6 'DM Sans';color:rgba(255,255,255,.72);margin:0 0 18px">Not "what's next" — "what's missing".</p>
+
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:9px">Decisions</div>
+        <div style="font:400 12.5px/1.75 'DM Sans';color:rgba(255,255,255,.5);margin-bottom:20px">
+          <div>Grouped by type, chronological inside, stop as the second line. By day and By stop re-slice the same rows — one dataset, three lenses.</div>
+          <div style="margin-top:8px">Gaps are rows with their own Add, not absences. Derived by comparing each stop's date span against bookings of that type.</div>
+          <div style="margin-top:8px">The coverage grid from 9c appears only when there's at least one gap: worth 200px when something's wrong, nothing when it isn't.</div>
+          <div style="margin-top:8px">Amber, never red. Unfinished is not broken; red is reserved for a cancelled booking.</div>
+        </div>
+
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:9px">Gap rules</div>
+        <div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden">
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Stay gap</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Any night inside a stop's span with no booking covering it</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Transport</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">A stop with no arriving booking and no car whose window covers it</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Never a gap</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Eating and doing — preferences, not requirements. Their sublines only count.</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Dismissal</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Per stop, per trip — "we're driving with friends" shouldn't silence future trips</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:44px;align-items:flex-start;flex-wrap:wrap">
+      <dc-import name="Jernie Screen" screen="profile" state="{{ state }}" theme="{{ theme }}" hint-size="390px,844px"></dc-import>
+      <div style="flex:1;min-width:340px;max-width:560px">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px">
+          <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:rgba(255,255,255,.1);color:#fff;border-radius:5px">10c</span>
+          <span style="font-family:Fraunces,serif;font-size:26px;font-weight:400;color:#fff">Profile · passport</span>
+        </div>
+        <p style="font:400 14px/1.6 'DM Sans';color:rgba(255,255,255,.72);margin:0 0 18px">The record of your travelling, not the drawer of your preferences.</p>
+
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:9px">Decisions</div>
+        <div style="font:400 12.5px/1.75 'DM Sans';color:rgba(255,255,255,.5);margin-bottom:20px">
+          <div>Photo header reuses the home hero treatment, so the tab belongs to the app instead of reading as a system screen.</div>
+          <div style="margin-top:8px">Four counts and past trips are the content. Settings collapse into three rows and a gear.</div>
+          <div style="margin-top:8px">Trip switcher is a row that opens the full trip list, not a set of cards.</div>
+          <div style="margin-top:8px">Companions get their own screen behind the row — contribution per person, invite state, and a one-sentence permission rule.</div>
+        </div>
+
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:9px">Settings hierarchy</div>
+        <div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden">
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Set once</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Units, currency, language — row with current value, opens a picker</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Flipped often</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Theme — inline control, no navigation</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Own screen</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Companions, notifications, account</span></div>
+          <div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.06)"><span style="width:96px;flex-shrink:0;font:500 11.5px/1.5 'DM Mono',ui-monospace;color:rgba(255,255,255,.6)">Demoted</span><span style="flex:1;font:400 12px/1.5 'DM Sans';color:rgba(255,255,255,.45)">Help, sign out. Delete account lives inside account, never on this screen.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px">
+    <span style="font:600 10px/1 ui-monospace,Menlo,monospace;padding:5px 9px;background:#1a1a1a;color:#fff;border-radius:5px">02</span>
+    <span style="font-family:Fraunces,serif;font-size:28px;font-weight:400;color:#fff">Tokens</span>
+  </div>
+  <p style="font:400 13.5px/1.6 'DM Sans';color:rgba(255,255,255,.42);max-width:700px;margin:0 0 30px">Dark values are warm charcoal, not inverted greys — the neutrals hold a little of the photography's warmth so images sit in the surface rather than on it. Teal and amber both lift in dark mode to hold contrast against a darker field.</p>
+
+  <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:26px">
+    <div style="flex:1;min-width:420px;border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden">
+      <div style="display:flex;gap:12px;padding:11px 16px;background:rgba(255,255,255,.03)">
+        <span style="width:132px;font:700 9.5px/1.4 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35)">Token</span>
+        <span style="flex:1;font:700 9.5px/1.4 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35)">Light</span>
+        <span style="flex:1;font:700 9.5px/1.4 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35)">Dark</span>
+      </div>
+      <sc-for list="{{ tokens }}" as="t" hint-placeholder-count="8">
+        <div style="display:flex;gap:12px;padding:9px 16px;border-top:1px solid rgba(255,255,255,.06);align-items:center">
+          <span style="width:132px;font:500 11px/1.4 'DM Mono',ui-monospace;color:rgba(255,255,255,.65)">{{ t.name }}</span>
+          <span style="flex:1;display:flex;align-items:center;gap:8px"><span style="width:16px;height:16px;border-radius:4px;border:1px solid rgba(255,255,255,.12);background:{{ t.light }}"></span><span style="font:500 11px/1.4 'DM Mono',ui-monospace;color:rgba(255,255,255,.4)">{{ t.light }}</span></span>
+          <span style="flex:1;display:flex;align-items:center;gap:8px"><span style="width:16px;height:16px;border-radius:4px;border:1px solid rgba(255,255,255,.12);background:{{ t.dark }}"></span><span style="font:500 11px/1.4 'DM Mono',ui-monospace;color:rgba(255,255,255,.4)">{{ t.dark }}</span></span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="flex:1;min-width:360px;display:flex;flex-direction:column;gap:14px">
+      <div style="border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 18px">
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:12px">Type</div>
+        <div style="font:400 12.5px/1.75 'DM Sans';color:rgba(255,255,255,.5)">
+          <div><span style="font-family:Fraunces,serif;font-size:15px;color:#fff">Fraunces 400</span> — trip names, place names in sheets, profile name. Display only, never below 20px.</div>
+          <div style="margin-top:8px"><span style="font-weight:700;color:#fff">DM Sans 700</span> — screen titles 25px, section headers 15px, row titles 13.5px.</div>
+          <div style="margin-top:8px"><span style="font-weight:400;color:#fff">DM Sans 400</span> — body 13px, sublines 11px, captions 10.5px.</div>
+          <div style="margin-top:8px"><span style="font-family:'DM Mono',ui-monospace;color:#fff">DM Mono 500</span> — dates, times, night counts. Anything that lines up in a column.</div>
+        </div>
+      </div>
+      <div style="border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 18px">
+        <div style="font:700 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:12px">Spacing &amp; shape</div>
+        <div style="font:400 12.5px/1.75 'DM Sans';color:rgba(255,255,255,.5)">
+          <div>Screen gutter 20px. Row padding 11–12px. Section gap 18px.</div>
+          <div style="margin-top:8px">Radius: 8px icon tiles, 12–15px rows and cards, 18px lifted cards, 22–26px sheets, 36px screen.</div>
+          <div style="margin-top:8px">Tab bar 84px including 24px home-indicator inset. Minimum hit target 44px.</div>
+          <div style="margin-top:8px">One collapse system, 0–140: identity shrinks, nav widens and pins, content stays still.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:baseline;gap:12px;margin:60px 0 8px">
+    <span style="font:600 10px/1 ui-monospace,Menlo,monospace;padding:5px 9px;background:#1a1a1a;color:#fff;border-radius:5px">03</span>
+    <span style="font-family:Fraunces,serif;font-size:28px;font-weight:400;color:#fff">Still open</span>
+  </div>
+  <p style="font:400 13.5px/1.6 'DM Sans';color:rgba(255,255,255,.42);max-width:700px;margin:0 0 24px">Decisions we haven't made, in the order they block work.</p>
+
+  <div style="display:flex;gap:16px;flex-wrap:wrap">
+    <sc-for list="{{ open }}" as="q" hint-placeholder-count="6">
+      <div style="width:calc(33.333% - 11px);min-width:290px;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 18px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="height:20px;padding:0 8px;border-radius:10px;background:{{ q.tagBg }};display:flex;align-items:center;font:700 9px/1 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:{{ q.tagFg }}">{{ q.tag }}</span>
+        </div>
+        <div style="font:700 14px/1.35 'DM Sans';color:#fff;margin-bottom:8px">{{ q.title }}</div>
+        <div style="font:400 12.5px/1.7 'DM Sans';color:rgba(255,255,255,.45)">{{ q.body }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <p style="font:400 12.5px/1.6 'DM Sans';color:rgba(255,255,255,.35);margin:46px 0 0;max-width:700px">Exploration and rejected options live in <a href="./Jernie Redesign.dc.html">Jernie Redesign</a>. Next up: guided trip creation, shimmer skeletons, then the handoff package.</p>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;defaultTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype defaults&quot;},&quot;defaultTripState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;empty&quot;,&quot;planned&quot;,&quot;trip&quot;],&quot;default&quot;:&quot;trip&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype defaults&quot;},&quot;defaultTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;agenda&quot;,&quot;explore&quot;,&quot;map&quot;,&quot;profile&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype defaults&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      theme: props.defaultTheme || 'light',
+      trip: props.defaultTripState || 'trip',
+      tab: props.defaultTab || 'home',
+      sheet: false,
+      resetSignal: 0
+    };
+  }
+
+  set(k, v) { this.setState({ [k]: v }); }
+
+  renderVals() {
+    const s = this.state;
+    const p = this.props;
+    const on = 'rgba(255,255,255,.94)', onFg = '#0b1016', off = 'transparent', offFg = 'rgba(255,255,255,.55)';
+    const pick = (a, b) => (a === b ? on : off);
+    const pickFg = (a, b) => (a === b ? onFg : offFg);
+    const tabLabels = { home: 'Jernie', explore: 'Explore', map: 'Map', agenda: 'Agenda', profile: 'Profile' };
+    const stateLabels = { empty: 'no trip yet', planned: 'trip planned, not started', trip: 'on the road, day 3' };
+
+    return {
+      theme: s.theme, state: s.trip, tab: s.tab, sheet: s.sheet, yes: true,
+      resetSignal: s.resetSignal,
+      reset: () => this.setState({
+        tab: p.defaultTab || 'home',
+        trip: p.defaultTripState || 'trip',
+        theme: p.defaultTheme || 'light',
+        sheet: false,
+        resetSignal: s.resetSignal + 1
+      }),
+      tabLabel: tabLabels[s.tab], stateLabel: stateLabels[s.trip],
+      themeLabel: s.theme === 'dark' ? 'dark mode' : 'light mode',
+      setLight: () => this.set('theme', 'light'),
+      setDark: () => this.set('theme', 'dark'),
+      setEmpty: () => this.setState({ trip: 'empty', sheet: false }),
+      setPlanned: () => this.setState({ trip: 'planned', sheet: false }),
+      setTrip: () => this.setState({ trip: 'trip', sheet: false }),
+      bgLight: pick('light', s.theme), fgLight: pickFg('light', s.theme),
+      bgDark: pick('dark', s.theme), fgDark: pickFg('dark', s.theme),
+      bgEmpty: pick('empty', s.trip), fgEmpty: pickFg('empty', s.trip),
+      bgPlanned: pick('planned', s.trip), fgPlanned: pickFg('planned', s.trip),
+      bgTrip: pick('trip', s.trip), fgTrip: pickFg('trip', s.trip),
+      onTab: (t) => this.setState({ tab: t, sheet: false }),
+      onSheet: (o) => this.set('sheet', o),
+      onTheme: (t) => this.set('theme', t),
+      tokens: [
+        { name: 'surface', light: '#FFFFFF', dark: '#201C1A' },
+        { name: 'sunken', light: '#FAFAFA', dark: '#191614' },
+        { name: 'line', light: '#EBEBEB', dark: '#332E2B' },
+        { name: 'chip', light: '#F4F4F4', dark: '#2A2624' },
+        { name: 'ink', light: '#1B1B1B', dark: '#F5F1ED' },
+        { name: 'ink-2', light: '#717171', dark: '#A79E97' },
+        { name: 'ink-3', light: '#B0B0B0', dark: '#6E655F' },
+        { name: 'accent', light: '#0F7B6C', dark: '#5CCBB4' },
+        { name: 'warning', light: '#B56B00', dark: '#E0A244' }
+      ],
+      open: [
+        { tag: 'Blocks onboarding', tagBg: 'rgba(224,162,68,.16)', tagFg: '#E0A244', title: 'What happens on the very first launch?', body: 'Guided creation is agreed, but not whether we ask for an account before or after the first trip exists. Asking first loses people; asking after means migrating a local trip.' },
+        { tag: 'Blocks Profile', tagBg: 'rgba(224,162,68,.16)', tagFg: '#E0A244', title: 'Passport with nothing in it', body: '10c is built on counts. A new user sees four zeros and an empty shelf. We need the first-trip state of this screen before it can ship.' },
+        { tag: 'Blocks Agenda', tagBg: 'rgba(224,162,68,.16)', tagFg: '#E0A244', title: 'Who owns a gap in a shared trip?', body: 'If Priya dismisses "no transport in Southwest Harbor", does it disappear for everyone? Per-trip dismissal was agreed; per-person was not ruled out.' },
+        { tag: 'Open', tagBg: 'rgba(255,255,255,.08)', tagFg: 'rgba(255,255,255,.55)', title: 'Offline behaviour on the map', body: 'Route mode is the screen people will open with no signal. Cached tiles, cached list, or a graceful list-only fallback — not decided.' },
+        { tag: 'Open', tagBg: 'rgba(255,255,255,.08)', tagFg: 'rgba(255,255,255,.55)', title: 'Does Explore work without a trip?', body: 'Currently it degrades to "Anywhere". Either we make it a real browse surface or we hide the tab until a trip exists.' },
+        { tag: 'Later', tagBg: 'rgba(255,255,255,.08)', tagFg: 'rgba(255,255,255,.55)', title: 'Notifications we actually send', body: 'The Profile row implies a set. We have not written the list — check-in reminders, gap nudges, companion activity, price changes.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

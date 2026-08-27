@@ -1,18 +1,19 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Brand, Core, Typography, Radius, Spacing } from '@/src/design/tokens';
+import { Core, Radius, Spacing, Typography } from '@/src/design/tokens';
+import { iconFor, type ItemCategory } from '@/src/design/icons';
 import { useOnboardingDraft } from '@/src/contexts/OnboardingDraftContext';
 import { createTrip } from '@/src/lib/createTrip';
 import type { SetupIntent } from '@/src/types';
 
 type SubmitStatus = 'idle' | 'submitting' | 'error';
 
-const TILES: { key: keyof SetupIntent; label: string; emoji: string }[] = [
-  { key: 'flights', label: 'Flights', emoji: '✈️' },
-  { key: 'stays', label: 'Stays', emoji: '🏨' },
-  { key: 'car', label: 'Car', emoji: '🚗' },
-  { key: 'restaurants', label: 'Restaurants', emoji: '🍽️' },
+const TILES: { key: keyof SetupIntent; label: string; category: ItemCategory }[] = [
+  { key: 'flights', label: 'Flights', category: 'flight' },
+  { key: 'stays', label: 'Stays', category: 'stay' },
+  { key: 'car', label: 'Car', category: 'car' },
+  { key: 'restaurants', label: 'Restaurants', category: 'food' },
 ];
 
 // Step 5 (invite) is deferred — this is the wizard's final screen this round.
@@ -68,7 +69,7 @@ export default function OnboardingStep4() {
               style={[styles.tile, selected && styles.tileSelected]}
               onPress={() => toggleTile(tile.key)}
             >
-              <Text style={styles.tileEmoji}>{tile.emoji}</Text>
+              {(() => { const Glyph = iconFor(tile.category); return <Glyph size={22} color={selected ? Core.action : Core.textMuted} weight={selected ? 'fill' : 'regular'} />; })()}
               <Text style={[styles.tileLabel, selected && styles.tileLabelSelected]}>{tile.label}</Text>
             </TouchableOpacity>
           );
@@ -84,7 +85,7 @@ export default function OnboardingStep4() {
         disabled={status === 'submitting' || !draft.firstStop}
       >
         {status === 'submitting' ? (
-          <ActivityIndicator color={Brand.navy} />
+          <ActivityIndicator color={Core.action} />
         ) : (
           <Text style={styles.submitButtonText}>
             {status === 'error' ? 'Retry' : 'Build my setup list'}
@@ -98,23 +99,23 @@ export default function OnboardingStep4() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Brand.navy,
+    backgroundColor: Core.surface,
     justifyContent: 'center',
     paddingHorizontal: Spacing.xl,
   },
   eyebrow: {
-    ...Typography.roles.labelCaps,
-    color: Brand.gold,
+    ...Typography.roles.caps,
+    color: Core.action,
     marginBottom: Spacing.sm,
   },
   title: {
-    ...Typography.roles.h1,
-    color: Core.white,
+    ...Typography.roles.display,
+    color: Core.text,
     marginBottom: Spacing.sm,
   },
   sub: {
     ...Typography.roles.body,
-    color: 'rgba(255,255,255,0.65)',
+    color: Core.textMuted,
     marginBottom: Spacing.xl,
   },
   tileGrid: {
@@ -129,33 +130,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-    borderRadius: Radius.lg,
+    borderColor: Core.border,
+    borderRadius: Radius.tile,
     paddingVertical: Spacing.lg,
     gap: Spacing.xs,
   },
   tileSelected: {
-    backgroundColor: Brand.gold,
-    borderColor: Brand.gold,
+    backgroundColor: Core.action,
+    borderColor: Core.action,
   },
   tileEmoji: {
     fontSize: 28,
   },
   tileLabel: {
     ...Typography.roles.button,
-    color: 'rgba(255,255,255,0.85)',
+    color: Core.text,
   },
   tileLabelSelected: {
-    color: Brand.navy,
+    color: Core.textInverse,
   },
   errorText: {
-    ...Typography.roles.meta,
+    ...Typography.roles.sub,
     color: '#F5A9B8',
     marginBottom: Spacing.base,
   },
   submitButton: {
-    backgroundColor: Brand.gold,
-    borderRadius: Radius.md,
+    backgroundColor: Core.action,
+    borderRadius: Radius.icon,
     paddingVertical: Spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -165,6 +166,6 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     ...Typography.roles.button,
-    color: Brand.navy,
+    color: Core.textInverse,
   },
 });

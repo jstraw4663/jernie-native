@@ -3,7 +3,10 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { Booking } from '@/src/types';
 import { getFlightEndpoints, getFlightLegs } from '@/src/domain/bookings';
-import { Brand, Core, TypeColors, Typography, Radius, Shadow, Spacing } from '@/src/design/tokens';
+import { BedIcon } from 'phosphor-react-native/src/icons/Bed';
+import { CarProfileIcon } from 'phosphor-react-native/src/icons/CarProfile';
+import { ForkKnifeIcon } from 'phosphor-react-native/src/icons/ForkKnife';
+import { Core, Radius, Shadow, Spacing, TypeColors, Typography } from '@/src/design/tokens';
 import { hexWithAlpha } from '@/src/utils/colors';
 
 interface TravelCardProps {
@@ -42,7 +45,7 @@ function FlightCard({
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={onPress ? 0.85 : 1} disabled={!onPress}>
       <LinearGradient
-        colors={[Brand.navy, Brand.navySoft]}
+        colors={[TypeColors.flight, TypeColors.car]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.flightCard}
@@ -103,7 +106,7 @@ function HotelCard({ booking, stopColor, onPress }: { booking: Extract<Booking, 
         ]}
       >
         <View style={[styles.typeIcon, { backgroundColor: hexWithAlpha(stopColor, 0.12) }]}>
-          <Text style={styles.typeEmoji}>🏨</Text>
+          <BedIcon size={16} color={stopColor} weight="fill" />
         </View>
         <View style={styles.surfaceCardBody}>
           <Text style={styles.surfaceCardName}>{booking.hotelName}</Text>
@@ -143,7 +146,7 @@ function RentalCard({ booking, stopColor, stopId, onPress }: { booking: Extract<
       ]}
     >
       <View style={[styles.typeIcon, { backgroundColor: hexWithAlpha(stopColor, 0.12) }]}>
-        <Text style={styles.typeEmoji}>🚗</Text>
+        <CarProfileIcon size={16} color={stopColor} weight="fill" />
       </View>
       <View style={styles.surfaceCardBody}>
         <View style={styles.rentalNameRow}>
@@ -180,7 +183,7 @@ function RestaurantCard({ booking, onPress }: { booking: Extract<Booking, { type
         ]}
       >
         <View style={[styles.typeIcon, { backgroundColor: hexWithAlpha(foodColor, 0.10) }]}>
-          <Text style={styles.typeEmoji}>🍽️</Text>
+          <ForkKnifeIcon size={16} color={foodColor} weight="fill" />
         </View>
         <View style={styles.surfaceCardBody}>
           <Text style={styles.surfaceCardName}>{booking.restaurantName}</Text>
@@ -219,7 +222,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
     borderRadius: Radius.card,
     padding: 15,
-    shadowColor: Brand.navy,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.28,
     shadowRadius: 20,
@@ -232,7 +235,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   flightTag: {
-    ...Typography.roles.labelCaps,
+    ...Typography.roles.caps,
     color: 'rgba(255,255,255,0.55)',
     letterSpacing: 0.8,
   },
@@ -246,7 +249,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   onTimeText: {
-    ...Typography.roles.labelCaps,
+    ...Typography.roles.caps,
     color: '#a0f0c0',
     letterSpacing: 0.5,
   },
@@ -273,7 +276,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   flightTime: {
-    ...Typography.roles.label,
+    ...Typography.roles.chip,
     color: 'rgba(255,255,255,0.70)',
     marginTop: 4,
   },
@@ -287,7 +290,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   legRow: {
-    ...Typography.roles.meta,
+    ...Typography.roles.sub,
     color: 'rgba(255,255,255,0.55)',
   },
   flightFooter: {
@@ -320,25 +323,24 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     marginHorizontal: Spacing.base,
     marginBottom: Spacing.sm,
-    borderRadius: Radius.xl,
+    borderRadius: Radius.row,
     borderWidth: 1,
     backgroundColor: Core.surface,
     padding: Spacing.md,
-    ...Shadow.cardResting,
+    ...Shadow.row,
   },
   typeIcon: {
     width: 34,
     height: 34,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.tile,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  typeEmoji: { fontSize: 17 },
   surfaceCardBody:   { flex: 1 },
-  surfaceCardName:   { ...Typography.roles.label, fontWeight: '700' as const, color: Core.text, marginBottom: 3 },
-  surfaceCardMeta:   { ...Typography.roles.meta, color: Core.textMuted, marginBottom: 1 },
-  surfaceCardAccent: { ...Typography.roles.label, marginTop: 3 },
+  surfaceCardName:   { ...Typography.roles.chip, fontWeight: '700' as const, color: Core.text, marginBottom: 3 },
+  surfaceCardMeta:   { ...Typography.roles.sub, color: Core.textMuted, marginBottom: 1 },
+  surfaceCardAccent: { ...Typography.roles.chip, marginTop: 3 },
   rentalNameRow:     { flexDirection: 'row', alignItems: 'center', gap: 6 },
   rentalBadge:       { borderRadius: Radius.full, paddingHorizontal: 8, paddingVertical: 2 },
   rentalBadgeText:   { fontSize: 11, fontWeight: '700' as const, fontFamily: 'DMSans' },

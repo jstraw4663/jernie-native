@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { Brand, Core, Typography } from '@/src/design/tokens';
+import { Core, Typography } from '@/src/design/tokens';
 
 export function TripLoadingScreen() {
   const rotation = useSharedValue(0);
@@ -35,7 +35,7 @@ export function TripLoadingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Core.bg,
+    backgroundColor: Core.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -44,11 +44,11 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     borderWidth: 2.5,
-    borderColor: Brand.gold,
+    borderColor: Core.action,
     borderTopColor: 'transparent',
   },
   label: {
-    ...Typography.roles.h2Italic,
+    ...Typography.roles.title,
     color: Core.textMuted,
     marginTop: 16,
   },

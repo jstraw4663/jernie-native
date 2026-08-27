@@ -1,0 +1,2239 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+<meta name="design_doc_mode" content="canvas">
+<style>
+  body { margin:0; background:#0B1016; }
+  a { color:#8FD3C4; text-decoration:none; }
+  a:hover { color:#B9E6DB; }
+  [data-jt] { --surface:#fff; --sunken:#FAFAFA; --line:#EBEBEB; --line-soft:#F4F4F4; --chip:#F4F4F4;
+    --ink:#1B1B1B; --ink2:#717171; --ink3:#B0B0B0; --ink4:#C4C4C4;
+    --teal:#0F7B6C; --tealSoft:rgba(15,123,108,.09); --tealLine:rgba(15,123,108,.22);
+    --amber:#B56B00; --amberSoft:rgba(181,107,0,.06); --amberLine:rgba(181,107,0,.4); --amberInk:#8A6320;
+    --error:#A3485F; --errorSoft:#F5E8EB; --scrim:rgba(16,22,20,.42);
+    --shadow:rgba(0,0,0,.12); }
+  [data-jt="dark"] { --surface:#201C1A; --sunken:#191614; --line:#332E2B; --line-soft:#2A2624; --chip:#2A2624;
+    --ink:#F5F1ED; --ink2:#A79E97; --ink3:#6E655F; --ink4:#4A4340;
+    --teal:#5CCBB4; --tealSoft:rgba(92,203,180,.13); --tealLine:rgba(92,203,180,.28);
+    --amber:#E0A244; --amberSoft:rgba(224,162,68,.11); --amberLine:rgba(224,162,68,.38); --amberInk:#E0A244;
+    --error:#D98098; --errorSoft:rgba(217,128,152,.14); --scrim:rgba(8,6,5,.5);
+    --shadow:rgba(0,0,0,.5); }
+  [data-jt] i[class^="ph"] { display:inline-block; line-height:1; }
+  [data-scroll]::-webkit-scrollbar { width:0; height:0; }
+</style>
+</helmet>
+
+<section style="padding:56px 60px 40px;font-family:'DM Sans',system-ui,sans-serif">
+
+  <div style="max-width:840px;margin-bottom:40px">
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:12px">
+      <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:rgba(255,255,255,.1);color:#fff;border-radius:5px">Turn 4</span>
+      <span style="font-family:Fraunces,serif;font-size:30px;font-weight:400;color:#fff">Getting back up</span>
+    </div>
+    <p style="font:400 14.5px/1.65 'DM Sans';color:rgba(255,255,255,.72);margin:0;text-wrap:pretty">Five ways out of a long list, built into <a href="#3a">3a</a> — tap the stop bar to lift the day you are reading to the top, tap again for the trip. The pinned stack is now a control surface, so <a href="#4a">4a</a> maps what every part of it does.</p>
+  </div>
+
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:42px;max-width:900px">
+    <sc-for list="{{ decisions4 }}" as="dec" hint-placeholder-count="4">
+      <div style="flex:1 1 200px;min-width:200px;padding:13px 15px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)">
+        <div style="font:700 9px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:{{ dec.tagColor }};margin-bottom:7px">{{ dec.tag }}</div>
+        <div style="font:400 12.5px/1.55 'DM Sans';color:rgba(255,255,255,.78);text-wrap:pretty">{{ dec.body }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap">
+
+    <div id="4a" style="width:390px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+        <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:#fff;color:#0B1016;border-radius:5px">4a</span>
+        <span style="font-family:Fraunces,serif;font-size:22px;font-weight:400;color:#fff">Tap targets</span>
+      </div>
+      <p style="font:400 12.5px/1.6 'DM Sans';color:rgba(255,255,255,.6);margin:0 0 18px;text-wrap:pretty">The 206px stack with each hit region tinted in place. Five targets, none overlapping, none under 44px.</p>
+
+      <div data-jt="{{ theme }}" style="width:372px;border-radius:20px;overflow:hidden;background:var(--surface);box-shadow:0 14px 40px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.07);position:relative;outline:1.5px dashed rgba(140,140,140,.45);outline-offset:-7px">
+        <div style="height:108px;background:#1B2A24;overflow:hidden;position:relative">
+          <img src="{{ colStop.photo }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" alt="">
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,22,18,.62) 0%,rgba(14,22,18,.3) 100%)"></div>
+          <div style="position:absolute;left:10px;top:1px;width:222px;height:44px;border-radius:9px;background:rgba(127,217,198,.26);border:1.5px solid #7FD9C6;display:flex;align-items:center;gap:8px;padding:0 7px;box-sizing:border-box">
+            <span style="font-family:Fraunces,serif;font-size:19px;font-weight:400;line-height:1;color:#fff;letter-spacing:-.01em;white-space:nowrap">Maine Coast</span>
+            <span style="font:400 10.5px/1 'DM Sans';color:rgba(255,255,255,.75);white-space:nowrap">Aug 23 – 30</span>
+            <i class="ph ph-arrow-line-up" style="font-size:12px;color:rgba(255,255,255,.7)"></i>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:0;height:62px;background:var(--surface);display:flex;align-items:center;gap:8px;padding:0 8px 0 8px">
+            <span style="flex:1;min-width:0;height:54px;border-radius:11px;background:rgba(224,162,68,.16);border:1.5px solid #E0A244;display:flex;align-items:center;gap:10px;padding:0 9px;box-sizing:border-box">
+              <span style="width:34px;height:34px;border-radius:10px;overflow:hidden;flex-shrink:0"><img src="{{ colStop.thumb }}" style="width:100%;height:100%;object-fit:cover" alt=""></span>
+              <span style="flex:1;min-width:0"><span style="display:block;font:700 13.5px/16px 'DM Sans';letter-spacing:-.3px;color:var(--ink)">Southwest Harbor</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:1px">Fri 29 · last night here</span></span>
+              <i class="ph ph-arrow-up" style="font-size:14px;color:var(--ink2);flex-shrink:0"></i>
+            </span>
+            <span style="width:44px;height:44px;border-radius:11px;background:rgba(240,169,188,.2);border:1.5px solid #F0A9BC;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:4px;flex-shrink:0"><span style="width:5px;height:5px;border-radius:3px;background:var(--ink4)"></span><span style="width:14px;height:5px;border-radius:3px;background:var(--ink)"></span></span>
+          </div>
+        </div>
+        <div style="background:var(--surface);border-bottom:1px solid var(--line);padding:9px 0 8px">
+          <div style="display:flex;gap:5px;padding:0 12px">
+            <sc-for list="{{ staticRail }}" as="r" hint-placeholder-count="8">
+              <span style="width:38px;flex-shrink:0;padding:6px 0 5px;border-radius:12px;background:{{ r.bg }};border:{{ r.ring }};box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative">
+                <span style="position:absolute;inset:-1.5px;border-radius:12px;background:{{ r.tint }}"></span>
+                <span style="font:700 7.5px/1 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:{{ r.subFg }};position:relative">{{ r.dow }}</span>
+                <span style="font:700 15px/1 'DM Sans';letter-spacing:-.5px;color:{{ r.fg }};position:relative">{{ r.dom }}</span>
+                <span style="width:12px;height:3px;border-radius:2px;background:{{ r.dotBg }};position:relative"></span>
+              </span>
+            </sc-for>
+          </div>
+        </div>
+        <div style="height:34px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 18px">
+          <span style="font:700 11px/1 'DM Sans';letter-spacing:-.2px;color:var(--ink)">Fri 29</span>
+          <span style="width:5px;height:5px;border-radius:3px;background:#7A4F82"></span>
+          <span style="flex:1;font:400 10.5px/1 'DM Sans';color:var(--ink2)">Southwest Harbor</span>
+          <span style="font:400 10px/1 'DM Sans';color:var(--ink3)">3 plans</span>
+        </div>
+        <div style="height:26px;background:var(--sunken)"></div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:11px;margin-top:16px">
+        <sc-for list="{{ targets }}" as="tg" hint-placeholder-count="5">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="width:11px;height:11px;border-radius:3px;background:{{ tg.c }};flex-shrink:0;margin-top:4px"></span>
+            <span style="flex:1;min-width:0">
+              <span style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+                <span style="font:700 12px/1.3 'DM Sans';color:#fff">{{ tg.title }}</span>
+                <span style="font:600 9px/1 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.38)">{{ tg.where }}</span>
+              </span>
+              <span style="display:block;font:400 11.5px/1.5 'DM Sans';color:rgba(255,255,255,.6);margin-top:3px;text-wrap:pretty">{{ tg.body }}</span>
+            </span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="4b" style="width:390px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+        <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:#fff;color:#0B1016;border-radius:5px">4b</span>
+        <span style="font-family:Fraunces,serif;font-size:22px;font-weight:400;color:#fff">Today, and the flick</span>
+      </div>
+      <p style="font:400 12.5px/1.6 'DM Sans';color:rgba(255,255,255,.6);margin:0 0 18px;text-wrap:pretty">The pill is the only floating chrome in the design, so it has to earn its place: it appears only when you are more than a day from now, and it goes to today rather than to the top.</p>
+
+      <div data-jt="{{ theme }}" style="display:flex;flex-direction:column;gap:20px">
+        <div>
+          <div style="font:600 10px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:9px">Away from today · pill in</div>
+          <div style="width:372px;height:190px;border-radius:18px;overflow:hidden;background:var(--surface);box-shadow:0 14px 40px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.07);position:relative">
+            <div style="padding:14px 18px;display:flex;flex-direction:column;gap:10px;opacity:.4">
+              <span style="height:14px;width:120px;border-radius:4px;background:var(--chip)"></span>
+              <span style="height:36px;border-radius:11px;background:var(--chip)"></span>
+              <span style="height:36px;border-radius:11px;background:var(--chip)"></span>
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:62px;height:70px;background:linear-gradient(180deg,rgba(255,255,255,0) 0%,var(--surface) 82%)"></div>
+            <div style="position:absolute;left:0;right:0;bottom:76px;display:flex;justify-content:center">
+              <span style="height:36px;padding:0 15px;border-radius:18px;background:rgba(30,27,25,.82);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(16px) saturate(1.4);box-shadow:0 10px 26px rgba(0,0,0,.26);display:flex;align-items:center;gap:7px">
+                <i class="ph-fill ph-crosshair" style="font-size:13px;color:#7FD9C6"></i>
+                <span style="font:700 12px/1 'DM Sans';color:rgba(255,255,255,.95)">Today</span>
+              </span>
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:62px;background:var(--surface);border-top:1px solid var(--line);display:flex;align-items:stretch">
+              <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="5">
+                <span style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:{{ tb.color }}">
+                  <i class="{{ tb.icon }}" style="font-size:19px"></i>
+                  <span style="font:600 9px/1 'DM Sans';letter-spacing:.02em">{{ tb.label }}</span>
+                </span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font:600 10px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:9px">On today · pill out</div>
+          <div style="width:372px;height:190px;border-radius:18px;overflow:hidden;background:var(--surface);box-shadow:0 14px 40px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.07);position:relative">
+            <div style="padding:14px 18px;display:flex;flex-direction:column;gap:10px;opacity:.4">
+              <span style="height:14px;width:120px;border-radius:4px;background:var(--chip)"></span>
+              <span style="height:36px;border-radius:11px;background:var(--chip)"></span>
+              <span style="height:36px;border-radius:11px;background:var(--chip)"></span>
+            </div>
+            <div style="position:absolute;left:0;right:0;bottom:62px;height:70px;background:linear-gradient(180deg,rgba(255,255,255,0) 0%,var(--surface) 82%)"></div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:62px;background:var(--surface);border-top:1px solid var(--line);display:flex;align-items:stretch">
+              <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="5">
+                <span style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:{{ tb.color }}">
+                  <i class="{{ tb.icon }}" style="font-size:19px"></i>
+                  <span style="font:600 9px/1 'DM Sans';letter-spacing:.02em">{{ tb.label }}</span>
+                </span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:15px 16px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)">
+          <div style="font:700 9px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:#E0A244;margin-bottom:9px">For the build</div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <sc-for list="{{ buildNotes }}" as="bn" hint-placeholder-count="4">
+              <div style="display:flex;gap:8px;align-items:flex-start">
+                <span style="width:4px;height:4px;border-radius:2px;background:rgba(255,255,255,.35);margin-top:7px;flex-shrink:0"></span>
+                <span style="flex:1;font:400 12px/1.55 'DM Sans';color:rgba(255,255,255,.72);text-wrap:pretty">{{ bn }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding:20px 60px 40px;font-family:'DM Sans',system-ui,sans-serif">
+
+  <div style="max-width:840px;margin-bottom:40px">
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:12px">
+      <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:rgba(255,255,255,.1);color:#fff;border-radius:5px">Turn 3</span>
+      <span style="font-family:Fraunces,serif;font-size:30px;font-weight:400;color:#fff">One continuous column</span>
+    </div>
+    <p style="font:400 14.5px/1.65 'DM Sans';color:rgba(255,255,255,.72);margin:0;text-wrap:pretty">The day switcher is gone. Saturday to Saturday is one spine, the calendar rail follows your position instead of driving it, and a teal hairline marks 2:14 PM on Tuesday. Scroll <a href="#3a">3a</a>; the interaction states are laid out in <a href="#3b">3b</a>.</p>
+  </div>
+
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:42px;max-width:1120px">
+    <sc-for list="{{ decisions3 }}" as="dec" hint-placeholder-count="5">
+      <div style="flex:1 1 190px;min-width:190px;padding:13px 15px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)">
+        <div style="font:700 9px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:{{ dec.tagColor }};margin-bottom:7px">{{ dec.tag }}</div>
+        <div style="font:400 12.5px/1.55 'DM Sans';color:rgba(255,255,255,.78);text-wrap:pretty">{{ dec.body }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap">
+
+    <div id="3a" style="width:390px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+        <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:#fff;color:#0B1016;border-radius:5px">3a</span>
+        <span style="font-family:Fraunces,serif;font-size:22px;font-weight:400;color:#fff">The column</span>
+      </div>
+      <p style="font:400 12.5px/1.6 'DM Sans';color:rgba(255,255,255,.6);margin:0 0 18px;text-wrap:pretty">Scroll from Saturday through to Saturday. Day bars pin and hand off, past items recede, the hero swaps stops on Wednesday.</p>
+
+      <div data-jt="{{ theme }}" style="width:390px;height:844px;border-radius:44px;background:#0b1016;padding:9px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.08)">
+        <div style="width:372px;height:826px;border-radius:36px;overflow:hidden;background:var(--surface);position:relative">
+          <div onScroll="{{ onScrollCol }}" onWheel="{{ onWheelCol }}" onTouchStart="{{ onTouchStartCol }}" onTouchMove="{{ onTouchMoveCol }}" ref="{{ colRef }}" data-scroll="1" style="height:100%;overflow-y:auto;overflow-x:hidden;overflow-anchor:none">
+
+            <div style="position:sticky;top:0;z-index:4;height:{{ col.heroH }};background:#1B2A24;overflow:hidden">
+              <img src="{{ colStop.photo }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:{{ col.photoTf }};transition:opacity .4s ease" alt="">
+              <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(16,24,20,.55) 0%,rgba(16,24,20,.12) 42%,rgba(20,32,27,.9) 100%)"></div>
+              <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,22,18,.6) 0%,rgba(14,22,18,.28) 100%);opacity:{{ col.pinnedOp }}"></div>
+              <div onClick="{{ goTripTop }}" style="position:absolute;left:18px;right:18px;bottom:66px;height:34px;opacity:{{ col.pinnedOp }};display:flex;align-items:center;gap:9px;cursor:pointer">
+                <span style="font-family:Fraunces,serif;font-size:19px;font-weight:400;line-height:1;color:#fff;letter-spacing:-.01em">Maine Coast</span>
+                <span style="font:400 10.5px/1 'DM Sans';color:rgba(255,255,255,.62)">Aug 23 – 30</span>
+                <i class="ph ph-arrow-line-up" style="font-size:12px;color:rgba(255,255,255,.55)"></i>
+              </div>
+              <div style="position:absolute;top:50px;left:18px;right:18px;display:flex;align-items:center;justify-content:space-between;opacity:{{ col.kickerOp }}">
+                <span style="font:600 10.5px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.75)">Day 3 of 8 · Acadia</span>
+                <span style="width:32px;height:32px;border-radius:16px;background:rgba(255,255,255,.18);display:grid;place-items:center;color:#fff;position:relative"><i class="ph ph-bell" style="font-size:15px"></i><span style="position:absolute;top:5px;right:6px;width:8px;height:8px;border-radius:4px;background:#E0A244;border:1.5px solid rgba(255,255,255,.95)"></span></span>
+              </div>
+              <div style="position:absolute;left:18px;right:18px;bottom:76px;opacity:{{ col.heroTitleOp }}">
+                <div style="font-family:Fraunces,serif;font-size:33px;font-weight:400;line-height:1.02;color:#fff;letter-spacing:-.015em">Maine Coast</div>
+                <div style="font:400 12.5px/1 'DM Sans';color:rgba(255,255,255,.72);margin-top:8px">Aug 23 – 30 · 2 stops · 4 travellers</div>
+              </div>
+              <div style="position:absolute;left:0;right:0;bottom:0;height:62px;background:var(--surface);display:flex;align-items:center;gap:11px;padding:0 8px 0 18px;opacity:{{ col.pinnedOp }}">
+                <span onClick="{{ tapStopBar }}" style="flex:1;min-width:0;display:flex;align-items:center;gap:11px;height:100%;cursor:pointer">
+                  <span style="width:36px;height:36px;border-radius:11px;overflow:hidden;flex-shrink:0"><img src="{{ colStop.thumb }}" style="width:100%;height:100%;object-fit:cover" alt=""></span>
+                  <span style="flex:1;min-width:0"><span style="display:block;font:700 14px/17px 'DM Sans';letter-spacing:-.3px;color:var(--ink)">{{ colStop.name }}</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:1px">{{ colStop.sub }}</span></span>
+                  <i class="{{ returnIcon }}" style="font-size:14px;color:var(--ink3);flex-shrink:0"></i>
+                </span>
+                <span style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;gap:4px;flex-shrink:0;cursor:pointer">
+                  <sc-for list="{{ hyStops }}" as="s" hint-placeholder-count="2">
+                    <span style="width:{{ s.dotW }};height:5px;border-radius:3px;background:{{ s.dotColor }}"></span>
+                  </sc-for>
+                </span>
+              </div>
+            </div>
+
+            <div style="margin-top:{{ col.railMT }};position:relative;z-index:7;opacity:{{ col.railOp }};pointer-events:{{ col.railPE }}">
+              <div data-scroll="1" style="display:flex;gap:10px;padding:0 14px 4px;overflow-x:auto">
+                <sc-for list="{{ hyStops }}" as="s" hint-placeholder-count="2">
+                  <div style="width:280px;flex-shrink:0;background:var(--surface);border-radius:18px;box-shadow:0 10px 30px var(--shadow);border:1.5px solid {{ s.ring }};padding:12px 13px;opacity:{{ s.dim }}">
+                    <div style="display:flex;gap:11px">
+                      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+                        <span style="font:700 9.5px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;color:{{ s.kickerColor }}">{{ s.kicker }}</span>
+                        <span style="font:700 16px/1.1 'DM Sans';letter-spacing:-.35px;color:var(--ink)">{{ s.name }}</span>
+                        <span style="font:400 11.5px/1 'DM Sans';color:var(--ink2)">{{ s.dates }}</span>
+                      </div>
+                      <div style="width:54px;height:54px;border-radius:14px;overflow:hidden;flex-shrink:0"><img src="{{ s.thumb }}" style="width:100%;height:100%;object-fit:cover" alt=""></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line-soft)">
+                      <i class="{{ s.statusIcon }}" style="font-size:13px;color:{{ s.statusColor }}"></i>
+                      <span style="font:600 11px/1 'DM Sans';color:{{ s.statusColor }}">{{ s.status }}</span>
+                      <span style="margin-left:auto;font:400 10.5px/1 'DM Sans';color:var(--ink3)">{{ s.count }}</span>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="padding:14px 18px 0;position:relative;z-index:2;opacity:{{ col.ctaOp }}">
+              <div style="display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:16px;background:var(--amberSoft);border:1px solid var(--amberLine)">
+                <span style="width:36px;height:36px;border-radius:12px;background:var(--amberSoft);display:grid;place-items:center;color:var(--amber);flex-shrink:0"><i class="ph-fill ph-bed" style="font-size:17px"></i></span>
+                <span style="flex:1;min-width:0"><span style="display:block;font:700 12.5px/16px 'DM Sans';color:var(--amberInk)">Southwest Harbor is unbooked</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:2px">3 nights from Wed · 14 places free</span></span>
+                <span style="height:29px;padding:0 12px;border-radius:15px;background:var(--ink);display:flex;align-items:center;font:700 11.5px/1 'DM Sans';color:var(--surface);flex-shrink:0">Fix</span>
+              </div>
+            </div>
+
+            <div style="position:sticky;top:{{ railTop }};z-index:3;background:var(--surface);border-bottom:1px solid var(--line);margin-top:14px;padding:9px 0 8px">
+              <div data-scroll="1" style="display:flex;gap:5px;padding:0 12px;overflow-x:auto" data-comment-anchor="fba2a81966-div">
+                <sc-for list="{{ colRail }}" as="r" hint-placeholder-count="8">
+                  <span onClick="{{ r.select }}" style="width:38px;flex-shrink:0;padding:6px 0 5px;border-radius:12px;background:{{ r.bg }};border:{{ r.ring }};box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;position:relative">
+                    <span style="font:700 7.5px/1 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:{{ r.subFg }}">{{ r.dow }}</span>
+                    <span style="font:700 15px/1 'DM Sans';letter-spacing:-.5px;color:{{ r.fg }}">{{ r.dom }}</span>
+                    <span style="width:12px;height:3px;border-radius:2px;background:{{ r.dotBg }}"></span>
+                    <span style="position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:3px;background:var(--amber);opacity:{{ r.warnOp }}"></span>
+                  </span>
+                </sc-for>
+              </div>
+            </div>
+
+            <sc-for list="{{ column }}" as="d" hint-placeholder-count="8">
+              <div data-day="{{ d.key }}" style="opacity:{{ d.dayOp }}">
+                <div style="position:sticky;top:{{ dayBarTop }};z-index:1;height:34px;background:{{ d.barBg }};border-bottom:1px solid var(--line);box-shadow:0 6px 14px -8px var(--shadow);display:flex;align-items:center;gap:8px;padding:0 18px">
+                  <span style="font:700 11px/1 'DM Sans';letter-spacing:-.2px;color:var(--ink)">{{ d.dow }} {{ d.dom }}</span>
+                  <span style="width:5px;height:5px;border-radius:3px;background:{{ d.stopDot }};flex-shrink:0"></span>
+                  <span style="font:400 10.5px/1 'DM Sans';color:var(--ink2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ d.stopName }}</span>
+                  <sc-if value="{{ d.isToday }}" hint-placeholder-val="{{ false }}">
+                    <span style="height:15px;padding:0 6px;border-radius:8px;background:var(--teal);display:inline-flex;align-items:center;font:700 8px/1 'DM Sans';letter-spacing:.1em;color:var(--surface);flex-shrink:0">TODAY</span>
+                  </sc-if>
+                  <span style="font:400 10px/1 'DM Sans';color:var(--ink3);flex-shrink:0">{{ d.countLabel }}</span>
+                </div>
+
+                <div style="padding:0 18px 4px">
+                  <sc-if value="{{ d.base }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px 11px;margin-top:12px;border-radius:13px;background:var(--sunken);border:1px solid var(--line)">
+                      <span style="width:26px;height:26px;border-radius:8px;background:{{ d.base.tileBg }};display:grid;place-items:center;color:{{ d.base.tileFg }};flex-shrink:0"><i class="ph-fill ph-bed" style="font-size:13px"></i></span>
+                      <span style="flex:1;min-width:0;font:600 11.5px/1.35 'DM Sans';color:var(--ink)"><span style="font:700 8px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)">TONIGHT</span> · {{ d.base.name }}<span style="font-weight:400;color:{{ d.base.detailColor }}"> · {{ d.base.detail }}</span></span>
+                      <i class="ph-fill ph-push-pin" style="font-size:12px;color:var(--ink3);flex-shrink:0"></i>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ d.carry }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;margin-top:8px">
+                      <span style="width:62px;flex-shrink:0;text-align:right;padding:12px 9px 0 0;font:500 10px/12px 'DM Mono',ui-monospace;color:var(--ink3);white-space:nowrap">{{ d.carry.time }}</span>
+                      <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                        <span style="position:absolute;top:0;height:20px;width:1.5px;background:repeating-linear-gradient(180deg,var(--ink4) 0 3px,transparent 3px 7px)"></span>
+                        <span style="position:absolute;top:20px;bottom:0;width:1.5px;background:var(--line)"></span>
+                        <span style="position:relative;margin-top:14px;width:11px;height:11px;border-radius:50%;background:var(--surface);border:1.5px dashed var(--ink3);box-shadow:0 0 0 3.5px var(--surface)"></span>
+                      </span>
+                      <span style="flex:1;min-width:0;padding:6px 0 2px 8px">
+                        <span style="display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:12px;background:var(--chip)">
+                          <i class="ph-fill ph-moon-stars" style="font-size:14px;color:var(--ink3);flex-shrink:0"></i>
+                          <span style="flex:1;min-width:0"><span style="display:block;font:600 11px/14px 'DM Sans';color:var(--ink2)">{{ d.carry.title }}</span><span style="display:block;font:400 10px/13px 'DM Sans';color:var(--ink3)">{{ d.carry.note }}</span></span>
+                        </span>
+                      </span>
+                    </div>
+                  </sc-if>
+
+                  <sc-for list="{{ d.bands }}" as="b" hint-placeholder-count="5">
+                    <div>
+                      <div style="display:flex">
+                        <span style="width:62px;flex-shrink:0;text-align:right;padding:11px 9px 0 0;font:500 9px/1 'DM Mono',ui-monospace;color:var(--ink4);white-space:nowrap">{{ b.span }}</span>
+                        <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                          <span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span>
+                          <span style="position:relative;margin-top:13px;width:7px;height:1.5px;background:var(--line)"></span>
+                        </span>
+                        <span style="flex:1;padding:9px 0 1px 8px;font:700 8.5px/1 'DM Sans';letter-spacing:.15em;text-transform:uppercase;color:{{ b.labelColor }}">{{ b.label }}</span>
+                      </div>
+
+                      <sc-for list="{{ b.items }}" as="it" hint-placeholder-count="1">
+                        <div>
+                          <sc-if value="{{ it.travel }}" hint-placeholder-val="{{ false }}">
+                            <div style="display:flex">
+                              <span style="width:71px;flex-shrink:0"></span>
+                              <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                                <span style="position:absolute;top:0;bottom:0;width:1.5px;background:repeating-linear-gradient(180deg,var(--ink4) 0 3px,transparent 3px 7px)"></span>
+                              </span>
+                              <span style="flex:1;display:flex;align-items:center;gap:6px;padding:5px 0 1px 8px;opacity:{{ it.op }}">
+                                <i class="ph ph-arrow-bend-down-right" style="font-size:11px;color:var(--ink4)"></i>
+                                <span style="font:500 9.5px/1 'DM Sans';color:var(--ink3)">{{ it.travel.mins }}</span>
+                                <span style="font:600 9.5px/1 'DM Sans';color:var(--teal);border-bottom:1px dashed var(--tealLine);padding-bottom:2px;cursor:pointer">from {{ it.travel.from }}</span>
+                              </span>
+                            </div>
+                          </sc-if>
+
+                          <div style="display:flex;opacity:{{ it.op }}">
+                            <span style="width:62px;flex-shrink:0;text-align:right;padding:13px 9px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:{{ it.timeFont }};color:{{ it.timeColor }}">{{ it.time }}</span>
+                            <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                              <span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span>
+                              <span style="position:relative;margin-top:15px;width:{{ it.dotSize }};height:{{ it.dotSize }};border-radius:50%;background:{{ it.dotBg }};border:{{ it.dotBorder }};box-shadow:0 0 0 3.5px var(--surface)"></span>
+                            </span>
+                            <span style="flex:1;min-width:0;display:flex;align-items:center;gap:9px;padding:7px 0 7px 8px">
+                              <span style="width:36px;height:36px;border-radius:11px;background:{{ it.tileBg }};display:grid;place-items:center;color:{{ it.tileFg }};flex-shrink:0"><i class="{{ it.icon }}" style="font-size:17px"></i></span>
+                              <span style="flex:1;min-width:0"><span style="display:block;font:700 13px/16px 'DM Sans';letter-spacing:-.22px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.title }}</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.meta }}</span></span>
+                              <sc-if value="{{ it.hasWho }}" hint-placeholder-val="{{ false }}">
+                                <span style="display:flex;flex-shrink:0">
+                                  <sc-for list="{{ it.who }}" as="w" hint-placeholder-count="2">
+                                    <span style="width:18px;height:18px;border-radius:9px;background:{{ w.bg }};border:1.5px solid var(--surface);margin-left:-5px;display:grid;place-items:center;font:700 8px/1 'DM Sans';color:#fff">{{ w.initial }}</span>
+                                  </sc-for>
+                                </span>
+                              </sc-if>
+                              <i class="{{ it.okIcon }}" style="font-size:15px;color:{{ it.okColor }};flex-shrink:0"></i>
+                            </span>
+                          </div>
+
+                          <sc-if value="{{ it.night }}" hint-placeholder-val="{{ false }}">
+                            <div style="display:flex;opacity:{{ it.op }}">
+                              <span style="width:71px;flex-shrink:0"></span>
+                              <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                                <span style="position:absolute;top:0;bottom:0;width:1.5px;background:repeating-linear-gradient(180deg,var(--ink4) 0 3px,transparent 3px 7px)"></span>
+                                <span style="position:relative;margin-top:6px;width:15px;height:15px;border-radius:50%;background:var(--surface);display:grid;place-items:center;color:var(--ink3)"><i class="ph-fill ph-moon" style="font-size:9px"></i></span>
+                              </span>
+                              <span style="flex:1;padding:9px 0 4px 8px;font:500 10px/13px 'DM Sans';color:var(--ink3)">{{ it.night }}</span>
+                            </div>
+                          </sc-if>
+
+                          <sc-if value="{{ it.nowAfter }}" hint-placeholder-val="{{ false }}">
+                            <div style="display:flex;align-items:center;padding:3px 0">
+                              <span style="width:62px;flex-shrink:0;text-align:right;padding-right:9px;font:700 8.5px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:var(--teal)">Now</span>
+                              <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                                <span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span>
+                                <span style="position:relative;width:9px;height:9px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 3.5px var(--surface)"></span>
+                              </span>
+                              <span style="flex:1;height:1.5px;background:var(--teal);opacity:.45;margin-left:4px"></span>
+                              <span style="font:500 9.5px/1 'DM Mono',ui-monospace;color:var(--teal);padding-left:8px;flex-shrink:0">{{ d.nowLabel }}</span>
+                            </div>
+                          </sc-if>
+                        </div>
+                      </sc-for>
+
+                      <sc-if value="{{ b.empty }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex">
+                          <span style="width:71px;flex-shrink:0"></span>
+                          <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                            <span style="position:absolute;top:0;bottom:0;width:1.5px;background:repeating-linear-gradient(180deg,var(--line) 0 3px,transparent 3px 7px)"></span>
+                          </span>
+                          <span style="flex:1;padding:5px 0 5px 8px">
+                            <span style="display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:10px;border:1px dashed var(--line);color:var(--ink3);cursor:pointer"><i class="ph ph-plus" style="font-size:11px"></i><span style="font:500 10.5px/1 'DM Sans'">Nothing planned</span></span>
+                          </span>
+                        </div>
+                      </sc-if>
+
+                      <sc-if value="{{ b.suggest }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex">
+                          <span style="width:71px;flex-shrink:0"></span>
+                          <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                            <span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span>
+                            <span style="position:relative;margin-top:16px;width:9px;height:9px;border-radius:50%;background:var(--surface);border:1.5px dashed var(--amberLine);box-shadow:0 0 0 3.5px var(--surface)"></span>
+                          </span>
+                          <span style="flex:1;min-width:0;padding:7px 0 7px 8px">
+                            <span style="display:block;padding:11px 12px;border:1.5px dashed var(--amberLine);border-radius:13px;background:var(--amberSoft)">
+                              <span style="display:block;font:700 11.5px/14px 'DM Sans';color:var(--amberInk)">{{ b.suggest.title }}</span>
+                              <span style="display:block;font:400 10px/13px 'DM Sans';color:var(--amberInk);opacity:.8;margin-top:1px">{{ b.suggest.sub }}</span>
+                              <span style="display:flex;gap:6px;margin-top:9px;flex-wrap:wrap">
+                                <sc-for list="{{ b.suggest.chips }}" as="c" hint-placeholder-count="3">
+                                  <span style="height:25px;padding:0 9px;border-radius:9px;background:var(--surface);border:1px solid var(--amberLine);display:inline-flex;align-items:center;gap:5px;font:600 10.5px/1 'DM Sans';color:var(--amberInk)"><i class="{{ c.icon }}" style="font-size:11px"></i>{{ c.label }}</span>
+                                </sc-for>
+                              </span>
+                            </span>
+                          </span>
+                        </div>
+                      </sc-if>
+
+                      <sc-if value="{{ b.handoff }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex">
+                          <span style="width:71px;flex-shrink:0"></span>
+                          <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                            <span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span>
+                            <span style="position:relative;margin-top:14px;width:19px;height:19px;border-radius:50%;background:var(--surface);border:1.5px solid var(--line);display:grid;place-items:center;color:var(--ink2);box-shadow:0 0 0 3px var(--surface)"><i class="ph-bold ph-arrow-down" style="font-size:10px"></i></span>
+                          </span>
+                          <span style="flex:1;min-width:0;padding:8px 0 8px 8px">
+                            <span style="display:block;padding:10px 12px;border-radius:13px;background:var(--sunken);border:1px solid var(--line)">
+                              <span style="display:flex;align-items:center;gap:7px;font:700 9.5px/1 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)">{{ b.handoff.from }}<i class="ph-bold ph-arrow-right" style="font-size:10px;color:var(--ink4)"></i>{{ b.handoff.to }}</span>
+                              <span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink3);margin-top:5px">{{ b.handoff.note }}</span>
+                            </span>
+                          </span>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+
+            <div style="padding:22px 18px 126px">
+              <div style="display:flex;align-items:center;justify-content:center;gap:8px;height:44px;border-radius:14px;border:1px solid var(--line);font:600 12.5px/1 'DM Sans';color:var(--ink2)"><i class="ph ph-flag-checkered" style="font-size:14px"></i>End of trip</div>
+            </div>
+          </div>
+
+          <div style="position:absolute;left:0;right:0;bottom:62px;height:70px;background:linear-gradient(180deg,rgba(255,255,255,0) 0%,var(--surface) 82%);pointer-events:none;z-index:9"></div>
+
+          <div onClick="{{ goToday }}" style="position:absolute;left:0;right:0;bottom:76px;z-index:11;display:flex;justify-content:center;opacity:{{ pillOp }};pointer-events:{{ pillPE }}">
+            <span style="height:36px;padding:0 15px;border-radius:18px;background:rgba(30,27,25,.82);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(16px) saturate(1.4);box-shadow:0 10px 26px rgba(0,0,0,.26);display:flex;align-items:center;gap:7px;cursor:pointer">
+              <i class="ph-fill ph-crosshair" style="font-size:13px;color:#7FD9C6"></i>
+              <span style="font:700 12px/1 'DM Sans';color:rgba(255,255,255,.95)">Today</span>
+            </span>
+          </div>
+
+          <div style="position:absolute;left:0;right:0;bottom:0;height:62px;z-index:12;background:var(--surface);border-top:1px solid var(--line);display:flex;align-items:stretch">
+            <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="5">
+              <span onClick="{{ tb.tap }}" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:{{ tb.cursor }};color:{{ tb.color }}">
+                <i class="{{ tb.icon }}" style="font-size:19px"></i>
+                <span style="font:600 9px/1 'DM Sans';letter-spacing:.02em">{{ tb.label }}</span>
+              </span>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="3b" style="width:390px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+        <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:#fff;color:#0B1016;border-radius:5px">3b</span>
+        <span style="font-family:Fraunces,serif;font-size:22px;font-weight:400;color:#fff">Interaction states</span>
+      </div>
+      <p style="font:400 12.5px/1.6 'DM Sans';color:rgba(255,255,255,.6);margin:0 0 18px;text-wrap:pretty">Swipe, lift, confirm, undo. Reorder is long-press-to-lift with no handle, matching the platform pattern — the edges stay with the OS.</p>
+
+      <div data-jt="{{ theme }}" style="display:flex;flex-direction:column;gap:20px">
+
+        <div>
+          <div style="font:600 10px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:9px">Swipe left · navigate, details</div>
+          <div style="width:372px;border-radius:18px;overflow:hidden;background:var(--surface);box-shadow:0 14px 40px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.07);padding:6px 0">
+            <div style="position:relative;overflow:hidden">
+              <span style="position:absolute;top:0;right:0;bottom:0;width:96px;display:flex">
+                <span style="width:48px;background:var(--chip);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--ink2)"><i class="ph-fill ph-info" style="font-size:17px"></i><span style="font:700 8px/1 'DM Sans';letter-spacing:.03em">Details</span></span>
+                <span style="width:48px;background:var(--teal);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#fff"><i class="ph-fill ph-navigation-arrow" style="font-size:17px"></i><span style="font:700 8px/1 'DM Sans';letter-spacing:.03em">Navigate</span></span>
+              </span>
+              <div style="position:relative;z-index:1;display:flex;background:var(--surface);transform:translateX(-96px)">
+                <span style="width:62px;flex-shrink:0;text-align:right;padding:13px 9px 0 0;font:500 10.5px/13px 'DM Mono',ui-monospace;color:var(--ink)">3:30 PM</span>
+                <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                  <span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span>
+                  <span style="position:relative;margin-top:15px;width:10px;height:10px;border-radius:50%;background:#B44F1E;box-shadow:0 0 0 3.5px var(--surface)"></span>
+                </span>
+                <span style="flex:1;min-width:0;display:flex;align-items:center;gap:9px;padding:7px 0 7px 8px">
+                  <span style="width:36px;height:36px;border-radius:11px;background:rgba(180,79,30,.1);display:grid;place-items:center;color:#B44F1E;flex-shrink:0"><i class="ph-fill ph-fork-knife" style="font-size:17px"></i></span>
+                  <span style="flex:1;min-width:0"><span style="display:block;font:700 13px/16px 'DM Sans';letter-spacing:-.22px;color:var(--ink)">Popovers</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:1px">Jordan Pond House · 4 guests</span></span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font:600 10px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:9px">Navigate · pick an app</div>
+          <div style="width:372px;height:452px;border-radius:18px;overflow:hidden;background:var(--surface);box-shadow:0 14px 40px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.07);position:relative;margin-bottom:20px">
+            <div style="position:absolute;inset:0;background:var(--scrim)"></div>
+            <div style="position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:22px 22px 0 0;padding:10px 20px 20px">
+              <div style="width:36px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 14px"></div>
+              <div style="font:700 15px/1.25 'DM Sans';letter-spacing:-.3px;color:var(--ink)">Navigate to Popovers</div>
+              <div style="font:400 11.5px/1.45 'DM Sans';color:var(--ink2);margin-top:3px">Jordan Pond House · 14 min drive</div>
+              <div style="display:flex;flex-direction:column;margin-top:14px">
+                <sc-for list="{{ mapApps }}" as="m" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-top:1px solid var(--line-soft);cursor:pointer">
+                    <span style="width:34px;height:34px;border-radius:11px;background:var(--chip);display:grid;place-items:center;color:var(--ink);flex-shrink:0"><i class="{{ m.icon }}" style="font-size:16px"></i></span>
+                    <span style="flex:1;min-width:0"><span style="display:block;font:700 12.5px/15px 'DM Sans';letter-spacing:-.2px;color:var(--ink)">{{ m.label }}</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m.sub }}</span></span>
+                    <sc-if value="{{ m.on }}" hint-placeholder-val="{{ false }}">
+                      <span style="width:19px;height:19px;border-radius:10px;background:var(--teal);display:grid;place-items:center;color:var(--surface);flex-shrink:0"><i class="ph-bold ph-check" style="font-size:11px"></i></span>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:14px;padding:11px 12px;border-radius:13px;background:var(--sunken);border:1px solid var(--line);cursor:pointer">
+                <span style="width:19px;height:19px;border-radius:6px;border:1.5px solid var(--teal);background:var(--teal);display:grid;place-items:center;color:var(--surface);flex-shrink:0"><i class="ph-bold ph-check" style="font-size:11px"></i></span>
+                <span style="flex:1;font:600 12px/1.35 'DM Sans';color:var(--ink)">Always use Apple Maps<span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:1px">Change it in Profile any time</span></span>
+              </div>
+              <div style="height:44px;border-radius:14px;background:var(--ink);display:flex;align-items:center;justify-content:center;gap:7px;font:600 13px/1 'DM Sans';color:var(--surface);margin-top:12px"><i class="ph-fill ph-navigation-arrow" style="font-size:14px"></i>Open</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font:600 10px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:9px">Swipe right · remove</div>
+          <div style="width:372px;border-radius:18px;overflow:hidden;background:var(--surface);box-shadow:0 14px 40px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.07);padding:6px 0">
+            <div style="position:relative;overflow:hidden">
+              <span style="position:absolute;top:0;left:0;bottom:0;width:92px;background:var(--error);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#fff"><i class="ph-fill ph-trash" style="font-size:18px"></i><span style="font:700 10px/1 'DM Sans'">Remove</span></span>
+              <div style="position:relative;z-index:1;display:flex;background:var(--surface);transform:translateX(92px)">
+                <span style="width:62px;flex-shrink:0;text-align:right;padding:13px 9px 0 0;font:500 10.5px/13px 'DM Mono',ui-monospace;color:var(--ink)">6:30 PM</span>
+                <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                  <span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span>
+                  <span style="position:relative;margin-top:15px;width:10px;height:10px;border-radius:50%;background:#B44F1E;box-shadow:0 0 0 3.5px var(--surface)"></span>
+                </span>
+                <span style="flex:1;min-width:0;display:flex;align-items:center;gap:9px;padding:7px 0 7px 8px">
+                  <span style="width:36px;height:36px;border-radius:11px;background:rgba(180,79,30,.1);display:grid;place-items:center;color:#B44F1E;flex-shrink:0"><i class="ph-fill ph-fork-knife" style="font-size:17px"></i></span>
+                  <span style="flex:1;min-width:0"><span style="display:block;font:700 13px/16px 'DM Sans';letter-spacing:-.22px;color:var(--ink)">Thurston’s</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:1px">Bernard · 12 min drive</span></span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font:600 10px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:9px">Long press · lifted</div>
+          <div style="width:372px;border-radius:18px;overflow:hidden;background:var(--surface);box-shadow:0 14px 40px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.07);padding:10px 0 14px">
+            <div style="display:flex;opacity:.4">
+              <span style="width:62px;flex-shrink:0;text-align:right;padding:11px 9px 0 0;font:500 10.5px/13px 'DM Mono',ui-monospace;color:var(--ink)">11:00 AM</span>
+              <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center"><span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span><span style="position:relative;margin-top:13px;width:10px;height:10px;border-radius:50%;background:#2F6B47;box-shadow:0 0 0 3.5px var(--surface)"></span></span>
+              <span style="flex:1;padding:6px 12px 6px 8px;font:700 12.5px/32px 'DM Sans';color:var(--ink)">Beehive Trail</span>
+            </div>
+            <div style="display:flex;margin:2px 0">
+              <span style="width:62px;flex-shrink:0"></span>
+              <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center"><span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span><span style="position:relative;margin-top:16px;width:11px;height:11px;border-radius:50%;background:var(--surface);border:1.5px dashed var(--ink3)"></span></span>
+              <span style="flex:1;padding:6px 12px 6px 8px"><span style="display:block;height:44px;border-radius:12px;border:1.5px dashed var(--ink3);background:var(--chip)"></span></span>
+            </div>
+            <div style="display:flex;margin:-52px 0 8px 0;position:relative;z-index:2">
+              <span style="width:62px;flex-shrink:0"></span>
+              <span style="width:24px;flex-shrink:0"></span>
+              <span style="flex:1;padding:0 12px 0 4px">
+                <span style="display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:13px;background:var(--surface);box-shadow:0 12px 28px rgba(0,0,0,.22),0 0 0 1px var(--line);transform:scale(1.03) rotate(-.6deg)">
+                  <span style="width:36px;height:36px;border-radius:11px;background:rgba(47,107,71,.1);display:grid;place-items:center;color:#2F6B47;flex-shrink:0"><i class="ph-fill ph-mountains" style="font-size:17px"></i></span>
+                  <span style="flex:1;min-width:0"><span style="display:block;font:700 13px/16px 'DM Sans';letter-spacing:-.22px;color:var(--ink)">Jordan Pond Path</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:1px">Drop between 11 AM and 3:30 PM</span></span>
+                  <i class="ph ph-dots-six-vertical" style="font-size:17px;color:var(--ink3);flex-shrink:0"></i>
+                </span>
+              </span>
+            </div>
+            <div style="display:flex;opacity:.4">
+              <span style="width:62px;flex-shrink:0;text-align:right;padding:11px 9px 0 0;font:500 10.5px/13px 'DM Mono',ui-monospace;color:var(--ink)">3:30 PM</span>
+              <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center"><span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span><span style="position:relative;margin-top:13px;width:10px;height:10px;border-radius:50%;background:#B44F1E;box-shadow:0 0 0 3.5px var(--surface)"></span></span>
+              <span style="flex:1;padding:6px 12px 6px 8px;font:700 12.5px/32px 'DM Sans';color:var(--ink)">Popovers</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font:600 10px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:9px">Drop on a hard time · confirm</div>
+          <div style="width:372px;height:250px;border-radius:18px;overflow:hidden;background:var(--surface);box-shadow:0 14px 40px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.07);position:relative">
+            <div style="position:absolute;inset:0;background:var(--scrim)"></div>
+            <div style="position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:22px 22px 0 0;padding:10px 20px 20px">
+              <div style="width:36px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 16px"></div>
+              <div style="font:700 16px/1.25 'DM Sans';letter-spacing:-.35px;color:var(--ink)">Move Popovers to 5:30 PM?</div>
+              <div style="font:400 12px/1.5 'DM Sans';color:var(--ink2);margin-top:6px;text-wrap:pretty">It is booked for 3:30 with 4 guests. Jernie will not change the reservation — you will need to call Jordan Pond House.</div>
+              <div style="display:flex;gap:8px;margin-top:16px">
+                <span style="flex:1;height:44px;border-radius:14px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font:600 13px/1 'DM Sans';color:var(--ink2)">Keep 3:30</span>
+                <span style="flex:1;height:44px;border-radius:14px;background:var(--ink);display:flex;align-items:center;justify-content:center;font:600 13px/1 'DM Sans';color:var(--surface)">Move it</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font:600 10px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:9px">Remove · confirm, then undo</div>
+          <div style="width:372px;height:260px;border-radius:18px;overflow:hidden;background:var(--surface);box-shadow:0 14px 40px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.07);position:relative">
+            <div style="position:absolute;inset:0;background:var(--scrim)"></div>
+            <div style="position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:22px 22px 0 0;padding:10px 20px 20px">
+              <div style="width:36px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 16px"></div>
+              <div style="display:flex;align-items:center;gap:11px">
+                <span style="width:38px;height:38px;border-radius:12px;background:var(--errorSoft);display:grid;place-items:center;color:var(--error);flex-shrink:0"><i class="ph-fill ph-trash" style="font-size:18px"></i></span>
+                <span style="flex:1;min-width:0"><span style="display:block;font:700 15px/1.25 'DM Sans';letter-spacing:-.3px;color:var(--ink)">Remove Thurston’s?</span><span style="display:block;font:400 11.5px/1.45 'DM Sans';color:var(--ink2);margin-top:3px">Wednesday evening will be empty.</span></span>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:16px">
+                <span style="flex:1;height:44px;border-radius:14px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font:600 13px/1 'DM Sans';color:var(--ink2)">Cancel</span>
+                <span style="flex:1;height:44px;border-radius:14px;background:var(--error);display:flex;align-items:center;justify-content:center;font:600 13px/1 'DM Sans';color:#fff">Remove</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font:600 10px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:9px">Toast · the first five</div>
+          <div style="width:372px;border-radius:18px;overflow:hidden;background:var(--sunken);box-shadow:0 14px 40px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.07);padding:16px 16px 18px;display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="5">
+              <div>
+                <div style="font:700 8px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin-bottom:5px">{{ t.kind }}</div>
+                <div style="display:flex;align-items:center;gap:11px;height:48px;padding:0 14px;border-radius:15px;background:{{ t.bg }};border:1px solid {{ t.line }};backdrop-filter:blur(16px) saturate(1.4);box-shadow:0 10px 26px rgba(0,0,0,.22)">
+                  <i class="{{ t.icon }}" style="font-size:16px;color:{{ t.iconColor }};flex-shrink:0"></i>
+                  <span style="flex:1;min-width:0;font:600 12.5px/1.3 'DM Sans';color:{{ t.fg }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.text }}</span>
+                  <sc-if value="{{ t.action }}" hint-placeholder-val="{{ false }}">
+                    <span style="font:700 12px/1 'DM Sans';color:{{ t.actionColor }};flex-shrink:0">{{ t.action }}</span>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+            <div style="font:400 10.5px/1.5 'DM Sans';color:var(--ink3);margin-top:2px;text-wrap:pretty">All five sit at 78–84% with a blur behind, so the list stays faintly visible through them. Hue carries the type: deep rose for destructive, green for confirmed, charcoal for a plain reversible change, amber when the traveller has to act. Four seconds, one at a time, clear of the tab bar.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding:20px 60px 40px;font-family:'DM Sans',system-ui,sans-serif">
+
+  <div style="max-width:820px;margin-bottom:40px">
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:12px">
+      <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:rgba(255,255,255,.1);color:#fff;border-radius:5px">Turn 2</span>
+      <span style="font-family:Fraunces,serif;font-size:30px;font-weight:400;color:#fff">Calendar rail on a spine</span>
+    </div>
+    <p style="font:400 14.5px/1.65 'DM Sans';color:rgba(255,255,255,.72);margin:0;text-wrap:pretty"><a href="#1c">1c</a>'s date rail driving <a href="#1b">1b</a>'s timeline, with the real hero and stop bar from the live prototype above it. The day is now a full clock — five bands from Early to Late, blanks included — so an 11 PM bar and a red-eye flight have somewhere to live.</p>
+  </div>
+
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:42px;max-width:900px">
+    <sc-for list="{{ decisions2 }}" as="dec" hint-placeholder-count="4">
+      <div style="flex:1 1 200px;min-width:200px;padding:13px 15px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)">
+        <div style="font:700 9px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:{{ dec.tagColor }};margin-bottom:7px">{{ dec.tag }}</div>
+        <div style="font:400 12.5px/1.55 'DM Sans';color:rgba(255,255,255,.78);text-wrap:pretty">{{ dec.body }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap">
+
+    <div id="2a" style="width:390px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+        <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:#fff;color:#0B1016;border-radius:5px">2a</span>
+        <span style="font-family:Fraunces,serif;font-size:22px;font-weight:400;color:#fff">The hybrid</span>
+      </div>
+      <p style="font:400 12.5px/1.6 'DM Sans';color:rgba(255,255,255,.6);margin:0 0 18px;text-wrap:pretty">Scroll it. The hero collapses into the stop bar, the calendar rail pins beneath, and Wednesday shows the whole handoff. Tap the rail to move days.</p>
+
+      <div data-jt="{{ theme }}" style="width:390px;height:844px;border-radius:44px;background:#0b1016;padding:9px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.08)">
+        <div style="width:372px;height:826px;border-radius:36px;overflow:hidden;background:var(--surface);position:relative">
+          <div onScroll="{{ onScrollHy }}" data-scroll="1" style="height:100%;overflow-y:auto;overflow-x:hidden">
+
+            <div style="position:sticky;top:0;z-index:4;height:{{ hy.heroH }};background:#1B2A24;overflow:hidden">
+              <img src="{{ hyPhoto }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:{{ hy.photoTf }}" alt="">
+              <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(16,24,20,.55) 0%,rgba(16,24,20,.12) 42%,rgba(20,32,27,.9) 100%)"></div>
+              <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,22,18,.6) 0%,rgba(14,22,18,.28) 100%);opacity:{{ hy.pinnedOp }}"></div>
+              <div style="position:absolute;left:18px;right:18px;bottom:70px;opacity:{{ hy.pinnedOp }};display:flex;align-items:center;gap:9px">
+                <span style="font-family:Fraunces,serif;font-size:19px;font-weight:400;line-height:1;color:#fff;letter-spacing:-.01em">Maine Coast</span>
+                <span style="font:400 10.5px/1 'DM Sans';color:rgba(255,255,255,.62)">Aug 23 – 30</span>
+              </div>
+              <div style="position:absolute;top:50px;left:18px;right:18px;display:flex;align-items:center;justify-content:space-between;opacity:{{ hy.kickerOp }}">
+                <span style="font:600 10.5px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.75)">Day 3 of 8 · Acadia</span>
+                <span style="width:32px;height:32px;border-radius:16px;background:rgba(255,255,255,.18);display:grid;place-items:center;color:#fff;position:relative"><i class="ph ph-bell" style="font-size:15px"></i><span style="position:absolute;top:5px;right:6px;width:8px;height:8px;border-radius:4px;background:#E0A244;border:1.5px solid rgba(255,255,255,.95)"></span></span>
+              </div>
+              <div style="position:absolute;left:18px;right:18px;bottom:76px;opacity:{{ hy.heroTitleOp }}">
+                <div style="font-family:Fraunces,serif;font-size:33px;font-weight:400;line-height:1.02;color:#fff;letter-spacing:-.015em">Maine Coast</div>
+                <div style="font:400 12.5px/1 'DM Sans';color:rgba(255,255,255,.72);margin-top:8px">Aug 23 – 30 · 2 stops · 4 travellers</div>
+              </div>
+              <div style="position:absolute;left:0;right:0;bottom:0;height:62px;background:var(--surface);display:flex;align-items:center;gap:11px;padding:0 18px;opacity:{{ hy.pinnedOp }}">
+                <span style="width:36px;height:36px;border-radius:11px;overflow:hidden;flex-shrink:0"><img src="{{ hyThumb }}" style="width:100%;height:100%;object-fit:cover" alt=""></span>
+                <span style="flex:1;min-width:0"><span style="display:block;font:700 14px/17px 'DM Sans';letter-spacing:-.3px;color:var(--ink)">{{ hyDay.stopName }}</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:1px">{{ hyDay.dow }} {{ hyDay.dom }} · {{ hyDay.countLabel }}</span></span>
+                <span style="display:flex;gap:4px;flex-shrink:0">
+                  <sc-for list="{{ hyStops }}" as="s" hint-placeholder-count="2">
+                    <span style="width:{{ s.dotW }};height:5px;border-radius:3px;background:{{ s.dotColor }}"></span>
+                  </sc-for>
+                </span>
+              </div>
+            </div>
+
+            <div style="margin-top:{{ hy.railMT }};position:relative;z-index:7;opacity:{{ hy.railOp }};pointer-events:{{ hy.railPE }}">
+              <div data-scroll="1" style="display:flex;gap:10px;padding:0 14px 4px;overflow-x:auto">
+                <sc-for list="{{ hyStops }}" as="s" hint-placeholder-count="2">
+                  <div style="width:280px;flex-shrink:0;background:var(--surface);border-radius:18px;box-shadow:0 10px 30px var(--shadow);border:1.5px solid {{ s.ring }};padding:12px 13px;opacity:{{ s.dim }}">
+                    <div style="display:flex;gap:11px">
+                      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+                        <span style="font:700 9.5px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;color:{{ s.kickerColor }}">{{ s.kicker }}</span>
+                        <span style="font:700 16px/1.1 'DM Sans';letter-spacing:-.35px;color:var(--ink)">{{ s.name }}</span>
+                        <span style="font:400 11.5px/1 'DM Sans';color:var(--ink2)">{{ s.dates }}</span>
+                      </div>
+                      <div style="width:54px;height:54px;border-radius:14px;overflow:hidden;flex-shrink:0"><img src="{{ s.thumb }}" style="width:100%;height:100%;object-fit:cover" alt=""></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line-soft)">
+                      <i class="{{ s.statusIcon }}" style="font-size:13px;color:{{ s.statusColor }}"></i>
+                      <span style="font:600 11px/1 'DM Sans';color:{{ s.statusColor }}">{{ s.status }}</span>
+                      <span style="margin-left:auto;font:400 10.5px/1 'DM Sans';color:var(--ink3)">{{ s.count }}</span>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="padding:14px 18px 0;position:relative;z-index:2;opacity:{{ hy.ctaOp }}">
+              <div style="display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:16px;background:var(--amberSoft);border:1px solid var(--amberLine)">
+                <span style="width:36px;height:36px;border-radius:12px;background:var(--amberSoft);display:grid;place-items:center;color:var(--amber);flex-shrink:0"><i class="ph-fill ph-bed" style="font-size:17px"></i></span>
+                <span style="flex:1;min-width:0"><span style="display:block;font:700 12.5px/16px 'DM Sans';color:var(--amberInk)">Southwest Harbor is unbooked</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:2px">3 nights from Wed · 14 places free</span></span>
+                <span style="height:29px;padding:0 12px;border-radius:15px;background:var(--ink);display:flex;align-items:center;font:700 11.5px/1 'DM Sans';color:var(--surface);flex-shrink:0">Fix</span>
+              </div>
+            </div>
+
+            <div style="position:sticky;top:108px;z-index:3;background:var(--surface);border-bottom:1px solid var(--line);margin-top:14px;padding:9px 0 8px">
+              <div data-scroll="1" style="display:flex;gap:5px;padding:0 12px;overflow-x:auto">
+                <sc-for list="{{ hyRail }}" as="r" hint-placeholder-count="8">
+                  <span onClick="{{ r.select }}" style="width:38px;flex-shrink:0;padding:6px 0 5px;border-radius:12px;background:{{ r.bg }};border:{{ r.ring }};box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;position:relative">
+                    <span style="font:700 7.5px/1 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:{{ r.subFg }}">{{ r.dow }}</span>
+                    <span style="font:700 15px/1 'DM Sans';letter-spacing:-.5px;color:{{ r.fg }}">{{ r.dom }}</span>
+                    <span style="width:12px;height:3px;border-radius:2px;background:{{ r.dotBg }}"></span>
+                    <span style="position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:3px;background:var(--amber);opacity:{{ r.warnOp }}"></span>
+                  </span>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="padding:0 18px 340px;position:relative;z-index:2">
+              <div style="display:flex;align-items:flex-end;gap:11px;padding:16px 0 0">
+                <span style="font:700 38px/1 'DM Sans';letter-spacing:-1.7px;color:var(--ink)">{{ hyDay.dom }}</span>
+                <span style="padding-bottom:4px">
+                  <span style="display:block;font:700 10.5px/1 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:var(--ink2)">{{ hyDay.dow }} · August</span>
+                  <span style="display:flex;align-items:center;gap:6px;margin-top:6px">
+                    <span style="width:6px;height:6px;border-radius:3px;background:{{ hyDay.stopDot }}"></span>
+                    <span style="font:600 10.5px/1 'DM Sans';color:var(--ink2)">{{ hyDay.stopName }}</span>
+                    <sc-if value="{{ hyDay.isToday }}" hint-placeholder-val="{{ false }}">
+                      <span style="height:15px;padding:0 6px;border-radius:8px;background:var(--teal);display:inline-flex;align-items:center;font:700 8px/1 'DM Sans';letter-spacing:.1em;color:var(--surface)">TODAY</span>
+                    </sc-if>
+                  </span>
+                </span>
+                <span style="flex:1"></span>
+                <span style="font:400 10.5px/1 'DM Sans';color:var(--ink3);padding-bottom:5px">{{ hyDay.countLabel }}</span>
+              </div>
+
+              <sc-if value="{{ hyDay.base }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 11px;margin-top:13px;border-radius:13px;background:var(--sunken);border:1px solid var(--line)">
+                  <span style="width:30px;height:30px;border-radius:9px;background:{{ hyDay.base.tileBg }};display:grid;place-items:center;color:{{ hyDay.base.tileFg }};flex-shrink:0"><i class="ph-fill ph-bed" style="font-size:14px"></i></span>
+                  <span style="flex:1;min-width:0"><span style="display:block;font:700 8.5px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)">Tonight</span><span style="display:block;font:700 12.5px/15px 'DM Sans';letter-spacing:-.2px;color:var(--ink);margin-top:3px">{{ hyDay.base.name }}<span style="font-weight:400;color:{{ hyDay.base.detailColor }}"> · {{ hyDay.base.detail }}</span></span></span>
+                  <i class="ph-fill ph-push-pin" style="font-size:13px;color:var(--ink3);flex-shrink:0"></i>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ hyDay.carry }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;margin-top:10px">
+                  <span style="width:62px;flex-shrink:0;text-align:right;padding:12px 9px 0 0;font:500 10px/12px 'DM Mono',ui-monospace;color:var(--ink3);white-space:nowrap">{{ hyDay.carry.time }}</span>
+                  <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                    <span style="position:absolute;top:0;height:20px;width:1.5px;background:repeating-linear-gradient(180deg,var(--ink4) 0 3px,transparent 3px 7px)"></span>
+                    <span style="position:absolute;top:20px;bottom:0;width:1.5px;background:var(--line)"></span>
+                    <span style="position:relative;margin-top:14px;width:11px;height:11px;border-radius:50%;background:var(--surface);border:1.5px dashed var(--ink3);box-shadow:0 0 0 3.5px var(--surface)"></span>
+                  </span>
+                  <span style="flex:1;min-width:0;padding:6px 0 2px 8px">
+                    <span style="display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:12px;background:var(--chip)">
+                      <i class="ph-fill ph-moon-stars" style="font-size:14px;color:var(--ink3);flex-shrink:0"></i>
+                      <span style="flex:1;min-width:0"><span style="display:block;font:600 11px/14px 'DM Sans';color:var(--ink2)">{{ hyDay.carry.title }}</span><span style="display:block;font:400 10px/13px 'DM Sans';color:var(--ink3)">{{ hyDay.carry.note }}</span></span>
+                    </span>
+                  </span>
+                </div>
+              </sc-if>
+
+              <sc-for list="{{ hyDay.bands }}" as="b" hint-placeholder-count="5">
+                <div>
+                  <div style="display:flex">
+                    <span style="width:62px;flex-shrink:0;text-align:right;padding:11px 9px 0 0;font:500 9px/1 'DM Mono',ui-monospace;color:var(--ink4);white-space:nowrap">{{ b.span }}</span>
+                    <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                      <span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span>
+                      <span style="position:relative;margin-top:13px;width:7px;height:1.5px;background:var(--line)"></span>
+                    </span>
+                    <span style="flex:1;padding:9px 0 1px 8px;font:700 8.5px/1 'DM Sans';letter-spacing:.15em;text-transform:uppercase;color:{{ b.labelColor }}">{{ b.label }}</span>
+                  </div>
+
+                  <sc-for list="{{ b.items }}" as="it" hint-placeholder-count="1">
+                    <div>
+                      <div style="display:flex">
+                        <span style="width:62px;flex-shrink:0;text-align:right;padding:13px 9px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:{{ it.timeFont }};color:{{ it.timeColor }}">{{ it.time }}</span>
+                        <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                          <span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span>
+                          <span style="position:relative;margin-top:15px;width:{{ it.dotSize }};height:{{ it.dotSize }};border-radius:50%;background:{{ it.dotBg }};border:{{ it.dotBorder }};box-shadow:0 0 0 3.5px var(--surface)"></span>
+                        </span>
+                        <span style="flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:7px 0 7px 8px">
+                          <span style="width:36px;height:36px;border-radius:11px;background:{{ it.tileBg }};display:grid;place-items:center;color:{{ it.tileFg }};flex-shrink:0"><i class="{{ it.icon }}" style="font-size:17px"></i></span>
+                          <span style="flex:1;min-width:0"><span style="display:block;font:700 13px/16px 'DM Sans';letter-spacing:-.22px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.title }}</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.meta }}</span></span>
+                          <i class="{{ it.okIcon }}" style="font-size:15px;color:{{ it.okColor }};flex-shrink:0"></i>
+                        </span>
+                      </div>
+                      <sc-if value="{{ it.night }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex">
+                          <span style="width:71px;flex-shrink:0"></span>
+                          <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                            <span style="position:absolute;top:0;bottom:0;width:1.5px;background:repeating-linear-gradient(180deg,var(--ink4) 0 3px,transparent 3px 7px)"></span>
+                            <span style="position:relative;margin-top:6px;width:15px;height:15px;border-radius:50%;background:var(--surface);display:grid;place-items:center;color:var(--ink3)"><i class="ph-fill ph-moon" style="font-size:9px"></i></span>
+                          </span>
+                          <span style="flex:1;padding:9px 0 4px 8px;font:500 10px/13px 'DM Sans';color:var(--ink3)">{{ it.night }}</span>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+
+                  <sc-if value="{{ b.empty }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex">
+                      <span style="width:71px;flex-shrink:0"></span>
+                      <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                        <span style="position:absolute;top:0;bottom:0;width:1.5px;background:repeating-linear-gradient(180deg,var(--line) 0 3px,transparent 3px 7px)"></span>
+                      </span>
+                      <span style="flex:1;padding:5px 0 5px 8px">
+                        <span style="display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:10px;border:1px dashed var(--line);color:var(--ink3);cursor:pointer"><i class="ph ph-plus" style="font-size:11px"></i><span style="font:500 10.5px/1 'DM Sans'">Nothing planned</span></span>
+                      </span>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ b.suggest }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex">
+                      <span style="width:71px;flex-shrink:0"></span>
+                      <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                        <span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span>
+                        <span style="position:relative;margin-top:16px;width:9px;height:9px;border-radius:50%;background:var(--surface);border:1.5px dashed var(--amberLine);box-shadow:0 0 0 3.5px var(--surface)"></span>
+                      </span>
+                      <span style="flex:1;min-width:0;padding:7px 0 7px 8px">
+                        <span style="display:block;padding:11px 12px;border:1.5px dashed var(--amberLine);border-radius:13px;background:var(--amberSoft)">
+                          <span style="display:block;font:700 11.5px/14px 'DM Sans';color:var(--amberInk)">{{ b.suggest.title }}</span>
+                          <span style="display:block;font:400 10px/13px 'DM Sans';color:var(--amberInk);opacity:.8;margin-top:1px">{{ b.suggest.sub }}</span>
+                          <span style="display:flex;gap:6px;margin-top:9px;flex-wrap:wrap">
+                            <sc-for list="{{ b.suggest.chips }}" as="c" hint-placeholder-count="3">
+                              <span style="height:25px;padding:0 9px;border-radius:9px;background:var(--surface);border:1px solid var(--amberLine);display:inline-flex;align-items:center;gap:5px;font:600 10.5px/1 'DM Sans';color:var(--amberInk)"><i class="{{ c.icon }}" style="font-size:11px"></i>{{ c.label }}</span>
+                            </sc-for>
+                          </span>
+                        </span>
+                      </span>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ b.handoff }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex">
+                      <span style="width:71px;flex-shrink:0"></span>
+                      <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                        <span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span>
+                        <span style="position:relative;margin-top:14px;width:19px;height:19px;border-radius:50%;background:var(--surface);border:1.5px solid var(--line);display:grid;place-items:center;color:var(--ink2);box-shadow:0 0 0 3px var(--surface)"><i class="ph-bold ph-arrow-down" style="font-size:10px"></i></span>
+                      </span>
+                      <span style="flex:1;min-width:0;padding:8px 0 8px 8px">
+                        <span style="display:block;padding:10px 12px;border-radius:13px;background:var(--sunken);border:1px solid var(--line)">
+                          <span style="display:flex;align-items:center;gap:7px;font:700 9.5px/1 'DM Sans';letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)">{{ b.handoff.from }}<i class="ph-bold ph-arrow-right" style="font-size:10px;color:var(--ink4)"></i>{{ b.handoff.to }}</span>
+                          <span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink3);margin-top:5px">{{ b.handoff.note }}</span>
+                        </span>
+                      </span>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+
+              <div style="display:flex;gap:8px;margin-top:20px">
+                <span style="flex:1;height:44px;border-radius:14px;background:var(--ink);display:flex;align-items:center;justify-content:center;gap:7px;font:600 12.5px/1 'DM Sans';color:var(--surface);cursor:pointer"><i class="ph ph-plus" style="font-size:14px"></i>Add to Wednesday</span>
+                <span style="width:44px;height:44px;border-radius:14px;border:1px solid var(--line);display:grid;place-items:center;color:var(--ink2);cursor:pointer"><i class="ph ph-list" style="font-size:15px"></i></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="2b" style="width:390px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+        <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:#fff;color:#0B1016;border-radius:5px">2b</span>
+        <span style="font-family:Fraunces,serif;font-size:22px;font-weight:400;color:#fff">Chrome at three depths</span>
+      </div>
+      <p style="font:400 12.5px/1.6 'DM Sans';color:rgba(255,255,255,.6);margin:0 0 18px;text-wrap:pretty">Hero, stop cards, CTA and calendar rail, cropped at three scroll positions. Only two of the four survive to the bottom.</p>
+
+      <div style="display:flex;flex-direction:column;gap:22px">
+        <sc-for list="{{ chromeStudy }}" as="c" hint-placeholder-count="3">
+          <div>
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px">
+              <span style="font:600 9.5px/1 ui-monospace,Menlo,monospace;padding:4px 7px;background:{{ c.tagBg }};color:#0B1016;border-radius:4px">{{ c.tag }}</span>
+              <span style="font:600 10.5px/1 'DM Sans';color:rgba(255,255,255,.5)">{{ c.budget }}</span>
+            </div>
+            <div data-jt="{{ theme }}" style="width:372px;height:{{ c.crop }};border-radius:20px;overflow:hidden;background:var(--surface);position:relative;box-shadow:0 14px 40px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.07)">
+              <div style="height:{{ c.heroH }};background:#1B2A24;overflow:hidden;position:relative">
+                <img src="{{ hyPhoto }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:{{ c.photoTf }}" alt="">
+                <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(16,24,20,.55) 0%,rgba(16,24,20,.12) 42%,rgba(20,32,27,.9) 100%)"></div>
+                <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,22,18,.6) 0%,rgba(14,22,18,.28) 100%);opacity:{{ c.pinnedOp }}"></div>
+                <div style="position:absolute;left:18px;right:18px;bottom:70px;opacity:{{ c.pinnedOp }};display:flex;align-items:center;gap:9px">
+                  <span style="font-family:Fraunces,serif;font-size:19px;font-weight:400;line-height:1;color:#fff;letter-spacing:-.01em">Maine Coast</span>
+                  <span style="font:400 10.5px/1 'DM Sans';color:rgba(255,255,255,.62)">Aug 23 – 30</span>
+                </div>
+                <div style="position:absolute;top:20px;left:18px;right:18px;display:flex;align-items:center;justify-content:space-between;opacity:{{ c.kickerOp }}">
+                  <span style="font:600 10px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.75)">Day 3 of 8 · Acadia</span>
+                  <span style="width:28px;height:28px;border-radius:14px;background:rgba(255,255,255,.18);display:grid;place-items:center;color:#fff"><i class="ph ph-bell" style="font-size:13px"></i></span>
+                </div>
+                <div style="position:absolute;left:18px;right:18px;bottom:74px;opacity:{{ c.heroTitleOp }}">
+                  <div style="font-family:Fraunces,serif;font-size:30px;font-weight:400;line-height:1.02;color:#fff;letter-spacing:-.015em">Maine Coast</div>
+                  <div style="font:400 12px/1 'DM Sans';color:rgba(255,255,255,.72);margin-top:7px">Aug 23 – 30 · 2 stops</div>
+                </div>
+                <div style="position:absolute;left:0;right:0;bottom:0;height:62px;background:var(--surface);display:flex;align-items:center;gap:11px;padding:0 18px;opacity:{{ c.pinnedOp }}">
+                  <span style="width:36px;height:36px;border-radius:11px;overflow:hidden;flex-shrink:0"><img src="{{ hyThumb }}" style="width:100%;height:100%;object-fit:cover" alt=""></span>
+                  <span style="flex:1;min-width:0"><span style="display:block;font:700 14px/17px 'DM Sans';letter-spacing:-.3px;color:var(--ink)">Southwest Harbor</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:1px">Wed 27 · 5 plans</span></span>
+                  <span style="display:flex;gap:4px;flex-shrink:0"><span style="width:5px;height:5px;border-radius:3px;background:var(--ink4)"></span><span style="width:16px;height:5px;border-radius:3px;background:var(--ink)"></span></span>
+                </div>
+              </div>
+
+              <div style="margin-top:{{ c.railMT }};position:relative;z-index:7;opacity:{{ c.railOp }};display:{{ c.railDisplay }}">
+                <div style="display:flex;gap:10px;padding:0 14px 4px">
+                  <sc-for list="{{ hyStops }}" as="s" hint-placeholder-count="2">
+                    <div style="width:280px;flex-shrink:0;background:var(--surface);border-radius:18px;box-shadow:0 10px 30px var(--shadow);border:1.5px solid {{ s.ring }};padding:12px 13px;opacity:{{ s.dim }}">
+                      <div style="display:flex;gap:11px">
+                        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+                          <span style="font:700 9.5px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;color:{{ s.kickerColor }}">{{ s.kicker }}</span>
+                          <span style="font:700 16px/1.1 'DM Sans';letter-spacing:-.35px;color:var(--ink)">{{ s.name }}</span>
+                          <span style="font:400 11.5px/1 'DM Sans';color:var(--ink2)">{{ s.dates }}</span>
+                        </div>
+                        <div style="width:54px;height:54px;border-radius:14px;overflow:hidden;flex-shrink:0"><img src="{{ s.thumb }}" style="width:100%;height:100%;object-fit:cover" alt=""></div>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line-soft)">
+                        <i class="{{ s.statusIcon }}" style="font-size:13px;color:{{ s.statusColor }}"></i>
+                        <span style="font:600 11px/1 'DM Sans';color:{{ s.statusColor }}">{{ s.status }}</span>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="padding:14px 18px 0;position:relative;z-index:2;opacity:{{ c.ctaOp }};display:{{ c.ctaDisplay }}">
+                <div style="display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:16px;background:var(--amberSoft);border:1px solid var(--amberLine)">
+                  <span style="width:36px;height:36px;border-radius:12px;background:var(--amberSoft);display:grid;place-items:center;color:var(--amber);flex-shrink:0"><i class="ph-fill ph-bed" style="font-size:17px"></i></span>
+                  <span style="flex:1;min-width:0"><span style="display:block;font:700 12.5px/16px 'DM Sans';color:var(--amberInk)">Southwest Harbor is unbooked</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:2px">3 nights from Wed · 14 places free</span></span>
+                </div>
+              </div>
+
+              <div style="background:var(--surface);border-bottom:1px solid var(--line);margin-top:14px;padding:9px 0 8px;position:relative;z-index:4">
+                <div style="display:flex;gap:5px;padding:0 12px">
+                  <sc-for list="{{ hyRail }}" as="r" hint-placeholder-count="8">
+                    <span style="width:38px;flex-shrink:0;padding:6px 0 5px;border-radius:12px;background:{{ r.bg }};border:{{ r.ring }};box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative">
+                      <span style="font:700 7.5px/1 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:{{ r.subFg }}">{{ r.dow }}</span>
+                      <span style="font:700 15px/1 'DM Sans';letter-spacing:-.5px;color:{{ r.fg }}">{{ r.dom }}</span>
+                      <span style="width:12px;height:3px;border-radius:2px;background:{{ r.dotBg }}"></span>
+                      <span style="position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:3px;background:var(--amber);opacity:{{ r.warnOp }}"></span>
+                    </span>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+            <p style="font:400 11.5px/1.55 'DM Sans';color:rgba(255,255,255,.52);margin:10px 0 0;text-wrap:pretty">{{ c.note }}</p>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding:20px 60px 90px;font-family:'DM Sans',system-ui,sans-serif">
+
+  <div style="max-width:760px;margin-bottom:40px">
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:12px">
+      <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:rgba(255,255,255,.1);color:#fff;border-radius:5px">Turn 1</span>
+      <span style="font-family:Fraunces,serif;font-size:30px;font-weight:400;color:#fff">Itinerary list</span>
+    </div>
+    <p style="font:400 14.5px/1.65 'DM Sans';color:rgba(255,255,255,.72);margin:0;text-wrap:pretty">Three readings of the same trip: Acadia, seven days, two stops, a handoff on the 27th. Day-level collapse is the only compression — no capped buckets, no truncated rows. Photos drop into the same 44px square the type tile occupies now.</p>
+  </div>
+
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:42px;max-width:900px">
+    <sc-for list="{{ decisions }}" as="dec" hint-placeholder-count="4">
+      <div style="flex:1 1 200px;min-width:200px;padding:13px 15px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)">
+        <div style="font:700 9px/1 'DM Sans';letter-spacing:.14em;text-transform:uppercase;color:{{ dec.tagColor }};margin-bottom:7px">{{ dec.tag }}</div>
+        <div style="font:400 12.5px/1.55 'DM Sans';color:rgba(255,255,255,.78);text-wrap:pretty">{{ dec.body }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap">
+
+    <div id="1a" style="width:390px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+        <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:#fff;color:#0B1016;border-radius:5px">1a</span>
+        <span style="font-family:Fraunces,serif;font-size:22px;font-weight:400;color:#fff">Collapsible list</span>
+      </div>
+      <p style="font:400 12.5px/1.6 'DM Sans';color:rgba(255,255,255,.6);margin:0 0 18px;min-height:60px;text-wrap:pretty">Days are the accordion. Buckets are quiet rules inside an open day, not their own controls. A collapsed day still says what shape it is, in icons.</p>
+
+      <div data-jt="{{ theme }}" style="width:390px;height:844px;border-radius:44px;background:#0b1016;padding:9px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.08)">
+        <div data-scroll="1" style="width:372px;height:826px;border-radius:36px;background:var(--surface);overflow-y:auto;overflow-x:hidden;position:relative">
+
+          <div style="position:sticky;top:0;z-index:6;height:62px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:11px;padding:0 18px">
+            <span style="width:36px;height:36px;border-radius:11px;background:var(--tealSoft);display:grid;place-items:center;color:var(--teal);flex-shrink:0"><i class="ph-fill ph-mountains" style="font-size:17px"></i></span>
+            <span style="flex:1;min-width:0"><span style="display:block;font:700 14px/17px 'DM Sans';letter-spacing:-.3px;color:var(--ink)">Acadia</span><span style="display:block;font:400 11px/14px 'DM Sans';color:var(--ink2)">7 days · 2 stops · day 3</span></span>
+            <span style="width:32px;height:32px;border-radius:10px;border:1px solid var(--line);display:grid;place-items:center;color:var(--ink2)"><i class="ph ph-plus" style="font-size:14px"></i></span>
+          </div>
+
+          <div style="padding:0 18px 40px">
+
+            <div onClick="{{ toggleAllA }}" style="display:flex;align-items:center;justify-content:space-between;padding:13px 0 3px;cursor:pointer">
+              <span style="font:400 11.5px/1 'DM Sans';color:var(--ink2)">{{ summaryA }}</span>
+              <span style="display:flex;align-items:center;gap:5px;font:600 11px/1 'DM Sans';color:var(--ink)">{{ allLabelA }}<i class="{{ allIconA }}" style="font-size:12px"></i></span>
+            </div>
+
+            <sc-for list="{{ stops }}" as="st" hint-placeholder-count="2">
+              <div>
+                <div style="display:flex;align-items:center;gap:9px;padding:20px 0 9px">
+                  <span style="width:7px;height:7px;border-radius:4px;background:{{ st.dot }};flex-shrink:0"></span>
+                  <span style="font:700 10.5px/1 'DM Sans';letter-spacing:.11em;text-transform:uppercase;color:var(--ink)">{{ st.name }}</span>
+                  <span style="flex:1;height:1px;background:var(--line)"></span>
+                  <span style="font:500 10px/1 'DM Mono',ui-monospace;color:var(--ink3)">{{ st.range }}</span>
+                </div>
+
+                <div style="position:sticky;top:62px;z-index:5;background:var(--surface);padding:2px 0 6px">
+                  <div style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:13px;background:var(--sunken);border:1px solid var(--line)">
+                    <span style="width:30px;height:30px;border-radius:9px;background:{{ st.base.tileBg }};display:grid;place-items:center;color:{{ st.base.tileFg }};flex-shrink:0"><i class="ph-fill ph-bed" style="font-size:14px"></i></span>
+                    <span style="flex:1;min-width:0"><span style="display:block;font:700 12.5px/15px 'DM Sans';letter-spacing:-.2px;color:var(--ink)">{{ st.base.name }}</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:{{ st.base.detailColor }};margin-top:1px">{{ st.base.detail }}</span></span>
+                    <i class="ph-fill ph-push-pin" style="font-size:13px;color:var(--ink3);flex-shrink:0"></i>
+                  </div>
+                </div>
+
+                <sc-for list="{{ st.days }}" as="d" hint-placeholder-count="4">
+                  <div>
+                    <div onClick="{{ d.toggleA }}" style="display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid var(--line);cursor:pointer">
+                      <span style="width:34px;flex-shrink:0;text-align:center">
+                        <span style="display:block;font:700 8.5px/1 'DM Sans';letter-spacing:.12em;text-transform:uppercase;color:{{ d.dowColor }}">{{ d.dow }}</span>
+                        <span style="display:block;font:700 21px/1.02 'DM Sans';letter-spacing:-.7px;color:{{ d.domColor }};margin-top:3px">{{ d.dom }}</span>
+                      </span>
+                      <span style="flex:1;min-width:0">
+                        <span style="display:flex;align-items:center;gap:6px;min-height:16px">
+                          <sc-if value="{{ d.isToday }}" hint-placeholder-val="{{ false }}">
+                            <span style="height:16px;padding:0 7px;border-radius:8px;background:var(--teal);display:inline-flex;align-items:center;font:700 8.5px/1 'DM Sans';letter-spacing:.1em;color:var(--surface)">TODAY</span>
+                          </sc-if>
+                          <sc-if value="{{ d.moveLabel }}" hint-placeholder-val="{{ false }}">
+                            <span style="display:inline-flex;align-items:center;gap:4px;font:700 9.5px/1 'DM Sans';letter-spacing:.06em;text-transform:uppercase;color:{{ d.moveColor }}"><i class="{{ d.moveIcon }}" style="font-size:11px"></i>{{ d.moveLabel }}</span>
+                          </sc-if>
+                          <sc-if value="{{ d.plainLabel }}" hint-placeholder-val="{{ false }}">
+                            <span style="font:400 11px/1 'DM Sans';color:var(--ink3)">{{ d.plainLabel }}</span>
+                          </sc-if>
+                        </span>
+                        <span style="display:flex;align-items:center;gap:6px;margin-top:6px">
+                          <span style="display:flex;gap:3px">
+                            <sc-for list="{{ d.glyphs }}" as="g" hint-placeholder-count="3">
+                              <span style="width:19px;height:19px;border-radius:6px;background:{{ g.bg }};display:grid;place-items:center;color:{{ g.fg }}"><i class="{{ g.icon }}" style="font-size:10px"></i></span>
+                            </sc-for>
+                          </span>
+                          <span style="font:400 10.5px/1 'DM Sans';color:var(--ink2)">{{ d.countLabel }}</span>
+                          <sc-if value="{{ d.warnLabel }}" hint-placeholder-val="{{ false }}">
+                            <span style="font:600 10.5px/1 'DM Sans';color:var(--amber)">{{ d.warnLabel }}</span>
+                          </sc-if>
+                        </span>
+                      </span>
+                      <i class="{{ d.chevA }}" style="font-size:14px;color:var(--ink3);flex-shrink:0"></i>
+                    </div>
+
+                    <sc-if value="{{ d.openA }}" hint-placeholder-val="{{ true }}">
+                      <div style="padding:0 0 12px 45px">
+                        <sc-if value="{{ d.ctxTop }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;margin:2px 0 6px;border-radius:12px;background:var(--chip);cursor:pointer">
+                            <i class="{{ d.ctxTop.icon }}" style="font-size:14px;color:var(--ink3);flex-shrink:0"></i>
+                            <span style="flex:1;min-width:0"><span style="display:block;font:600 11px/14px 'DM Sans';color:var(--ink2)">{{ d.ctxTop.title }}</span><span style="display:block;font:400 10px/13px 'DM Sans';color:var(--ink3)">{{ d.ctxTop.note }}</span></span>
+                            <i class="ph ph-caret-right" style="font-size:11px;color:var(--ink4);flex-shrink:0"></i>
+                          </div>
+                        </sc-if>
+
+                        <sc-for list="{{ d.buckets }}" as="b" hint-placeholder-count="3">
+                          <div>
+                            <div style="display:flex;align-items:center;gap:8px;padding:11px 0 2px">
+                              <span style="font:700 9px/1 'DM Sans';letter-spacing:.15em;text-transform:uppercase;color:{{ b.labelColor }}">{{ b.label }}</span>
+                              <span style="flex:1;height:1px;background:var(--line-soft)"></span>
+                            </div>
+                            <sc-for list="{{ b.items }}" as="it" hint-placeholder-count="2">
+                              <div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line-soft)">
+                                <span style="width:62px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:{{ it.timeFont }};color:{{ it.timeColor }}">{{ it.time }}</span>
+                                <span style="width:38px;height:38px;border-radius:12px;background:{{ it.tileBg }};display:grid;place-items:center;color:{{ it.tileFg }};flex-shrink:0"><i class="{{ it.icon }}" style="font-size:17px"></i></span>
+                                <span style="flex:1;min-width:0"><span style="display:block;font:700 13px/16px 'DM Sans';letter-spacing:-.22px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.title }}</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.meta }}</span></span>
+                                <i class="{{ it.okIcon }}" style="font-size:15px;color:{{ it.okColor }};flex-shrink:0"></i>
+                              </div>
+                            </sc-for>
+                            <sc-if value="{{ b.gap }}" hint-placeholder-val="{{ false }}">
+                              <div style="margin-top:7px;padding:10px 11px;border:1.5px dashed var(--amberLine);border-radius:13px;background:var(--amberSoft)">
+                                <div style="display:flex;align-items:center;gap:9px">
+                                  <span style="width:26px;height:26px;border-radius:8px;background:var(--amberSoft);display:grid;place-items:center;color:var(--amber);flex-shrink:0"><i class="ph ph-plus" style="font-size:13px"></i></span>
+                                  <span style="flex:1;min-width:0"><span style="display:block;font:700 11.5px/14px 'DM Sans';color:var(--amberInk)">{{ b.gap.title }}</span><span style="display:block;font:400 10px/13px 'DM Sans';color:var(--amberInk);opacity:.8">{{ b.gap.sub }}</span></span>
+                                </div>
+                                <div style="display:flex;gap:6px;margin-top:9px;flex-wrap:wrap">
+                                  <sc-for list="{{ b.gap.chips }}" as="c" hint-placeholder-count="3">
+                                    <span style="height:25px;padding:0 9px;border-radius:9px;background:var(--surface);border:1px solid var(--amberLine);display:inline-flex;align-items:center;gap:5px;font:600 10.5px/1 'DM Sans';color:var(--amberInk)"><i class="{{ c.icon }}" style="font-size:11px"></i>{{ c.label }}</span>
+                                  </sc-for>
+                                </div>
+                              </div>
+                            </sc-if>
+                          </div>
+                        </sc-for>
+
+                        <sc-if value="{{ d.ctxBottom }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;margin-top:10px;border-radius:12px;background:var(--chip);cursor:pointer">
+                            <i class="{{ d.ctxBottom.icon }}" style="font-size:14px;color:var(--ink3);flex-shrink:0"></i>
+                            <span style="flex:1;min-width:0"><span style="display:block;font:600 11px/14px 'DM Sans';color:var(--ink2)">{{ d.ctxBottom.title }}</span><span style="display:block;font:400 10px/13px 'DM Sans';color:var(--ink3)">{{ d.ctxBottom.note }}</span></span>
+                            <i class="ph ph-caret-right" style="font-size:11px;color:var(--ink4);flex-shrink:0"></i>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1b" style="width:390px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+        <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:#fff;color:#0B1016;border-radius:5px">1b</span>
+        <span style="font-family:Fraunces,serif;font-size:22px;font-weight:400;color:#fff">Timeline spine</span>
+      </div>
+      <p style="font:400 12.5px/1.6 'DM Sans';color:rgba(255,255,255,.6);margin:0 0 18px;min-height:60px;text-wrap:pretty">One rail runs the whole trip and never breaks — collapsed days are still nodes on it. Filled dot means a real time. Hollow means somewhere in the bucket.</p>
+
+      <div data-jt="{{ theme }}" style="width:390px;height:844px;border-radius:44px;background:#0b1016;padding:9px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.08)">
+        <div data-scroll="1" style="width:372px;height:826px;border-radius:36px;background:var(--surface);overflow-y:auto;overflow-x:hidden;position:relative">
+
+          <div style="position:sticky;top:0;z-index:6;height:62px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:11px;padding:0 18px">
+            <span style="width:36px;height:36px;border-radius:11px;background:var(--tealSoft);display:grid;place-items:center;color:var(--teal);flex-shrink:0"><i class="ph-fill ph-mountains" style="font-size:17px"></i></span>
+            <span style="flex:1;min-width:0"><span style="display:block;font:700 14px/17px 'DM Sans';letter-spacing:-.3px;color:var(--ink)">Acadia</span><span style="display:block;font:400 11px/14px 'DM Sans';color:var(--ink2)">7 days · 2 stops · day 3</span></span>
+            <span style="width:32px;height:32px;border-radius:10px;border:1px solid var(--line);display:grid;place-items:center;color:var(--ink2)"><i class="ph ph-plus" style="font-size:14px"></i></span>
+          </div>
+
+          <div style="padding:0 18px 40px">
+            <sc-for list="{{ stops }}" as="st" hint-placeholder-count="2">
+              <div>
+                <div style="display:flex;align-items:center;gap:9px;padding:18px 0 8px">
+                  <span style="width:7px;height:7px;border-radius:4px;background:{{ st.dot }};flex-shrink:0"></span>
+                  <span style="font:700 10.5px/1 'DM Sans';letter-spacing:.11em;text-transform:uppercase;color:var(--ink)">{{ st.name }}</span>
+                  <span style="flex:1;height:1px;background:var(--line)"></span>
+                  <span style="font:500 10px/1 'DM Mono',ui-monospace;color:var(--ink3)">{{ st.range }}</span>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:9px;padding:8px 11px;margin-bottom:2px;border-radius:13px;background:var(--sunken);border:1px solid var(--line)">
+                  <span style="width:26px;height:26px;border-radius:8px;background:{{ st.base.tileBg }};display:grid;place-items:center;color:{{ st.base.tileFg }};flex-shrink:0"><i class="ph-fill ph-bed" style="font-size:13px"></i></span>
+                  <span style="flex:1;min-width:0;font:600 11.5px/1.35 'DM Sans';color:var(--ink)">{{ st.base.name }}<span style="font-weight:400;color:{{ st.base.detailColor }}"> · {{ st.base.detail }}</span></span>
+                  <i class="ph-fill ph-push-pin" style="font-size:12px;color:var(--ink3);flex-shrink:0"></i>
+                </div>
+
+                <sc-for list="{{ st.days }}" as="d" hint-placeholder-count="4">
+                  <div>
+                    <div onClick="{{ d.toggleB }}" style="display:flex;cursor:pointer">
+                      <span style="width:62px;flex-shrink:0;text-align:right;padding:14px 9px 0 0">
+                        <span style="display:block;font:700 8px/1 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:{{ d.dowColor }}">{{ d.dow }}</span>
+                        <span style="display:block;font:700 19px/1.02 'DM Sans';letter-spacing:-.6px;color:{{ d.domColor }};margin-top:2px">{{ d.dom }}</span>
+                      </span>
+                      <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                        <span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span>
+                        <span style="position:relative;margin-top:16px;width:13px;height:13px;border-radius:50%;background:var(--surface);border:2.5px solid {{ d.nodeColor }};box-shadow:0 0 0 4px var(--surface)"></span>
+                      </span>
+                      <span style="flex:1;min-width:0;padding:13px 0 9px 8px">
+                        <span style="display:flex;align-items:center;gap:6px;min-height:16px">
+                          <sc-if value="{{ d.isToday }}" hint-placeholder-val="{{ false }}">
+                            <span style="height:16px;padding:0 7px;border-radius:8px;background:var(--teal);display:inline-flex;align-items:center;font:700 8.5px/1 'DM Sans';letter-spacing:.1em;color:var(--surface)">TODAY</span>
+                          </sc-if>
+                          <sc-if value="{{ d.moveLabel }}" hint-placeholder-val="{{ false }}">
+                            <span style="display:inline-flex;align-items:center;gap:4px;font:700 9.5px/1 'DM Sans';letter-spacing:.06em;text-transform:uppercase;color:{{ d.moveColor }}"><i class="{{ d.moveIcon }}" style="font-size:11px"></i>{{ d.moveLabel }}</span>
+                          </sc-if>
+                          <span style="font:400 10.5px/1 'DM Sans';color:var(--ink2)">{{ d.countLabel }}</span>
+                          <sc-if value="{{ d.warnLabel }}" hint-placeholder-val="{{ false }}">
+                            <span style="font:600 10.5px/1 'DM Sans';color:var(--amber)">{{ d.warnLabel }}</span>
+                          </sc-if>
+                          <i class="{{ d.chevB }}" style="font-size:13px;color:var(--ink3);margin-left:auto"></i>
+                        </span>
+                        <sc-if value="{{ d.closedB }}" hint-placeholder-val="{{ false }}">
+                          <span style="display:flex;gap:3px;margin-top:6px">
+                            <sc-for list="{{ d.glyphs }}" as="g" hint-placeholder-count="3">
+                              <span style="width:19px;height:19px;border-radius:6px;background:{{ g.bg }};display:grid;place-items:center;color:{{ g.fg }}"><i class="{{ g.icon }}" style="font-size:10px"></i></span>
+                            </sc-for>
+                          </span>
+                        </sc-if>
+                      </span>
+                    </div>
+
+                    <sc-if value="{{ d.openB }}" hint-placeholder-val="{{ true }}">
+                      <div>
+                        <sc-if value="{{ d.ctxTop }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex">
+                            <span style="width:71px;flex-shrink:0"></span>
+                            <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center"><span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span></span>
+                            <span style="flex:1;min-width:0;padding:0 0 4px 8px">
+                              <span style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:11px;background:var(--chip)">
+                                <i class="{{ d.ctxTop.icon }}" style="font-size:13px;color:var(--ink3);flex-shrink:0"></i>
+                                <span style="flex:1;min-width:0;font:600 10.5px/14px 'DM Sans';color:var(--ink2)">{{ d.ctxTop.title }}</span>
+                                <i class="ph ph-caret-right" style="font-size:10px;color:var(--ink4)"></i>
+                              </span>
+                            </span>
+                          </div>
+                        </sc-if>
+
+                        <sc-for list="{{ d.buckets }}" as="b" hint-placeholder-count="3">
+                          <div>
+                            <div style="display:flex">
+                              <span style="width:71px;flex-shrink:0"></span>
+                              <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                                <span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span>
+                                <span style="position:relative;margin-top:11px;width:7px;height:1.5px;background:var(--line)"></span>
+                              </span>
+                              <span style="flex:1;padding:8px 0 1px 8px;font:700 8.5px/1 'DM Sans';letter-spacing:.15em;text-transform:uppercase;color:{{ b.labelColor }}">{{ b.label }}</span>
+                            </div>
+                            <sc-for list="{{ b.items }}" as="it" hint-placeholder-count="2">
+                              <div style="display:flex">
+                                <span style="width:62px;flex-shrink:0;text-align:right;padding:12px 9px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:{{ it.timeFont }};color:{{ it.timeColor }}">{{ it.time }}</span>
+                                <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                                  <span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span>
+                                  <span style="position:relative;margin-top:14px;width:{{ it.dotSize }};height:{{ it.dotSize }};border-radius:50%;background:{{ it.dotBg }};border:{{ it.dotBorder }};box-shadow:0 0 0 3.5px var(--surface)"></span>
+                                </span>
+                                <span style="flex:1;min-width:0;display:flex;align-items:center;gap:9px;padding:7px 0 7px 8px">
+                                  <span style="width:32px;height:32px;border-radius:10px;background:{{ it.tileBg }};display:grid;place-items:center;color:{{ it.tileFg }};flex-shrink:0"><i class="{{ it.icon }}" style="font-size:15px"></i></span>
+                                  <span style="flex:1;min-width:0"><span style="display:block;font:700 12.5px/15px 'DM Sans';letter-spacing:-.2px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.title }}</span><span style="display:block;font:400 10px/13px 'DM Sans';color:var(--ink2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.meta }}</span></span>
+                                  <i class="{{ it.okIcon }}" style="font-size:14px;color:{{ it.okColor }};flex-shrink:0"></i>
+                                </span>
+                              </div>
+                            </sc-for>
+                            <sc-if value="{{ b.gap }}" hint-placeholder-val="{{ false }}">
+                              <div style="display:flex">
+                                <span style="width:71px;flex-shrink:0"></span>
+                                <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center">
+                                  <span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span>
+                                  <span style="position:relative;margin-top:16px;width:9px;height:9px;border-radius:50%;background:var(--surface);border:1.5px dashed var(--amberLine);box-shadow:0 0 0 3.5px var(--surface)"></span>
+                                </span>
+                                <span style="flex:1;min-width:0;padding:7px 0 7px 8px">
+                                  <span style="display:block;padding:10px 11px;border:1.5px dashed var(--amberLine);border-radius:13px;background:var(--amberSoft)">
+                                    <span style="display:block;font:700 11.5px/14px 'DM Sans';color:var(--amberInk)">{{ b.gap.title }}</span>
+                                    <span style="display:block;font:400 10px/13px 'DM Sans';color:var(--amberInk);opacity:.8;margin-top:1px">{{ b.gap.sub }}</span>
+                                    <span style="display:flex;gap:6px;margin-top:9px;flex-wrap:wrap">
+                                      <sc-for list="{{ b.gap.chips }}" as="c" hint-placeholder-count="3">
+                                        <span style="height:24px;padding:0 9px;border-radius:9px;background:var(--surface);border:1px solid var(--amberLine);display:inline-flex;align-items:center;gap:5px;font:600 10px/1 'DM Sans';color:var(--amberInk)"><i class="{{ c.icon }}" style="font-size:11px"></i>{{ c.label }}</span>
+                                      </sc-for>
+                                    </span>
+                                  </span>
+                                </span>
+                              </div>
+                            </sc-if>
+                          </div>
+                        </sc-for>
+
+                        <sc-if value="{{ d.ctxBottom }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex">
+                            <span style="width:71px;flex-shrink:0"></span>
+                            <span style="width:24px;flex-shrink:0;position:relative;display:flex;justify-content:center"><span style="position:absolute;top:0;bottom:0;width:1.5px;background:var(--line)"></span></span>
+                            <span style="flex:1;min-width:0;padding:6px 0 4px 8px">
+                              <span style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:11px;background:var(--chip)">
+                                <i class="{{ d.ctxBottom.icon }}" style="font-size:13px;color:var(--ink3);flex-shrink:0"></i>
+                                <span style="flex:1;min-width:0;font:600 10.5px/14px 'DM Sans';color:var(--ink2)">{{ d.ctxBottom.title }}</span>
+                                <i class="ph ph-caret-right" style="font-size:10px;color:var(--ink4)"></i>
+                              </span>
+                            </span>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="1c" style="width:390px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+        <span style="font:600 10.5px/1 ui-monospace,Menlo,monospace;padding:4px 8px;background:#fff;color:#0B1016;border-radius:5px">1c</span>
+        <span style="font-family:Fraunces,serif;font-size:22px;font-weight:400;color:#fff">Day rail, one day</span>
+      </div>
+      <p style="font:400 12.5px/1.6 'DM Sans';color:rgba(255,255,255,.6);margin:0 0 18px;min-height:60px;text-wrap:pretty">Scrolling traded for tapping. A pinned date rail across the top, exactly one day below it, and the whole trip still one gesture away. The 27th is a single chip with a split dot.</p>
+
+      <div data-jt="{{ theme }}" style="width:390px;height:844px;border-radius:44px;background:#0b1016;padding:9px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.08)">
+        <div data-scroll="1" style="width:372px;height:826px;border-radius:36px;background:var(--surface);overflow-y:auto;overflow-x:hidden;position:relative">
+
+          <div style="position:sticky;top:0;z-index:6;background:var(--surface);border-bottom:1px solid var(--line)">
+            <div style="height:62px;display:flex;align-items:center;gap:11px;padding:0 18px">
+              <span style="width:36px;height:36px;border-radius:11px;background:var(--tealSoft);display:grid;place-items:center;color:var(--teal);flex-shrink:0"><i class="ph-fill ph-mountains" style="font-size:17px"></i></span>
+              <span style="flex:1;min-width:0"><span style="display:block;font:700 14px/17px 'DM Sans';letter-spacing:-.3px;color:var(--ink)">Acadia</span><span style="display:block;font:400 11px/14px 'DM Sans';color:var(--ink2)">7 days · 2 stops · day 3</span></span>
+              <span style="width:32px;height:32px;border-radius:10px;border:1px solid var(--line);display:grid;place-items:center;color:var(--ink2)"><i class="ph ph-list" style="font-size:14px"></i></span>
+            </div>
+            <div data-scroll="1" style="display:flex;gap:6px;padding:0 14px 11px;overflow-x:auto">
+              <sc-for list="{{ railC }}" as="r" hint-placeholder-count="7">
+                <span onClick="{{ r.select }}" style="width:40px;flex-shrink:0;padding:7px 0 6px;border-radius:13px;background:{{ r.bg }};border:{{ r.ring }};display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer">
+                  <span style="font:700 8px/1 'DM Sans';letter-spacing:.11em;text-transform:uppercase;color:{{ r.subFg }}">{{ r.dow }}</span>
+                  <span style="font:700 16px/1 'DM Sans';letter-spacing:-.5px;color:{{ r.fg }}">{{ r.dom }}</span>
+                  <span style="width:{{ r.dotW }};height:3px;border-radius:2px;background:{{ r.dotBg }}"></span>
+                </span>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="padding:0 18px 40px">
+            <div style="display:flex;align-items:center;gap:8px;padding:17px 0 0">
+              <span style="width:7px;height:7px;border-radius:4px;background:{{ dayC.stopDot }};flex-shrink:0"></span>
+              <span style="font:700 10.5px/1 'DM Sans';letter-spacing:.11em;text-transform:uppercase;color:var(--ink)">{{ dayC.stopName }}</span>
+              <sc-if value="{{ dayC.isToday }}" hint-placeholder-val="{{ false }}">
+                <span style="height:16px;padding:0 7px;border-radius:8px;background:var(--teal);display:inline-flex;align-items:center;font:700 8.5px/1 'DM Sans';letter-spacing:.1em;color:var(--surface)">TODAY</span>
+              </sc-if>
+              <span style="flex:1"></span>
+              <span style="font:400 10.5px/1 'DM Sans';color:var(--ink2)">{{ dayC.countLabel }}</span>
+            </div>
+
+            <div style="display:flex;align-items:flex-end;gap:10px;padding:5px 0 4px">
+              <span style="font:700 38px/1 'DM Sans';letter-spacing:-1.7px;color:var(--ink)">{{ dayC.dom }}</span>
+              <span style="padding-bottom:5px"><span style="display:block;font:700 11px/1 'DM Sans';letter-spacing:.1em;text-transform:uppercase;color:var(--ink2)">{{ dayC.dow }}</span><span style="display:block;font:400 11px/1 'DM Sans';color:var(--ink3);margin-top:4px">August</span></span>
+              <span style="flex:1"></span>
+              <sc-if value="{{ dayC.moveLabel }}" hint-placeholder-val="{{ false }}">
+                <span style="display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 10px;border-radius:12px;background:var(--chip);font:700 9.5px/1 'DM Sans';letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin-bottom:6px"><i class="{{ dayC.moveIcon }}" style="font-size:11px"></i>{{ dayC.moveLabel }}</span>
+              </sc-if>
+            </div>
+
+            <sc-if value="{{ dayC.handoff }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;margin:6px 0 2px;border-radius:12px;background:var(--sunken);border:1px solid var(--line)">
+                <i class="ph ph-arrows-left-right" style="font-size:13px;color:var(--ink3);flex-shrink:0"></i>
+                <span style="font:600 11px/1.35 'DM Sans';color:var(--ink2)">{{ dayC.handoff.from }} <span style="color:var(--ink4)">→</span> {{ dayC.handoff.to }}</span>
+              </div>
+            </sc-if>
+
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 11px;margin-top:8px;border-radius:13px;background:var(--sunken);border:1px solid var(--line)">
+              <span style="width:30px;height:30px;border-radius:9px;background:{{ dayC.baseTileBg }};display:grid;place-items:center;color:{{ dayC.baseTileFg }};flex-shrink:0"><i class="ph-fill ph-bed" style="font-size:14px"></i></span>
+              <span style="flex:1;min-width:0"><span style="display:block;font:700 12.5px/15px 'DM Sans';letter-spacing:-.2px;color:var(--ink)">{{ dayC.baseName }}</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:{{ dayC.baseDetailColor }};margin-top:1px">{{ dayC.baseDetail }}</span></span>
+              <i class="ph-fill ph-push-pin" style="font-size:13px;color:var(--ink3);flex-shrink:0"></i>
+            </div>
+
+            <sc-if value="{{ dayC.ctxAbove }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;margin-top:8px;border-radius:12px;background:var(--chip);cursor:pointer">
+                <i class="{{ dayC.ctx.icon }}" style="font-size:14px;color:var(--ink3);flex-shrink:0"></i>
+                <span style="flex:1;min-width:0"><span style="display:block;font:600 11px/14px 'DM Sans';color:var(--ink2)">{{ dayC.ctx.title }}</span><span style="display:block;font:400 10px/13px 'DM Sans';color:var(--ink3)">{{ dayC.ctx.note }}</span></span>
+                <i class="ph ph-caret-right" style="font-size:11px;color:var(--ink4);flex-shrink:0"></i>
+              </div>
+            </sc-if>
+
+            <sc-for list="{{ dayC.buckets }}" as="b" hint-placeholder-count="3">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;padding:15px 0 3px">
+                  <span style="font:700 9px/1 'DM Sans';letter-spacing:.15em;text-transform:uppercase;color:{{ b.labelColor }}">{{ b.label }}</span>
+                  <span style="flex:1;height:1px;background:var(--line-soft)"></span>
+                </div>
+                <sc-for list="{{ b.items }}" as="it" hint-placeholder-count="2">
+                  <div style="display:flex;gap:11px;align-items:center;padding:9px 0;border-top:1px solid var(--line-soft)">
+                    <span style="width:62px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:{{ it.timeFont }};color:{{ it.timeColor }}">{{ it.time }}</span>
+                    <span style="width:42px;height:42px;border-radius:13px;background:{{ it.tileBg }};display:grid;place-items:center;color:{{ it.tileFg }};flex-shrink:0"><i class="{{ it.icon }}" style="font-size:19px"></i></span>
+                    <span style="flex:1;min-width:0"><span style="display:block;font:700 13.5px/16px 'DM Sans';letter-spacing:-.25px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.title }}</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--ink2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.meta }}</span></span>
+                    <i class="{{ it.okIcon }}" style="font-size:16px;color:{{ it.okColor }};flex-shrink:0"></i>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ b.gap }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:8px;padding:11px 12px;border:1.5px dashed var(--amberLine);border-radius:14px;background:var(--amberSoft)">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <span style="width:28px;height:28px;border-radius:9px;background:var(--amberSoft);display:grid;place-items:center;color:var(--amber);flex-shrink:0"><i class="ph ph-plus" style="font-size:14px"></i></span>
+                      <span style="flex:1;min-width:0"><span style="display:block;font:700 12px/15px 'DM Sans';color:var(--amberInk)">{{ b.gap.title }}</span><span style="display:block;font:400 10.5px/13px 'DM Sans';color:var(--amberInk);opacity:.8">{{ b.gap.sub }}</span></span>
+                    </div>
+                    <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+                      <sc-for list="{{ b.gap.chips }}" as="c" hint-placeholder-count="3">
+                        <span style="height:26px;padding:0 10px;border-radius:9px;background:var(--surface);border:1px solid var(--amberLine);display:inline-flex;align-items:center;gap:5px;font:600 10.5px/1 'DM Sans';color:var(--amberInk)"><i class="{{ c.icon }}" style="font-size:11px"></i>{{ c.label }}</span>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+
+            <sc-if value="{{ dayC.ctxBelow }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;margin-top:12px;border-radius:12px;background:var(--chip);cursor:pointer">
+                <i class="{{ dayC.ctx.icon }}" style="font-size:14px;color:var(--ink3);flex-shrink:0"></i>
+                <span style="flex:1;min-width:0"><span style="display:block;font:600 11px/14px 'DM Sans';color:var(--ink2)">{{ dayC.ctx.title }}</span><span style="display:block;font:400 10px/13px 'DM Sans';color:var(--ink3)">{{ dayC.ctx.note }}</span></span>
+                <i class="ph ph-caret-right" style="font-size:11px;color:var(--ink4);flex-shrink:0"></i>
+              </div>
+            </sc-if>
+
+            <div style="display:flex;gap:8px;margin-top:20px">
+              <span onClick="{{ prevC }}" style="flex:1;height:42px;border-radius:13px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:7px;font:600 12px/1 'DM Sans';color:var(--ink2);cursor:pointer"><i class="ph ph-caret-left" style="font-size:13px"></i>{{ prevLabelC }}</span>
+              <span onClick="{{ nextC }}" style="flex:1;height:42px;border-radius:13px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:7px;font:600 12px/1 'DM Sans';color:var(--ink2);cursor:pointer">{{ nextLabelC }}<i class="ph ph-caret-right" style="font-size:13px"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;defaultTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;phase&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;before&quot;,&quot;during&quot;],&quot;default&quot;:&quot;during&quot;,&quot;tsType&quot;:&quot;'before'|'during'&quot;,&quot;section&quot;:&quot;Behaviour&quot;},&quot;showGaps&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behaviour&quot;}}">
+const RGBA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+
+const TYPES = {
+  flight:   { icon: 'ph-fill ph-airplane-tilt', l: '#2C5880', d: '#7EA6CE' },
+  car:      { icon: 'ph-fill ph-car-profile',   l: '#5A7082', d: '#A3B4C2' },
+  stay:     { icon: 'ph-fill ph-bed',           l: '#465E7A', d: '#8FAAC9' },
+  food:     { icon: 'ph-fill ph-fork-knife',    l: '#B44F1E', d: '#E38A5E' },
+  hike:     { icon: 'ph-fill ph-mountains',     l: '#2F6B47', d: '#6FB78D' },
+  sight:    { icon: 'ph-fill ph-binoculars',    l: '#8A5A2B', d: '#D3A468' },
+  activity: { icon: 'ph-fill ph-ticket',        l: '#7A4F82', d: '#C099C7' },
+};
+
+const TRIP = [
+  {
+    id: 'bh', name: 'Bar Harbor', range: 'Sun 24 – Wed 27', hue: 'teal',
+    base: { name: 'Atlantic Oceanside', detail: '3 nights · checked in' },
+    days: [
+      { key: '24', dow: 'Sun', dom: '24', plainLabel: 'Arrival', buckets: [
+        { label: 'Morning', items: [
+          { t: '8:05 AM', ty: 'flight', title: 'BOS → BHB', meta: 'Cape Air 2211 · 1h 5m · seat 3A', ok: true },
+        ] },
+        { label: 'Afternoon', items: [
+          { t: '12:40 PM', ty: 'car', title: 'Rental pickup', meta: 'Hertz · Hancock County · conf 4XK9', ok: true },
+          { t: '3:00 PM', ty: 'stay', title: 'Check in', meta: 'Atlantic Oceanside · 3 nights', ok: true },
+        ] },
+        { label: 'Evening', items: [
+          { t: '7:00 PM', ty: 'food', title: 'Havana', meta: '318 Main St · 4 guests', ok: true },
+        ] },
+      ] },
+      { key: '25', dow: 'Mon', dom: '25', buckets: [
+        { label: 'Morning', items: [
+          { t: 'mid-morning', loose: true, ty: 'food', title: 'Breakfast, 2 Cats', meta: 'Cottage St · walk-in only', ok: false },
+        ] },
+        { label: 'Afternoon', items: [
+          { t: '1:30 PM', ty: 'sight', title: 'Cadillac Summit', meta: 'Vehicle reservation held', ok: true },
+        ] },
+        { label: 'Evening', items: [
+          { t: 'sunset', loose: true, ty: 'hike', title: 'Bar Island crossing', meta: 'Low tide 7:12 PM · 1.6 mi', ok: false },
+        ] },
+      ] },
+      { key: '26', dow: 'Tue', dom: '26', today: true, buckets: [
+        { label: 'Morning', items: [
+          { t: '6:40 AM', ty: 'sight', title: 'Sunrise, Cadillac', meta: 'Reservation held · 25 min drive', ok: true },
+          { t: 'mid-morning', loose: true, ty: 'food', title: "Breakfast, Jeannie's", meta: 'Cottage St · no booking', ok: false },
+        ] },
+        { label: 'Afternoon', items: [
+          { t: '11:00 AM', ty: 'hike', title: 'Beehive Trail', meta: '1.4 mi loop · iron rungs', ok: false },
+          { t: '1:00 PM', ty: 'sight', title: 'Sand Beach', meta: 'Ocean Path · 8 min from Beehive', ok: false },
+          { t: 'afternoon', loose: true, ty: 'hike', title: 'Jordan Pond Path', meta: '3.3 mi flat loop', ok: false },
+          { t: '3:30 PM', ty: 'food', title: 'Popovers', meta: 'Jordan Pond House · 4 guests', ok: true },
+        ] },
+        { label: 'Evening', items: [], gap: { title: 'Nothing this evening', sub: 'Bar Harbor kitchens stop seating around 9', chips: [
+          { icon: 'ph ph-fork-knife', label: 'Reel Pizza' },
+          { icon: 'ph ph-sailboat', label: 'Sunset sail' },
+          { icon: 'ph ph-buildings', label: 'Abbe Museum' },
+        ] } },
+      ] },
+      { key: '27', dow: 'Wed', dom: '27', move: 'out', buckets: [
+        { label: 'Morning', items: [
+          { t: 'mid-morning', loose: true, ty: 'food', title: 'Coffee, Choco-Latte', meta: 'Main St · last stop in town', ok: false },
+          { t: '11:00 AM', ty: 'stay', title: 'Check out', meta: 'Atlantic Oceanside', ok: true },
+        ] },
+      ], ctxBottom: { dir: 'later', stop: 'Southwest Harbor', count: 3, note: 'Check in, groceries, Thurston\u2019s at 6:30' } },
+    ],
+  },
+  {
+    id: 'sw', name: 'Southwest Harbor', range: 'Wed 27 – Sat 30', hue: 'plum',
+    base: { name: 'Kingsleigh Inn', detail: '3 nights · not yet confirmed', warn: true },
+    days: [
+      { key: '27b', dow: 'Wed', dom: '27', move: 'in',
+        ctxTop: { dir: 'earlier', stop: 'Bar Harbor', count: 2, note: 'Coffee, checked out at 11 AM' },
+        buckets: [
+          { label: 'Afternoon', items: [
+            { t: '3:00 PM', ty: 'stay', title: 'Check in', meta: 'Kingsleigh Inn · confirm by Mon', ok: false },
+            { t: 'afternoon', loose: true, ty: 'activity', title: "Groceries, Sawyer's", meta: 'Main St · 5 min walk', ok: false },
+          ] },
+          { label: 'Evening', items: [
+            { t: '6:30 PM', ty: 'food', title: "Thurston's Lobster Pound", meta: 'Bernard · 12 min drive · no res', ok: true },
+          ] },
+        ] },
+      { key: '28', dow: 'Thu', dom: '28', buckets: [
+        { label: 'Morning', items: [
+          { t: 'mid-morning', loose: true, ty: 'food', title: 'Little Notch Bakery', meta: 'Main St · pastries', ok: false },
+        ] },
+        { label: 'Afternoon', items: [
+          { t: '12:00 PM', ty: 'activity', title: 'Kayak tour, Manset', meta: '3 hrs · conf MDI-882 · 4 guests', ok: true },
+        ] },
+        { label: 'Evening', items: [
+          { t: 'evening', loose: true, ty: 'sight', title: 'Bass Harbor Head Light', meta: 'Sunset 7:41 PM · 15 min drive', ok: false },
+        ] },
+      ] },
+      { key: '29', dow: 'Fri', dom: '29', buckets: [
+        { label: 'Morning', items: [
+          { t: '9:00 AM', ty: 'hike', title: 'Acadia Mountain', meta: '2.5 mi · steep · 2 hrs', ok: false },
+        ] },
+        { label: 'Afternoon', items: [
+          { t: 'afternoon', loose: true, ty: 'sight', title: 'Somes Sound drive', meta: 'Sargeant Dr · 40 min loop', ok: false },
+        ] },
+        { label: 'Evening', items: [
+          { t: '7:30 PM', ty: 'food', title: 'Red Sky', meta: 'Clark Point Rd · 4 guests', ok: true },
+        ] },
+      ] },
+      { key: '30', dow: 'Sat', dom: '30', move: 'depart', buckets: [
+        { label: 'Morning', items: [
+          { t: '9:00 AM', ty: 'stay', title: 'Check out', meta: 'Kingsleigh Inn', ok: true },
+          { t: '10:15 AM', ty: 'car', title: 'Return rental', meta: 'Hertz · Hancock County', ok: true },
+        ] },
+        { label: 'Afternoon', items: [
+          { t: '12:30 PM', ty: 'flight', title: 'BHB → BOS', meta: 'Cape Air 2214 · 1h 5m', ok: true },
+        ] },
+      ] },
+    ],
+  },
+];
+
+const IMGH = {
+  barharbor: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=800&q=70',
+  swharbor: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=70',
+  coast: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=200&q=70',
+  shore: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=200&q=70',
+};
+
+const BANDS = [
+  { key: 'early', label: 'Early', span: '5–9 AM' },
+  { key: 'am', label: 'Morning', span: '9 – 12' },
+  { key: 'pm', label: 'Afternoon', span: '12 – 5' },
+  { key: 'eve', label: 'Evening', span: '5 – 9 PM' },
+  { key: 'late', label: 'Late', span: '9 PM +' },
+];
+
+const HY = [
+  { key: '23', dow: 'Sat', dom: '23', stop: 'Travel', hue: 'grey', base: null, label: 'Getting there',
+    bands: {
+      eve: [{ t: 'evening', loose: true, ty: 'car', title: 'Leave for SFO', meta: 'BART from 16th St · 40 min', ok: false }],
+      late: [{ t: '10:40 PM', ty: 'flight', title: 'SFO → BOS', meta: 'United 1712 · 5h 15m · seats 14A/B', ok: true, night: 'Lands 6:55 AM Sunday' }],
+    } },
+  { key: '24', dow: 'Sun', dom: '24', stop: 'Bar Harbor', hue: 'teal', base: { name: 'Atlantic Oceanside', detail: '3 nights · booked' }, label: 'Arrival',
+    carry: { time: '6:55 AM', title: 'Landed BOS · from last night’s flight', note: 'United 1712 · bags at carousel 4' },
+    bands: {
+      am: [
+        { t: '9:10 AM', ty: 'flight', title: 'BOS → BHB', meta: 'Cape Air 2211 · 1h 5m', ok: true },
+        { t: '10:15 AM', ty: 'car', title: 'Rental pickup', meta: 'Hertz · conf 4XK9', ok: true },
+      ],
+      pm: [{ t: '3:00 PM', ty: 'stay', title: 'Check in', meta: 'Atlantic Oceanside · 3 nights', ok: true }],
+      eve: [{ t: '7:00 PM', ty: 'food', title: 'Havana', meta: '318 Main St · 4 guests', ok: true }],
+    } },
+  { key: '25', dow: 'Mon', dom: '25', stop: 'Bar Harbor', hue: 'teal', base: { name: 'Atlantic Oceanside', detail: 'night 2 of 3' },
+    bands: {
+      am: [{ t: 'mid-morning', loose: true, ty: 'food', title: 'Breakfast, 2 Cats', meta: 'Cottage St · walk-in only', ok: false }],
+      pm: [{ t: '1:30 PM', ty: 'sight', title: 'Cadillac Summit', meta: 'Vehicle reservation held', ok: true }],
+      eve: [{ t: 'sunset', loose: true, ty: 'hike', title: 'Bar Island crossing', meta: 'Low tide 7:12 PM · 1.6 mi', ok: false }],
+    } },
+  { key: '26', dow: 'Tue', dom: '26', today: true, stop: 'Bar Harbor', hue: 'teal', base: { name: 'Atlantic Oceanside', detail: 'last night here' },
+    now: { band: 'pm', afterIndex: 0, label: '2:14 PM' },
+    bands: {
+      early: [{ t: '6:40 AM', ty: 'sight', title: 'Sunrise, Cadillac', meta: 'Reservation held · 25 min drive', ok: true }],
+      am: [{ t: 'mid-morning', loose: true, ty: 'food', title: 'Breakfast, Jeannie’s', meta: 'Cottage St · no booking', ok: false }],
+      pm: [
+        { t: '11:00 AM', ty: 'hike', title: 'Beehive Trail', meta: '1.4 mi loop · iron rungs', ok: false },
+        { t: 'afternoon', loose: true, ty: 'hike', title: 'Jordan Pond Path', meta: '3.3 mi flat loop', ok: false },
+        { t: '3:30 PM', ty: 'food', title: 'Popovers', meta: 'Jordan Pond House · 4 guests', ok: true },
+      ],
+      late: [{ t: '11:00 PM', ty: 'bar', title: 'Drinks, Nautilus', meta: 'Main St · 6 min walk back', ok: false, night: 'Home around 2 AM' }],
+    },
+    suggest: { eve: { title: 'Nothing this evening', sub: 'Bar Harbor kitchens stop seating around 9', chips: [
+      { icon: 'ph ph-fork-knife', label: 'Reel Pizza' },
+      { icon: 'ph ph-sailboat', label: 'Sunset sail' },
+      { icon: 'ph ph-buildings', label: 'Abbe Museum' },
+    ] } } },
+  { key: '27', dow: 'Wed', dom: '27', stop: 'Southwest Harbor', hue: 'plum',
+    base: { name: 'Kingsleigh Inn', detail: 'not yet confirmed', warn: true },
+    carry: { time: '~2 AM', title: 'Carried from Tuesday · Nautilus', note: 'Late night — nothing before 10' },
+    handoff: { from: 'Bar Harbor', to: 'Southwest Harbor', note: 'Checked out 11:00 AM · 28 min drive' },
+    handoffAfter: 'am',
+    bands: {
+      am: [
+        { t: 'mid-morning', loose: true, ty: 'food', title: 'Coffee, Choco-Latte', meta: 'Main St · last stop in town', ok: false },
+        { t: '11:00 AM', ty: 'stay', title: 'Check out', meta: 'Atlantic Oceanside', ok: true },
+      ],
+      pm: [
+        { t: '3:00 PM', ty: 'stay', title: 'Check in', meta: 'Kingsleigh Inn · confirm by Monday', ok: false },
+        { t: 'afternoon', loose: true, ty: 'activity', title: 'Groceries, Sawyer’s', meta: 'Main St · 5 min walk', ok: false },
+      ],
+      eve: [{ t: '6:30 PM', ty: 'food', title: 'Thurston’s Lobster Pound', meta: 'Bernard · 12 min drive · no res', ok: true }],
+    } },
+  { key: '28', dow: 'Thu', dom: '28', stop: 'Southwest Harbor', hue: 'plum', base: { name: 'Kingsleigh Inn', detail: 'night 2 of 3', warn: true },
+    bands: {
+      am: [{ t: 'mid-morning', loose: true, ty: 'food', title: 'Little Notch Bakery', meta: 'Main St · pastries', ok: false }],
+      pm: [{ t: '12:00 PM', ty: 'activity', title: 'Kayak tour, Manset', meta: '3 hrs · conf MDI-882 · 4 guests', ok: true }],
+      eve: [{ t: 'evening', loose: true, ty: 'sight', title: 'Bass Harbor Head Light', meta: 'Sunset 7:41 PM · 15 min drive', ok: false }],
+    },
+    suggest: { early: { title: 'Morning is wide open', sub: 'Kayak is not until noon', chips: [
+      { icon: 'ph ph-mountains', label: 'Ship Harbor' },
+      { icon: 'ph ph-coffee', label: 'Sips' },
+    ] } } },
+  { key: '29', dow: 'Fri', dom: '29', stop: 'Southwest Harbor', hue: 'plum', base: { name: 'Kingsleigh Inn', detail: 'last night here', warn: true },
+    bands: {
+      am: [{ t: '9:00 AM', ty: 'hike', title: 'Acadia Mountain', meta: '2.5 mi · steep · 2 hrs', ok: false }],
+      pm: [{ t: 'afternoon', loose: true, ty: 'sight', title: 'Somes Sound drive', meta: 'Sargeant Dr · 40 min loop', ok: false }],
+      eve: [{ t: '7:30 PM', ty: 'food', title: 'Red Sky', meta: 'Clark Point Rd · 4 guests', ok: true }],
+    } },
+  { key: '30', dow: 'Sat', dom: '30', stop: 'Travel', hue: 'grey', base: null, label: 'Flying home',
+    bands: {
+      am: [
+        { t: '9:00 AM', ty: 'stay', title: 'Check out', meta: 'Kingsleigh Inn', ok: true },
+        { t: '10:15 AM', ty: 'car', title: 'Return rental', meta: 'Hertz · Hancock County', ok: true },
+      ],
+      pm: [{ t: '12:30 PM', ty: 'flight', title: 'BHB → BOS → SFO', meta: 'Cape Air 2214 · 2h layover', ok: true }],
+    } },
+];
+
+const AV = { P: { n: 'Priya', c: '#2F6B47' }, J: { n: 'Jonas', c: '#8A5A2B' }, M: { n: 'Mara', c: '#465E7A' } };
+
+const WHO = {
+  'Beehive Trail': ['P', 'J'],
+  'Jordan Pond Path': ['P', 'J'],
+  'Drinks, Nautilus': ['M', 'P'],
+  'Kayak tour, Manset': ['P', 'J', 'M'],
+};
+
+const TRAVEL = {
+  'Sand Beach': { mins: '8 min walk', from: 'Beehive Trail' },
+  'Popovers': { mins: '14 min drive', from: 'Jordan Pond Path' },
+  'Thurston’s Lobster Pound': { mins: '12 min drive', from: 'Kingsleigh Inn' },
+  'Check out': { mins: '4 min walk', from: 'Choco-Latte' },
+};
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { theme: props.defaultTheme || 'light', openA: {}, openB: {}, selC: '27', allA: null, tHy: 0, selH: '27', tCol: 0, colDay: '26' };
+    this.hyRef = React.createRef();
+    this.colRef = React.createRef();
+  }
+
+  tapStopBar = () => {
+    const el = this.colRef.current;
+    if (!el) return;
+    if (this.state.heroPinned) { this.goTripTop(); return; }
+    const target = el.querySelector('[data-day="' + this.state.colDay + '"]');
+    if (target) this.lockedScroll(el, el.scrollTop + target.getBoundingClientRect().top - el.getBoundingClientRect().top - 336);
+    this.setState({ heroPinned: true });
+  };
+
+  goTripTop = () => {
+    const el = this.colRef.current;
+    if (el) this.lockedScroll(el, 0);
+    this.setState({ heroPinned: false, tCol: 0, colDay: '23' });
+  };
+
+  // Only a real gesture closes an open hero — layout settling after a jump does not.
+  closeOnIntent(dy) {
+    if (dy > 2 && this.state.heroPinned) this.setState({ heroPinned: false });
+  }
+
+  onWheelCol = (e) => this.closeOnIntent(e.deltaY);
+  onTouchStartCol = (e) => { this._touchY = e.touches[0].clientY; };
+  onTouchMoveCol = (e) => {
+    const y = e.touches[0].clientY;
+    this.closeOnIntent((this._touchY || y) - y);
+    this._touchY = y;
+  };
+
+  // A programmatic scroll must not feed the collapse rule — only the user's own
+  // scrolling opens or closes the hero.
+  lockedScroll(el, top) {
+    this._lock = (this._lock || 0) + 1;
+    el.scrollTop = Math.max(0, top);
+    this._lastST = el.scrollTop;
+    setTimeout(() => { this._lock = Math.max(0, this._lock - 1); this._lastST = el.scrollTop; }, 200);
+  }
+
+  // Day jumps move the list and nothing else: an open hero stays open over the
+  // day you land on, a collapsed one stays collapsed.
+  jumpToDay(key) {
+    const wasOpen = this.state.heroPinned || this.state.tCol < 0.5;
+    const token = (this._jump || 0) + 1;
+    this._jump = token;
+    this.setState({ colDay: key });
+    const settle = () => {
+      if (this._jump !== token) return;
+      const el = this.colRef.current;
+      if (!el) return;
+      const target = el.querySelector('[data-day="' + key + '"]');
+      if (!target) return;
+      this.lockedScroll(el, el.scrollTop + target.getBoundingClientRect().top - el.getBoundingClientRect().top - (wasOpen ? 336 : 172));
+      const atTop = el.scrollTop < 8;
+      this.setState({ heroPinned: wasOpen && !atTop, tCol: wasOpen ? (atTop ? 0 : this.state.tCol) : 1 });
+    };
+    requestAnimationFrame(() => { settle(); requestAnimationFrame(settle); });
+  }
+
+  buildColRail() {
+    return HY.map(d => {
+      const active = this.state.colDay === d.key;
+      return {
+        key: d.key, dow: d.dow, dom: d.dom,
+        bg: active ? 'var(--ink)' : 'transparent',
+        fg: active ? 'var(--surface)' : 'var(--ink)',
+        subFg: active ? 'rgba(255,255,255,.62)' : 'var(--ink3)',
+        ring: active ? '1.5px solid var(--ink)' : (d.today ? '1.5px solid var(--teal)' : '1.5px solid var(--line)'),
+        dotBg: this.hueVal(d.hue),
+        warnOp: d.suggest ? 1 : 0,
+        select: () => this.jumpToDay(d.key),
+      };
+    });
+  }
+
+  onScrollCol = (e) => {
+    const el = e.target;
+    const st = el.scrollTop;
+    const prev = this._lastST || 0;
+    this._lastST = st;
+    if (this._lock) return;
+    const y = Math.max(0, Math.min(140, st));
+    const next = { };
+    if (Math.abs(y - this.state.tCol * 140) > 0.5) next.tCol = y / 140;
+    const marks = el.querySelectorAll('[data-day]');
+    let active = this.state.colDay;
+    for (let i = 0; i < marks.length; i++) {
+      if (marks[i].getBoundingClientRect().top - el.getBoundingClientRect().top <= (this.state.heroPinned ? 374 : 210)) active = marks[i].getAttribute('data-day');
+    }
+    if (active !== this.state.colDay) next.colDay = active;
+    if (Object.keys(next).length) this.setState(next);
+  };
+
+  buildColumn() {
+    const nowIdx = HY.findIndex(d => d.today);
+    const showGaps = this.props.showGaps !== false;
+    let past = true;
+    return HY.map((d, di) => {
+      const isPastDay = di < nowIdx;
+      if (di > nowIdx) past = false;
+      let count = 0;
+      const bands = BANDS.map(b => {
+        const raw = d.bands[b.key] || [];
+        const items = raw.map((it, ii) => {
+          const o = this.hyItem(it);
+          o.op = (isPastDay || (d.today && past)) ? 0.45 : 1;
+          o.who = (WHO[it.title] || []).map(k => ({ initial: k, bg: AV[k].c }));
+          o.hasWho = !!(WHO[it.title] || []).length;
+          o.travel = TRAVEL[it.title] || null;
+          o.nowAfter = !!(d.today && d.now && d.now.band === b.key && d.now.afterIndex === ii);
+          if (o.nowAfter) past = false;
+          return o;
+        });
+        count += items.length;
+        const sug = showGaps && d.suggest && d.suggest[b.key] ? d.suggest[b.key] : null;
+        return {
+          label: b.label, span: b.span,
+          labelColor: sug ? 'var(--amber)' : (items.length ? 'var(--ink3)' : 'var(--ink4)'),
+          items, suggest: sug, empty: !items.length && !sug,
+          handoff: d.handoffAfter === b.key && d.handoff ? d.handoff : null,
+        };
+      });
+      return {
+        key: d.key, dow: d.dow, dom: d.dom,
+        isToday: !!d.today,
+        dayOp: isPastDay ? 0.55 : 1,
+        barBg: d.today ? 'var(--tealSoft)' : 'var(--surface)',
+        stopName: d.stop, stopDot: this.hueVal(d.hue),
+        countLabel: count === 1 ? '1 plan' : count + ' plans',
+        nowLabel: d.now ? d.now.label : null,
+        base: d.base ? {
+          name: d.base.name, detail: d.base.detail,
+          detailColor: d.base.warn ? 'var(--amber)' : 'var(--ink2)',
+          tileBg: this.typeVals('stay').bg, tileFg: this.typeVals('stay').color,
+        } : null,
+        carry: d.carry || null,
+        bands,
+      };
+    });
+  }
+
+  colStop() {
+    const d = HY.find(x => x.key === this.state.colDay) || HY[0];
+    const sw = d.stop === 'Southwest Harbor';
+    return {
+      name: d.stop === 'Travel' ? 'In transit' : d.stop,
+      sub: d.dow + ' ' + d.dom + (d.base ? ' · ' + d.base.detail : ''),
+      photo: sw ? IMGH.swharbor : IMGH.barharbor,
+      thumb: sw ? IMGH.shore : IMGH.coast,
+    };
+  }
+
+  onScrollHy = (e) => {
+    const y = Math.max(0, Math.min(140, e.target.scrollTop));
+    if (Math.abs(y - this.state.tHy * 140) > 0.5) this.setState({ tHy: y / 140 });
+  };
+
+  chromeAt(t) {
+    const cl = v => Math.max(0, Math.min(1, v));
+    return {
+      heroH: (272 - 164 * t) + 'px',
+      heroTitleOp: cl(1 - t * 2.4),
+      kickerOp: cl(1 - t * 1.8),
+      pinnedOp: cl((t - 0.45) * 2.6),
+      photoTf: 'scale(' + (1 + 0.1 * (1 - t)).toFixed(3) + ') translateY(' + (-8 * t).toFixed(1) + 'px)',
+      railMT: -(56 + 48 * t) + 'px',
+      railOp: cl(1 - t * 2.1),
+      railPE: t > 0.4 ? 'none' : 'auto',
+      ctaOp: cl(1 - t * 1.2),
+    };
+  }
+
+  hyType(ty) {
+    if (ty === 'bar') {
+      const c = this.dark() ? '#D9A48A' : '#8E4E2F';
+      return { icon: 'ph-fill ph-martini', color: c, bg: RGBA(c, this.dark() ? 0.2 : 0.1) };
+    }
+    return this.typeVals(ty);
+  }
+
+  hyItem(raw) {
+    const tv = this.hyType(raw.ty);
+    return {
+      time: raw.t,
+      timeFont: raw.loose ? "italic 400 10px/12px 'DM Sans'" : "500 10.5px/13px 'DM Mono',ui-monospace",
+      timeColor: raw.loose ? 'var(--ink3)' : 'var(--ink)',
+      icon: tv.icon, tileBg: tv.bg, tileFg: tv.color,
+      title: raw.title, meta: raw.meta,
+      okIcon: raw.ok ? 'ph-fill ph-check-circle' : 'ph ph-circle-dashed',
+      okColor: raw.ok ? 'var(--teal)' : 'var(--amber)',
+      dotSize: raw.loose ? '8px' : '10px',
+      dotBg: raw.loose ? 'var(--surface)' : tv.color,
+      dotBorder: raw.loose ? `1.5px solid ${tv.color}` : '0',
+      night: raw.night || null,
+    };
+  }
+
+  hueVal(hue) {
+    if (hue === 'teal') return 'var(--teal)';
+    if (hue === 'plum') return this.dark() ? '#C099C7' : '#7A4F82';
+    return 'var(--ink4)';
+  }
+
+  buildHyRail() {
+    return HY.map(d => {
+      const isSel = this.state.selH === d.key;
+      let holes = 0;
+      BANDS.forEach(b => { if (!(d.bands[b.key] || []).length) holes++; });
+      return {
+        key: d.key, dow: d.dow, dom: d.dom,
+        bg: isSel ? 'var(--ink)' : 'transparent',
+        fg: isSel ? 'var(--surface)' : 'var(--ink)',
+        subFg: isSel ? 'rgba(255,255,255,.62)' : 'var(--ink3)',
+        ring: isSel ? '1.5px solid var(--ink)' : (d.today ? '1.5px solid var(--tealLine)' : '1.5px solid var(--line)'),
+        dotBg: this.hueVal(d.hue),
+        warnOp: d.suggest ? 1 : 0,
+        select: () => this.setState({ selH: d.key }),
+      };
+    });
+  }
+
+  buildHyDay() {
+    const d = HY.find(x => x.key === this.state.selH) || HY[0];
+    const showGaps = this.props.showGaps !== false;
+    let count = 0;
+    const bands = BANDS.map(b => {
+      const items = (d.bands[b.key] || []).map(i => this.hyItem(i));
+      count += items.length;
+      const sug = showGaps && d.suggest && d.suggest[b.key] ? d.suggest[b.key] : null;
+      return {
+        label: b.label, span: b.span,
+        labelColor: sug ? 'var(--amber)' : (items.length ? 'var(--ink3)' : 'var(--ink4)'),
+        items, suggest: sug,
+        empty: !items.length && !sug,
+        handoff: d.handoffAfter === b.key && d.handoff ? d.handoff : null,
+      };
+    });
+    return {
+      dow: d.dow, dom: d.dom, label: d.label || null,
+      isToday: !!d.today,
+      countLabel: count === 1 ? '1 plan' : count + ' plans',
+      stopName: d.stop, stopDot: this.hueVal(d.hue),
+      base: d.base ? {
+        name: d.base.name, detail: d.base.detail,
+        detailColor: d.base.warn ? 'var(--amber)' : 'var(--ink2)',
+        tileBg: this.typeVals('stay').bg, tileFg: this.typeVals('stay').color,
+      } : null,
+      carry: d.carry || null,
+      bands,
+    };
+  }
+
+  hyStops() {
+    const seen = {}; const out = [];
+    HY.forEach(d => {
+      if (d.stop === 'Travel' || seen[d.stop]) return;
+      seen[d.stop] = 1;
+      out.push({
+        name: d.stop,
+        dates: d.stop === 'Bar Harbor' ? 'Aug 24 – 27 · 3 nights' : 'Aug 27 – 30 · 3 nights',
+        kicker: d.stop === 'Bar Harbor' ? 'Stop 1 of 2' : 'Stop 2 of 2',
+        thumb: d.stop === 'Bar Harbor' ? IMGH.coast : IMGH.shore,
+        status: d.stop === 'Bar Harbor' ? 'Checked in' : 'Stay not confirmed',
+        statusIcon: d.stop === 'Bar Harbor' ? 'ph-fill ph-key' : 'ph-fill ph-warning',
+        statusColor: d.stop === 'Bar Harbor' ? 'var(--teal)' : 'var(--amber)',
+        count: d.stop === 'Bar Harbor' ? '11 plans' : '7 plans',
+        ring: d.stop === 'Bar Harbor' ? 'var(--tealLine)' : 'var(--line)',
+        dim: d.stop === 'Bar Harbor' ? 1 : 0.72,
+        kickerColor: d.stop === 'Bar Harbor' ? 'var(--teal)' : 'var(--ink3)',
+        dotW: d.stop === 'Bar Harbor' ? '16px' : '5px',
+        dotColor: d.stop === 'Bar Harbor' ? 'var(--ink)' : 'var(--ink4)',
+      });
+    });
+    return out;
+  }
+
+  phase() { return this.props.phase || 'during'; }
+  dark() { return this.state.theme === 'dark'; }
+
+  defaultOpen(key) {
+    if (this.state.allA !== null) return this.state.allA;
+    if (this.phase() === 'before') return true;
+    return key === '26' || key === '27' || key === '27b';
+  }
+
+  isOpen(variant, key) {
+    const map = variant === 'A' ? this.state.openA : this.state.openB;
+    return key in map ? map[key] : this.defaultOpen(key);
+  }
+
+  toggle(variant, key) {
+    const field = variant === 'A' ? 'openA' : 'openB';
+    this.setState(s => ({ [field]: Object.assign({}, s[field], { [key]: !this.isOpen(variant, key) }) }));
+  }
+
+  typeVals(ty) {
+    const t = TYPES[ty] || TYPES.activity;
+    const c = this.dark() ? t.d : t.l;
+    return { icon: t.icon, color: c, bg: RGBA(c, this.dark() ? 0.20 : 0.10) };
+  }
+
+  item(raw) {
+    const tv = this.typeVals(raw.ty);
+    return {
+      time: raw.t,
+      timeFont: raw.loose
+        ? "italic 400 10px/12px 'DM Sans'"
+        : "500 10.5px/13px 'DM Mono',ui-monospace",
+      timeColor: raw.loose ? 'var(--ink3)' : 'var(--ink)',
+      icon: tv.icon, tileBg: tv.bg, tileFg: tv.color,
+      title: raw.title, meta: raw.meta,
+      okIcon: raw.ok ? 'ph-fill ph-check-circle' : 'ph ph-circle-dashed',
+      okColor: raw.ok ? 'var(--teal)' : 'var(--amber)',
+      dotSize: raw.loose ? '8px' : '10px',
+      dotBg: raw.loose ? 'var(--surface)' : tv.color,
+      dotBorder: raw.loose ? `1.5px solid ${tv.color}` : '0',
+    };
+  }
+
+  dayMeta(d) {
+    let n = 0; const seen = []; let warn = null;
+    (d.buckets || []).forEach(b => {
+      n += b.items.length;
+      b.items.forEach(i => { if (seen.indexOf(i.ty) < 0) seen.push(i.ty); });
+      if (b.gap) warn = b.label.toLowerCase() + ' open';
+    });
+    const glyphs = seen.slice(0, 5).map(ty => { const v = this.typeVals(ty); return { icon: v.icon, bg: v.bg, fg: v.color }; });
+    const moves = {
+      out:    { label: 'Moving on', icon: 'ph ph-arrow-up-right', color: 'var(--ink2)' },
+      in:     { label: 'Arriving',  icon: 'ph ph-arrow-down-right', color: 'var(--ink2)' },
+      depart: { label: 'Flying home', icon: 'ph ph-airplane-takeoff', color: 'var(--ink2)' },
+    };
+    const mv = d.move ? moves[d.move] : null;
+    return {
+      count: n,
+      countLabel: n === 1 ? '1 item' : n + ' items',
+      glyphs, warnLabel: warn,
+      moveLabel: mv ? mv.label : null, moveIcon: mv ? mv.icon : null, moveColor: mv ? mv.color : null,
+      plainLabel: d.plainLabel || null,
+      dowColor: d.today ? 'var(--teal)' : 'var(--ink3)',
+      domColor: d.today ? 'var(--teal)' : 'var(--ink)',
+      nodeColor: d.today ? 'var(--teal)' : 'var(--ink4)',
+      isToday: !!d.today,
+    };
+  }
+
+  ctx(c) {
+    if (!c) return null;
+    return {
+      icon: c.dir === 'later' ? 'ph ph-arrow-bend-down-right' : 'ph ph-arrow-bend-up-left',
+      title: (c.dir === 'later' ? 'Later today in ' : 'Earlier today in ') + c.stop + ' · ' + c.count + ' items',
+      note: c.note,
+    };
+  }
+
+  buckets(d) {
+    const showGaps = this.props.showGaps !== false;
+    return (d.buckets || []).map(b => ({
+      label: b.label,
+      labelColor: b.gap && showGaps ? 'var(--amber)' : 'var(--ink3)',
+      items: b.items.map(i => this.item(i)),
+      gap: b.gap && showGaps ? b.gap : null,
+    })).filter(b => b.items.length || b.gap);
+  }
+
+  buildStops() {
+    return TRIP.map(st => {
+      const baseHue = this.typeVals('stay');
+      return {
+        name: st.name, range: st.range,
+        dot: st.hue === 'teal' ? 'var(--teal)' : (this.dark() ? '#C099C7' : '#7A4F82'),
+        base: {
+          name: st.base.name, detail: st.base.detail,
+          detailColor: st.base.warn ? 'var(--amber)' : 'var(--ink2)',
+          tileBg: baseHue.bg, tileFg: baseHue.color,
+        },
+        days: st.days.map(d => {
+          const m = this.dayMeta(d);
+          return Object.assign({}, m, {
+            dow: d.dow, dom: d.dom,
+            buckets: this.buckets(d),
+            ctxTop: this.ctx(d.ctxTop), ctxBottom: this.ctx(d.ctxBottom),
+            openA: this.isOpen('A', d.key), openB: this.isOpen('B', d.key),
+            closedB: !this.isOpen('B', d.key),
+            chevA: this.isOpen('A', d.key) ? 'ph ph-caret-up' : 'ph ph-caret-down',
+            chevB: this.isOpen('B', d.key) ? 'ph ph-caret-up' : 'ph ph-caret-down',
+            toggleA: () => this.toggle('A', d.key),
+            toggleB: () => this.toggle('B', d.key),
+          });
+        }),
+      };
+    });
+  }
+
+  buildRailC() {
+    const out = []; const byDom = {};
+    const plum = this.dark() ? '#C099C7' : '#7A4F82';
+    const hueOf = st => (st.hue === 'teal' ? 'var(--teal)' : plum);
+    TRIP.forEach(st => st.days.forEach(d => {
+      if (byDom[d.dom]) {
+        const prev = byDom[d.dom];
+        prev.dotBg = `linear-gradient(90deg, ${prev.dotBg} 0 50%, ${hueOf(st)} 50% 100%)`;
+        prev.dotW = '16px';
+        return;
+      }
+      const isSel = this.state.selC === d.key;
+      const chip = {
+        key: d.key, dow: d.dow, dom: d.dom,
+        bg: isSel ? 'var(--ink)' : 'var(--chip)',
+        fg: isSel ? 'var(--surface)' : 'var(--ink)',
+        subFg: isSel ? 'rgba(255,255,255,.62)' : 'var(--ink3)',
+        ring: d.today && !isSel ? '1.5px solid var(--tealLine)' : '1.5px solid transparent',
+        dotBg: hueOf(st), dotW: '8px',
+        select: () => this.setState({ selC: d.key }),
+      };
+      byDom[d.dom] = chip;
+      out.push(chip);
+    }));
+    return out;
+  }
+
+  buildDayC() {
+    let stop = null, day = null;
+    TRIP.forEach(st => st.days.forEach(d => { if (d.key === this.state.selC) { stop = st; day = d; } }));
+    if (!day) return null;
+    const m = this.dayMeta(day);
+    const plum = this.dark() ? '#C099C7' : '#7A4F82';
+    const baseHue = this.typeVals('stay');
+    const other = day.ctxTop || day.ctxBottom;
+    return Object.assign({}, m, {
+      dow: day.dow, dom: day.dom,
+      stopName: stop.name,
+      stopDot: stop.hue === 'teal' ? 'var(--teal)' : plum,
+      baseName: stop.base.name,
+      baseDetail: stop.base.detail,
+      baseDetailColor: stop.base.warn ? 'var(--amber)' : 'var(--ink2)',
+      baseTileBg: baseHue.bg, baseTileFg: baseHue.color,
+      buckets: this.buckets(day),
+      ctx: this.ctx(other),
+      ctxAbove: !!day.ctxTop,
+      ctxBelow: !!day.ctxBottom,
+      handoff: other ? { from: day.ctxTop ? other.stop : stop.name, to: day.ctxTop ? stop.name : other.stop } : null,
+    });
+  }
+
+  stepC(delta) {
+    const rail = this.buildRailC();
+    const i = rail.findIndex(r => r.key === this.state.selC);
+    const next = rail[Math.min(rail.length - 1, Math.max(0, i + delta))];
+    if (next) this.setState({ selC: next.key });
+  }
+
+  neighbourC(delta) {
+    const rail = this.buildRailC();
+    const i = rail.findIndex(r => r.key === this.state.selC);
+    const n = rail[i + delta];
+    return n ? n.dow + ' ' + n.dom : (delta < 0 ? 'Trip start' : 'Trip end');
+  }
+
+  renderVals() {
+    const allOpen = this.state.allA === true || (this.state.allA === null && this.phase() === 'before');
+    return {
+      theme: this.state.theme,
+      stops: this.buildStops(),
+      railC: this.buildRailC(),
+      dayC: this.buildDayC(),
+      prevC: () => this.stepC(-1),
+      nextC: () => this.stepC(1),
+      prevLabelC: this.neighbourC(-1),
+      nextLabelC: this.neighbourC(1),
+      toasts: [
+        { icon: 'ph-fill ph-trash', kind: 'Destructive', iconColor: '#F0A9BC', text: 'Removed Thurston’s', action: 'Undo',
+          bg: 'rgba(74,26,38,.82)', line: 'rgba(240,169,188,.3)', fg: 'rgba(255,247,249,.96)', actionColor: '#F0A9BC' },
+        { icon: 'ph-fill ph-arrows-down-up', kind: 'Reversible', iconColor: 'rgba(255,255,255,.62)', text: 'Popovers moved to 5:30 PM', action: 'Undo',
+          bg: 'rgba(30,27,25,.78)', line: 'rgba(255,255,255,.14)', fg: 'rgba(255,255,255,.95)', actionColor: '#7FD9C6' },
+        { icon: 'ph-fill ph-check-circle', kind: 'Positive', iconColor: '#8FE3D0', text: 'Kingsleigh Inn confirmed', action: 'View',
+          bg: 'rgba(12,54,47,.82)', line: 'rgba(143,227,208,.28)', fg: 'rgba(244,255,252,.96)', actionColor: '#8FE3D0' },
+        { icon: 'ph-fill ph-bookmark-simple', kind: 'Positive', iconColor: '#8FE3D0', text: 'Saved Ship Harbor to Thursday', action: null,
+          bg: 'rgba(12,54,47,.82)', line: 'rgba(143,227,208,.28)', fg: 'rgba(244,255,252,.96)', actionColor: '#8FE3D0' },
+        { icon: 'ph-fill ph-cloud-slash', kind: 'Needs you', iconColor: '#F3D6A4', text: 'Offline — changes will sync', action: null,
+          bg: 'rgba(74,50,15,.84)', line: 'rgba(243,214,164,.3)', fg: 'rgba(255,250,240,.96)', actionColor: '#F3D6A4' },
+      ],
+      colRail: this.buildColRail(),
+      colRef: this.colRef,
+      onWheelCol: this.onWheelCol,
+      onTouchStartCol: this.onTouchStartCol,
+      onTouchMoveCol: this.onTouchMoveCol,
+      mapApps: [
+        { icon: 'ph-fill ph-apple-logo', label: 'Apple Maps', sub: 'Installed', on: true },
+        { icon: 'ph-fill ph-map-trifold', label: 'Google Maps', sub: 'Installed', on: false },
+        { icon: 'ph-fill ph-navigation-arrow', label: 'Waze', sub: 'Installed', on: false },
+      ],
+      col: this.chromeAt(this.state.heroPinned ? 0 : this.state.tCol),
+      railTop: this.state.heroPinned ? '272px' : '108px',
+      dayBarTop: this.state.heroPinned ? '336px' : '172px',
+      tapStopBar: this.tapStopBar,
+      goTripTop: this.goTripTop,
+      pillOp: this.state.colDay === '26' ? 0 : 1,
+      pillPE: this.state.colDay === '26' ? 'none' : 'auto',
+      goToday: () => this.jumpToDay('26'),
+      returnIcon: this.state.heroPinned ? 'ph ph-arrow-line-up' : 'ph ph-arrow-up',
+      staticRail: HY.map(d => {
+        const active = d.key === '29';
+        return {
+          dow: d.dow, dom: d.dom,
+          bg: active ? 'var(--ink)' : 'transparent',
+          fg: active ? 'var(--surface)' : 'var(--ink)',
+          subFg: active ? 'rgba(255,255,255,.62)' : 'var(--ink3)',
+          ring: active ? '1.5px solid var(--ink)' : (d.today ? '1.5px solid var(--teal)' : '1.5px solid var(--line)'),
+          dotBg: this.hueVal(d.hue),
+          tint: d.key === '23' ? 'rgba(183,156,224,.28)' : 'transparent',
+        };
+      }),
+      targets: [
+        { c: '#7FD9C6', where: 'Sliver, left', title: 'Trip name · top of trip', body: 'The one target that always goes all the way up. 222 × 44, filling the sliver’s full height and clear of the notch.' },
+        { c: '#E0A244', where: 'Stop bar, body', title: 'Stop bar body · top of this day, then the trip', body: 'First tap lifts the day you are reading to the stack and opens the hero over it. Second tap goes to Saturday. The arrow glyph changes between the two.' },
+        { c: '#F0A9BC', where: 'Stop bar, right edge', title: 'Stop dots · switch stop', body: '44 × 44 of its own, so the bar can mean two things without either being a guess.' },
+        { c: '#B79CE0', where: 'Calendar rail', title: 'Rail chip · jump to that day', body: '38 wide but 52 tall with the row padding. Horizontal drag scrolls the rail rather than the list.' },
+        { c: '#8C8C8C', where: 'The whole 206px', title: 'Anywhere on the chrome · drag to scroll', body: 'Vertical drag scrolls the list underneath. Direction-locked, so a sideways drag still belongs to the rail.' },
+      ],
+      buildNotes: [
+        'Quick return fires on velocity, not distance: an upward flick over roughly 1.2 px/ms restores the full 272 hero, stop cards and CTA in one 320 ms ease-out. A slow drag does nothing.',
+        'Stage one of the stop-bar tap is a 280 ms scroll to the current day’s offset with the hero forced open; the hero releases on the next 12 px of user scroll.',
+        'The pill crossfades in over 180 ms once the active day is more than one day from today, and is hidden — not disabled — when you are on today.',
+        'Tapping Jernie in the tab bar while already on Jernie is the fifth route and goes straight to the top of the trip, no intermediate stage.',
+      ],
+      tabs: [
+        { icon: 'ph-fill ph-path', label: 'Jernie', color: 'var(--teal)', tap: this.goTripTop, cursor: 'pointer' },
+        { icon: 'ph ph-magnifying-glass', label: 'Explore', color: 'var(--ink3)', tap: null, cursor: 'default' },
+        { icon: 'ph ph-map-trifold', label: 'Map', color: 'var(--ink3)', tap: null, cursor: 'default' },
+        { icon: 'ph ph-calendar-dots', label: 'Agenda', color: 'var(--ink3)', tap: null, cursor: 'default' },
+        { icon: 'ph ph-user', label: 'Profile', color: 'var(--ink3)', tap: null, cursor: 'default' },
+      ],
+      decisions4: [
+        { tag: 'Two-stage return', tagColor: '#8FD3C4', body: 'Tap the stop bar once: the day you are reading rises to the top and the hero opens above it, so Friday stays under your thumb. Tap again and you are at the top of the trip.' },
+        { tag: 'Flick out', tagColor: '#8FD3C4', body: 'A decisive upward flick brings the whole thing back — 272 hero, stop cards, CTA. A slow drag back over the morning does not, so re-reading a day never makes the header grow.' },
+        { tag: 'Today', tagColor: '#8FD3C4', body: 'One pill, bottom centre, only once you are more than a day from now. It lands today on the day bar rather than scrolling to the top, because on the road that is the thing people actually want.' },
+        { tag: 'Tap targets', tagColor: '#E0A244', body: 'The stop bar body returns; the dots keep their own target for switching stops; the trip name in the sliver goes straight to the top. Tapping Jernie in the tab bar does too.' },
+      ],
+      column: this.buildColumn(),
+      colStop: this.colStop(),
+      onScrollCol: this.onScrollCol,
+      decisions3: [
+        { tag: 'One column', tagColor: '#8FD3C4', body: 'No day switcher. The spine runs from Saturday to Saturday and the rail follows your position instead of driving it — tap a chip to jump, and it lands the day header on the stack.' },
+        { tag: 'Day boundary', tagColor: '#8FD3C4', body: 'Each day header pins under the rail and is pushed off by the next, so the boundary always resolves to the same place. The last 60 px of a day carries resistance before it releases.' },
+        { tag: 'Now', tagColor: '#8FD3C4', body: 'A teal hairline at 2:14 PM with the time in the gutter. Everything above it — and every earlier day — sits at 45% so the eye lands on what is next.' },
+        { tag: 'Crossing a stop', tagColor: '#8FD3C4', body: 'The hero photo crossfades to Southwest Harbor as Wednesday’s handoff node passes under the pinned stack, and the stop bar text swaps with it.' },
+        { tag: 'Chrome budget', tagColor: '#E0A244', body: 'Trip sliver 46, stop bar 62, calendar rail 64, day bar 34 — 206 px held. The big date numeral is gone: with a pinned day bar it was saying the same thing twice.' },
+        { tag: 'Rail state', tagColor: '#8FD3C4', body: 'Today keeps a teal outline for the whole trip. The solid fill is wherever you are scrolled to, so the two never compete — and tapping a chip lands that day on the day bar.' },
+        { tag: 'Z-order', tagColor: '#8FD3C4', body: 'Day bars and the calendar rail both pass behind the hero photo on the way up, so nothing white ever crosses the image.' },
+      ],
+      hyRail: this.buildHyRail(),
+      hyDay: this.buildHyDay(),
+      hyStops: this.hyStops(),
+      hyPhoto: this.state.selH === '27' || this.state.selH === '28' || this.state.selH === '29' ? IMGH.swharbor : IMGH.barharbor,
+      hyThumb: this.state.selH === '27' || this.state.selH === '28' || this.state.selH === '29' ? IMGH.shore : IMGH.coast,
+      onScrollHy: this.onScrollHy,
+      chromeStudy: [
+        { t: 0, tag: 'scrollTop 0', note: 'Hero at 272 with the trip name large. Stop cards sit on top of the photo, CTA below them, calendar rail still in flow.', budget: '0 px of chrome held' },
+        { t: 0.55, tag: 'scrollTop 77', note: 'Hero shedding height and re-cropping, big title out, sliver title fading in. Stop cards and CTA on their way out.', budget: 'transitional' },
+        { t: 1, tag: 'scrollTop 140 +', note: 'A 46 px photo sliver keeps the trip name, the stop bar sits under it, the calendar rail pins beneath that.', budget: '160 px held · 19% of the screen' },
+      ].map(s => Object.assign({}, s, this.chromeAt(s.t), {
+        crop: s.t === 0 ? '490px' : (s.t === 1 ? '176px' : '372px'),
+        railDisplay: s.t === 1 ? 'none' : 'block',
+        ctaDisplay: s.t === 1 ? 'none' : 'block',
+        tagBg: s.t === 1 ? 'var(--teal)' : 'var(--ink)',
+      })),
+      summaryA: this.phase() === 'before' ? 'Planning · 7 days' : 'On the road · day 3 of 7',
+      allLabelA: allOpen ? 'Collapse all' : 'Expand all',
+      allIconA: allOpen ? 'ph ph-arrows-in-line-vertical' : 'ph ph-arrows-out-line-vertical',
+      toggleAllA: () => this.setState({ allA: !allOpen, openA: {} }),
+      decisions2: [
+        { tag: 'Overnight items', tagColor: '#8FD3C4', body: 'An 11 PM bar sits in LATE on Tuesday with a dashed moon tail; Wednesday opens with a dimmed carry-over node. One item, two appearances — never two rows.' },
+        { tag: 'Red-eye travel', tagColor: '#8FD3C4', body: 'Same mechanism. The flight is a row on Saturday night and an arrival node on Sunday morning, because arrival is the thing you act on.' },
+        { tag: 'Stop handoff', tagColor: '#8FD3C4', body: 'The 27th is one day, one entry in the rail. The stop change is a node on the spine between MORNING and AFTERNOON, where it actually happens.' },
+        { tag: 'Chrome budget', tagColor: '#E0A244', body: 'Collapsed the hero keeps a 46 px photo sliver carrying the trip name, then the stop bar, then the pinned rail: 160 px. The CTA card rides at the top and scrolls away — the same gap reappears inside the day.' },
+        { tag: 'Numerals', tagColor: '#8FD3C4', body: 'Dates moved off Fraunces onto DM Sans at tight tracking. The system reserves Fraunces for the name of a thing, so a date was never its job.' },
+      ],
+      decisions: [
+        { tag: 'Transition day', tagColor: '#8FD3C4', body: 'The 27th exists once. Each stop shows its own half live and the other half as a collapsed context strip you can open in place.' },
+        { tag: 'Pinned', tagColor: '#8FD3C4', body: 'The base sleeps in a strip pinned under the header for its whole stop, and appears as a real row only on check-in and check-out days.' },
+        { tag: 'Loose times', tagColor: '#8FD3C4', body: 'Morning / Afternoon / Evening are the containers. A hard time sets in mono; a loose one in italic, same column.' },
+        { tag: 'Empty buckets', tagColor: '#E0A244', body: 'A dashed placeholder appears only for today and tomorrow, so a 21-day trip does not read as 60 holes.' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>
