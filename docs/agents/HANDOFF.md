@@ -49,17 +49,22 @@ the next piece and remains a separate, unwritten plan.
    - Foursquare returns 0 results for the two-word query "lobster pound" while "lobster"
      returns 10 and "thurstons lobster pound" returns 3, at the same anchor and radius.
      Not our bug, but the search box will feel broken on some plausible phrasings.
-2. **Nothing since `980896f` has been deployed.** `dev` now carries the quota refusal
-   `details`, `route_cache`'s `expiresAt`, Node 22 and firebase-functions 7.3.2. Deploy is
-   the only real test of the runtime bump.
-3. **Console steps nobody has run yet**, in order:
-   - `npx firebase deploy --only functions,firestore:rules --project jernie-native-dev`
-   - `gcloud firestore fields ttls update expiresAt --collection-group=route_cache --enable-ttl`
-     — without it nothing is ever deleted; `expiresAt` exists only so the policy has a
-     Timestamp to read.
-   - `npx firebase functions:delete geocodeCity --project jernie-native-dev` (still deployed
-     and orphaned — absence from the bundle is not deletion), then deprovision
-     `GOOGLE_PLACES_API_KEY`.
+2. **Deployed and confirmed 2026-08-27.** `functions:list` shows exactly `enrichPlaces`,
+   `resolveQuery`, `routeBetween`, `searchStops`, all `nodejs22` — so the runtime bump is
+   live. `geocodeCity` is **gone**; an earlier note here claimed `firebase deploy` would not
+   remove it and that was wrong.
+3. **Still owed, and neither leaves a trace in the repo when skipped:**
+   - **The `route_cache` TTL policy is NOT enabled.** `gcloud` is not installed on this box,
+     so use Google Cloud console → Firestore → Time-to-live, field `expiresAt`, collection
+     group `route_cache`. Until then nothing is ever deleted — `expiresAt` exists purely to
+     give the policy a Timestamp to read.
+   - **`GOOGLE_PLACES_API_KEY` is still live** (Secret Manager version 1, ENABLED) with zero
+     references in the source. Two layers: destroy the Secret Manager copy with
+     `npx firebase functions:secrets:destroy`, and separately deal with the underlying
+     Google Cloud API key, which the secret's deletion does NOT touch. Safest first move is
+     disabling the Geocoding API for the project — it cannot hit the wrong credential,
+     whereas deleting a key from Credentials can: Firebase auto-creates iOS/Android/Browser
+     keys there and deleting one of those breaks the app.
 4. `FIREBASE_TOKEN` auth is deprecated; a service account is the durable replacement.
 5. App Check is deployed but NOT enforcing (`ENFORCE_APP_CHECK=false`). Rollout order is in
    `functions/src/appCheck.ts`. Debug token is registered.
