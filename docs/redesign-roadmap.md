@@ -14,7 +14,8 @@ with hand-rolled code limited to the register in
 
 | | |
 | --- | --- |
-| Branch | `feat/design-system` |
+| Branch | `feat/session-7-explore` |
+| Release | **v0.7.0 packages Sessions 0–7 plus the itinerary timeline.** The remaining device-only checks stay open below rather than being implied complete by the tag. |
 | Session 0 — import | **Done, verified.** 50 skill files (6 tokens · 36 component · 6 reference · SKILL · README) + 4 canvases + `support.js`.  |
 | Session 1 — audit | **Done.** `docs/redesign-plan.md`. Taxonomy decided (§8); date-semantics "conflict" disproved — two units, both correct. |
 | Session 2a — fonts | **Done, gate green.** Six static faces; variable fonts deleted; weight now comes from the family name. Awaiting device check at `jernie://dev/fonts`. |

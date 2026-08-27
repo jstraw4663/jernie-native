@@ -56,6 +56,7 @@ import ProfileTab from '@/app/(trips)/[tripId]/(tabs)/profile';
 import { useTripContext } from '@/src/contexts/TripContext';
 import { useTripAdmin } from '@/src/hooks/useTripAdmin';
 import { confirmDelete } from '@/src/utils/confirmDelete';
+import { MILESTONE } from '@/src/version';
 
 const mockShare = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' } as never);
 
@@ -624,7 +625,7 @@ describe('Profile — version row', () => {
   it('shows the build label in every build, not only __DEV__', () => {
     // It is what a tester reads off this screen to say which code they were running, so
     // hiding it in release builds hid it from the only people who needed it.
-    expect(texts(renderScreen())).toContain('auth-durability');
+    expect(texts(renderScreen())).toContain(MILESTONE);
   });
 
   it('offers a way into the feedback sheet', () => {

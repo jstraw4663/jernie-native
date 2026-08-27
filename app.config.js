@@ -21,7 +21,7 @@ module.exports = {
   expo: {
     name: "Jernie",
     slug: "jernie-native",
-    version: "0.6.1",
+    version: "0.7.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",

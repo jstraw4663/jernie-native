@@ -1,42 +1,45 @@
 # Agent handoff
 
 Updated: 2026-08-27
-Agent: Codex, closing itinerary drag and drop
+Agent: Codex, publishing v0.7.0
 Branch: `feat/session-7-explore`
-HEAD before uncommitted finalization: `a07b1af`
+Release base: `v0.6.1-profile`; feature closeout: `b4e7c12`
 
 ## Current objective
 
-- Tasks 6.1–6.6 are complete. Same-day and cross-day drag, post-drop settlement, and the
-  reduced-bounce tuning are confirmed smooth on device.
-- The remaining itinerary work is the broader Task 7 accessibility/theme/performance device pass.
+- Publish the verified redesign-through-Explore work as GitHub release `v0.7.0`.
+- The release includes Sessions 0–7 and itinerary Tasks 1–6.6. Broader itinerary Task 7 and
+  the Explore device pass remain explicitly open after the release.
 
 ## Verified state
 
-- Tasks 6.2–6.5 keep the active Pan stable and render cross-day lift/insertion feedback in the
-  pointer-transparent screen overlay without per-frame React updates.
-- Drop settlement does not change the scroll offset or collapse state. A 420 ms post-release
-  window enables Reanimated layout transitions on persisted rows, time bands, and day wrappers.
-- Motion uses the registered settle spring: damping 47 at the same 280 stiffness reduces the
-  visible rebound while retaining a small spring response. Reanimated defaults layout transitions
-  to the system reduced-motion preference, and another drag stays disabled until geometry is stable.
-- Loose moves begin the settle with their optimistic update; confirmed/locked moves begin it only
-  after Move it is approved. Failure rollback takes the same smooth path.
-- Same-day/cross-day transforms, confirmation, edge autoscroll, and atomic writers are unchanged.
-- Coverage proves the transition is absent during normal drag and enabled/locked during settle.
-- Gate: focused suites 34/34; `npm test` 91 suites / 1,084 tests / two snapshots, exit 0;
-  `npx tsc --noEmit` exit 0; cold SDK 56 iOS export to `/tmp/verify` passes at 2,624 modules;
-  `git diff --check` clean. Existing Jest `act()` warnings are unrelated.
-- No dependency, schema, security-rule, native-config, or rebuild requirement was added.
+- Home, Agenda, the unified detail sheet, Explore, and the continuous itinerary timeline are
+  implemented on the shared design system.
+- Itinerary supports conditional Details/Navigate swipe actions, Apple Maps/Google Maps/Waze,
+  delayed-commit removal with Undo, and atomic same-day/cross-day drag with edge autoscroll.
+- Same-day/cross-day drag, smooth post-drop geometry close, and reduced-bounce tuning are
+  device-confirmed.
+- Feature closeout gate on `b4e7c12`: `npm test` 91 suites / 1,084 tests / two snapshots,
+  exit 0; `npx tsc --noEmit` exit 0; cold SDK 56 iOS export passed at 2,624 modules;
+  `git diff --check` clean.
+- Release prep changes Expo `version` to `0.7.0`, changes the build label to
+  `redesign-through-explore`, and adds `docs/releases/v0.7.0.md`. No dependency was added by
+  release prep.
+- Final release-candidate gate: focused Profile suite 45/45; `npm test` 91 suites / 1,084 tests /
+  two snapshots, exit 0; `npx tsc --noEmit` exit 0; cold SDK 56 iOS export passed at 2,624
+  modules; `git diff --check` clean.
 
-## Working tree
+## Working tree and recovery
 
-- Production: `TimelineDay.tsx`, its itinerary barrel, and Jernie tab drag/settle wiring.
-- Focused tests, timeline plan, custom-component register, roadmap, and this handoff are updated.
-- `.vscode/` and `docs/add-flow-data-layer.md` remain untouched and untracked.
+- User-owned untracked `.github/`, `.vscode/`, `docs/add-flow-data-layer.md`,
+  `docs/agents/WORKFLOW.md`, and the GitHub workflow plan remain excluded.
+- The retired itinerary worktree is archived at stash `d536e75`; its branch remains at
+  `06aa6ff`.
 
 ## Remaining work and concerns
 
-1. Destination-day-wide tint and a completely empty remote Unscheduled target remain deferred.
-2. Non-gesture alternatives, themes, large type, reduced-motion device review, locked rollback,
-   long-trip performance, `StopMorph`, and Explore device review remain.
+1. Run Explore's device pass and itinerary Task 7: both themes, Dynamic Type, VoiceOver and
+   non-gesture paths, reduced motion, locked-write rollback, and long-trip performance.
+2. Destination-day-wide tint and a fully empty remote Unscheduled target remain deferred.
+3. Google Maps/Waze discovery needs a fresh native development build; OTA cannot add the
+   query schemes included in this release.
