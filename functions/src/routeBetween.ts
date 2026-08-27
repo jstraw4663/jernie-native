@@ -27,15 +27,18 @@ import type { LatLon } from './providers/types';
  * to be permitted, raise this to Infinity and the cache becomes permanent; nothing else
  * has to change.
  *
- * NOTE — this governs whether an entry is SERVED, not whether it is stored. Stale docs are
- * overwritten on next use but never deleted, so the collection grows without bound. Cap it
- * with a Firestore TTL policy on the field, which needs no application code:
+ * This governs whether an entry is SERVED. Whether it is DELETED is a separate field —
+ * `expiresAt`, written as a Date and therefore stored as a Timestamp, which is the only
+ * thing a Firestore TTL policy can act on. A policy pointed at `cachedAt` would silently
+ * never fire, because epoch milliseconds is a number.
  *
- *   gcloud firestore fields ttls update cachedAt \
+ * The policy itself is one command, once per collection, and needs no application code:
+ *
+ *   gcloud firestore fields ttls update expiresAt \
  *     --collection-group=route_cache --enable-ttl
  *
- * Firestore expects a timestamp for TTL; `cachedAt` is written as epoch milliseconds, so
- * either switch it to a Timestamp or expire the collection on a schedule instead.
+ * Until it is enabled, stale documents are still overwritten on next use but never removed,
+ * so the collection grows with every route nobody asks about twice.
  */
 const CACHE_RETENTION_DAYS = 30;
 
@@ -128,9 +131,16 @@ export const routeBetween = onCall(
       throw new HttpsError('internal', 'Route lookup failed.');
     }
 
+    // Deletion is set from the same instant as the freshness stamp, so a document stops
+    // being SERVED and becomes eligible for removal on the same clock. A no-route record
+    // gets one too: it cost a billed call to establish and is cached precisely so it is not
+    // re-queried, but it should not outlive a real one.
+    const cachedAt = Date.now();
+    const expiresAt = new Date(cachedAt + RETENTION_MS);
+
     const record: CachedRoute = route
-      ? { found: true, minutes: route.minutes, miles: route.miles, cachedAt: Date.now() }
-      : { found: false, cachedAt: Date.now() };
+      ? { found: true, minutes: route.minutes, miles: route.miles, cachedAt, expiresAt }
+      : { found: false, cachedAt, expiresAt };
 
     // The lookup is already paid for by this point, so a failed write must not fail the
     // request — the client would retry and be billed for the same route twice.

@@ -77,7 +77,25 @@ export interface CachedRoute {
   found: boolean;
   minutes?: number;
   miles?: number;
+  /**
+   * Epoch milliseconds, read by the CLIENT to decide whether an entry may still be served
+   * (src/domain/routeCache.ts). A number, not a Timestamp, because that check is plain
+   * arithmetic on the client and does not want a Firestore type.
+   */
   cachedAt: number;
+  /**
+   * When Firestore may DELETE this document — a different question from whether it may be
+   * served, which is what `cachedAt` answers.
+   *
+   * A `Date`, which the Admin SDK stores as a Timestamp, because a TTL policy can only act
+   * on a timestamp field. That is why this exists at all rather than pointing the policy at
+   * `cachedAt`: epoch millis is a number, and a policy on it silently never fires.
+   *
+   * Enable it once per collection, no application code:
+   *   gcloud firestore fields ttls update expiresAt \
+   *     --collection-group=route_cache --enable-ttl
+   */
+  expiresAt: Date;
 }
 
 export async function getRoute(cacheKey: string): Promise<CachedRoute | undefined> {

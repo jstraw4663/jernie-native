@@ -68,7 +68,7 @@ describe('routeBetween', () => {
 
   describe('cache', () => {
     test('a cached route is returned without calling Mapbox at all', async () => {
-      mockGetRoute.mockResolvedValue({ found: true, minutes: 200, miles: 177.7, cachedAt: Date.now() });
+      mockGetRoute.mockResolvedValue({ found: true, minutes: 200, miles: 177.7, cachedAt: Date.now() , expiresAt: new Date()});
 
       const result = await routeBetween.run(req(VALID));
 
@@ -92,12 +92,15 @@ describe('routeBetween', () => {
       const [, stored] = mockWriteRoute.mock.calls[0];
       // Whatever else changes, the cache document must never grow a geometry, a legs
       // array, or a raw response — that is the whole basis for retaining it at all.
-      expect(Object.keys(stored).sort()).toEqual(['cachedAt', 'found', 'miles', 'minutes']);
+      // Deliberately an exact key set rather than a "does not contain geometry" check: a
+      // new key has to be added here consciously, which is what makes this catch the
+      // accidental spread of a provider response rather than only the fields we thought of.
+      expect(Object.keys(stored).sort()).toEqual(['cachedAt', 'expiresAt', 'found', 'miles', 'minutes']);
     });
 
     test('an entry past the retention window is refetched, not served', async () => {
       const ancient = Date.now() - 400 * 24 * 60 * 60 * 1000;
-      mockGetRoute.mockResolvedValue({ found: true, minutes: 1, miles: 1, cachedAt: ancient });
+      mockGetRoute.mockResolvedValue({ found: true, minutes: 1, miles: 1, cachedAt: ancient , expiresAt: new Date()});
 
       const result = await routeBetween.run(req(VALID));
 
@@ -107,7 +110,7 @@ describe('routeBetween', () => {
 
     test('an entry inside the retention window is served as-is', async () => {
       const recent = Date.now() - 5 * 24 * 60 * 60 * 1000;
-      mockGetRoute.mockResolvedValue({ found: true, minutes: 1, miles: 1, cachedAt: recent });
+      mockGetRoute.mockResolvedValue({ found: true, minutes: 1, miles: 1, cachedAt: recent , expiresAt: new Date()});
 
       const result = await routeBetween.run(req(VALID));
 
@@ -136,7 +139,7 @@ describe('routeBetween', () => {
     });
 
     test('a cached not-found is served without calling Mapbox', async () => {
-      mockGetRoute.mockResolvedValue({ found: false, cachedAt: Date.now() });
+      mockGetRoute.mockResolvedValue({ found: false, cachedAt: Date.now() , expiresAt: new Date()});
 
       const result = await routeBetween.run(req(VALID));
 
@@ -182,6 +185,50 @@ describe('routeBetween', () => {
 
   // The meter counts BILLED PROVIDER CALLS, not invocations. Charging on entry would bill
   // a user for the cache hits that are the entire point of having a cache.
+  // Firestore's TTL policy deletes a document when a named field's TIMESTAMP passes. It
+  // cannot read epoch milliseconds, so `cachedAt` — which the client uses for its own
+  // freshness check and which must stay a number — can never be the TTL field. Without a
+  // second field the collection grows for ever: stale entries are overwritten on next use
+  // but nothing ever removes a route nobody asks for again.
+  describe('expiry', () => {
+    test('writes a Date the TTL policy can act on', async () => {
+      await routeBetween.run(req(VALID));
+
+      const [, record] = mockWriteRoute.mock.calls[0] as [string, { expiresAt: unknown }];
+      expect(record.expiresAt).toBeInstanceOf(Date);
+    });
+
+    test('expires a cached route after the retention window it is served for', async () => {
+      const before = Date.now();
+      await routeBetween.run(req(VALID));
+      const after = Date.now();
+
+      const [, record] = mockWriteRoute.mock.calls[0] as [string, { expiresAt: Date }];
+      const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+      expect(record.expiresAt.getTime()).toBeGreaterThanOrEqual(before + thirtyDays);
+      expect(record.expiresAt.getTime()).toBeLessThanOrEqual(after + thirtyDays);
+    });
+
+    // A "no drivable route" record is cached precisely so it is not re-queried for ever,
+    // and it costs a billed call to establish. It expires on the same clock as a hit.
+    test('a no-route record expires too, rather than being kept for ever', async () => {
+      mockRoute.mockResolvedValue(null);
+
+      await routeBetween.run(req(VALID));
+
+      const [, record] = mockWriteRoute.mock.calls[0] as [string, { found: boolean; expiresAt: unknown }];
+      expect(record.found).toBe(false);
+      expect(record.expiresAt).toBeInstanceOf(Date);
+    });
+
+    test('still writes cachedAt as a number, which is what the client reads', async () => {
+      await routeBetween.run(req(VALID));
+
+      const [, record] = mockWriteRoute.mock.calls[0] as [string, { cachedAt: unknown }];
+      expect(typeof record.cachedAt).toBe('number');
+    });
+  });
+
   describe('quota', () => {
     test('charges one unit before calling Mapbox', async () => {
       await routeBetween.run(req(VALID));
@@ -190,7 +237,7 @@ describe('routeBetween', () => {
     });
 
     test('a route served from cache costs no quota at all', async () => {
-      mockGetRoute.mockResolvedValue({ found: true, minutes: 200, miles: 177.7, cachedAt: Date.now() });
+      mockGetRoute.mockResolvedValue({ found: true, minutes: 200, miles: 177.7, cachedAt: Date.now() , expiresAt: new Date()});
 
       await routeBetween.run(req(VALID));
 
