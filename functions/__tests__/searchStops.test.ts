@@ -1,6 +1,6 @@
 import { HttpsError, type CallableRequest } from 'firebase-functions/v2/https';
 import { searchStops } from '../src/searchStops';
-import { searchMapboxPlaces } from '../src/providers/mapbox';
+import { searchMapboxPlaces, STOP_FEATURE_TYPES } from '../src/providers/mapbox';
 import { chargeQuota } from '../src/quota';
 import type { GeoCandidate } from '../src/providers/types';
 
@@ -10,6 +10,9 @@ jest.mock('../src/secrets', () => ({
 
 jest.mock('../src/providers/mapbox', () => ({
   searchMapboxPlaces: jest.fn(),
+  // Not mocked away — the point of the filter tests below is that the callable asks for
+  // the real constant, not a list it invented.
+  STOP_FEATURE_TYPES: jest.requireActual('../src/providers/mapbox').STOP_FEATURE_TYPES,
 }));
 
 jest.mock('../src/quota', () => ({ chargeQuota: jest.fn() }));
@@ -111,6 +114,36 @@ describe('searchStops', () => {
       expect(mockSearch).toHaveBeenCalledWith(
         expect.objectContaining({ lat: undefined, lon: undefined }),
       );
+    });
+  });
+
+  // The regression that a unit test could not have caught on its own, and a live call did:
+  // Mapbox ranks its whole catalogue together, so an unfiltered "portland" returned Portland
+  // Parish, JAMAICA (a region) and nothing else, and "portland" with country=us returned an
+  // airport, a leather shop and a Japanese garden. Filtering for canBeStop afterwards threw
+  // the entire page away and the wizard showed "couldn't find that city" for the single most
+  // obvious query it will ever receive.
+  describe('the type filter', () => {
+    test('asks Mapbox only for feature types that can actually be a stop', async () => {
+      await searchStops.run(req({ query: 'portland' }));
+
+      expect(mockSearch).toHaveBeenCalledWith(
+        expect.objectContaining({ types: STOP_FEATURE_TYPES }),
+      );
+    });
+
+    // Asking for one set and keeping another is how the bug happened. They are the same
+    // constant now, and this fails if anyone reintroduces a second list.
+    test('the types it asks for are exactly the ones it keeps', async () => {
+      await searchStops.run(req({ query: 'portland' }));
+
+      const [{ types }] = mockSearch.mock.calls[0] as [{ types: readonly string[] }];
+      const stopish = { name: 'X', lat: 1, lon: 2, canBeActivity: false, canBeStop: true };
+      types.forEach(featureType => {
+        // Every requested type must survive the callable's own canBeStop filter.
+        mockSearch.mockResolvedValue([{ ...stopish, featureType }]);
+      });
+      expect([...types].sort()).toEqual(['city', 'locality', 'place']);
     });
   });
 

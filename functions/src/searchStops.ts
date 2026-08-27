@@ -20,7 +20,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { MAPBOX_ACCESS_TOKEN } from './secrets';
 import { ENFORCE_APP_CHECK } from './appCheck';
-import { searchMapboxPlaces } from './providers/mapbox';
+import { searchMapboxPlaces, STOP_FEATURE_TYPES } from './providers/mapbox';
 import { chargeQuota } from './quota';
 
 /**
@@ -119,7 +119,18 @@ export const searchStops = onCall(
 
     let candidates;
     try {
-      candidates = await searchMapboxPlaces({ query, lat, lon, limit: RESULT_LIMIT });
+      candidates = await searchMapboxPlaces({
+        query,
+        lat,
+        lon,
+        limit: RESULT_LIMIT,
+        // Asked for, not merely filtered for afterwards. Mapbox ranks its whole catalogue
+        // together, so an unfiltered town name competes with airports, streets and shops
+        // that share it — "portland" alone returns Portland Parish, Jamaica, and nothing
+        // else. Discarding those below would discard the page they arrived on, and the
+        // caller would see "no such city" for the most obvious query there is.
+        types: STOP_FEATURE_TYPES,
+      });
     } catch (err) {
       // Never collapsed into an empty list: "nothing by that name" prompts a spelling
       // check, "the lookup failed" prompts a retry, and the sheet renders them

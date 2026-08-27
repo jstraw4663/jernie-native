@@ -117,6 +117,15 @@ export type GeoSearch = (input: {
   lat?: number;
   lon?: number;
   limit?: number;
+  /**
+   * Provider feature types to restrict the search to. Omit for everything.
+   *
+   * This is not an optimisation, it is correctness: a provider ranks its whole catalogue
+   * together, so an unfiltered search for a town competes with airports, streets and shops
+   * of the same name and frequently loses. Discarding those after the fact discards the
+   * page they arrived on, and the caller sees nothing rather than the town it asked for.
+   */
+  types?: readonly string[];
 }) => Promise<GeoCandidate[]>;
 
 // ── Routing ──────────────────────────────────────────────────────────────────

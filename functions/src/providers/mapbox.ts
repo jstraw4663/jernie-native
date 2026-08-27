@@ -31,7 +31,13 @@ const DEFAULT_LIMIT = 8;
 // Feature types that can serve as a trip stop — somewhere you sleep, in other words.
 // `region` (a whole state) and `address`/`street` (too granular to be a stop) are
 // deliberately excluded; a stop is a town-sized thing.
-const STOP_FEATURE_TYPES = new Set(['place', 'locality', 'city']);
+//
+// Exported because callers must ASK for these types, not merely filter for them
+// afterwards — see the `types` note on GeoSearch. One list, used for both, so the request
+// and the classification cannot disagree.
+export const STOP_FEATURE_TYPES = ['place', 'locality', 'city'] as const;
+
+const STOP_FEATURE_TYPE_SET = new Set<string>(STOP_FEATURE_TYPES);
 
 const ACTIVITY_FEATURE_TYPES = new Set(['poi']);
 
@@ -122,7 +128,7 @@ function mapFeature(feature: MapboxFeature): GeoCandidate | null {
     region: feature.properties?.context?.region?.region_code,
     distanceMetres: typeof distance === 'number' ? distance : undefined,
     featureType,
-    canBeStop: STOP_FEATURE_TYPES.has(featureType),
+    canBeStop: STOP_FEATURE_TYPE_SET.has(featureType),
     canBeActivity: ACTIVITY_FEATURE_TYPES.has(featureType),
   };
 }
@@ -141,6 +147,7 @@ export const searchMapboxPlaces: GeoSearch = async (input) => {
   const data = (await mapboxGet('/search/searchbox/v1/forward', {
     q: input.query,
     ...(anchored ? { proximity: `${input.lon},${input.lat}` } : {}),
+    ...(input.types?.length ? { types: input.types.join(',') } : {}),
     limit: String(input.limit ?? DEFAULT_LIMIT),
   })) as MapboxForwardResponse;
 

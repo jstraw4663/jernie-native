@@ -1,4 +1,4 @@
-import { searchMapboxPlaces } from '../../src/providers/mapbox';
+import { searchMapboxPlaces, STOP_FEATURE_TYPES } from '../../src/providers/mapbox';
 
 jest.mock('../../src/secrets', () => ({
   MAPBOX_ACCESS_TOKEN: { value: jest.fn(() => 'sk.test-mapbox-token') },
@@ -90,6 +90,35 @@ describe('searchMapboxPlaces', () => {
 
     const [url] = mockFetch.mock.calls[0] as [string];
     expect(new URL(url).searchParams.has('proximity')).toBe(false);
+  });
+
+  // Found live on 2026-08-27, and it made stop search return nothing at all: /forward
+  // ranks POIs and regions above towns, so a bare "portland" came back as Portland Parish,
+  // JAMAICA (feature_type "region") and country=us came back as an airport, a leather shop
+  // and a Japanese garden. Filtering that after the fact throws away the whole page. The
+  // filter has to travel with the request.
+  test('asks Mapbox for only the feature types the caller wants', async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ features: [] }));
+
+    await searchMapboxPlaces({ query: 'portland', types: ['place', 'locality'] });
+
+    const [url] = mockFetch.mock.calls[0] as [string];
+    expect(new URL(url).searchParams.get('types')).toBe('place,locality');
+  });
+
+  test('omits the types filter entirely when the caller wants everything', async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ features: [] }));
+
+    await searchMapboxPlaces({ query: 'portland' });
+
+    const [url] = mockFetch.mock.calls[0] as [string];
+    expect(new URL(url).searchParams.has('types')).toBe(false);
+  });
+
+  // The set that decides `canBeStop` is the same set the request asks for, so the two
+  // cannot drift into fetching one thing and keeping another.
+  test('exports the stop types so a caller cannot ask for a different set than it keeps', () => {
+    expect([...STOP_FEATURE_TYPES].sort()).toEqual(['city', 'locality', 'place']);
   });
 
   test('omits proximity when only one half of the anchor is supplied', async () => {
