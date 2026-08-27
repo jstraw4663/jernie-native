@@ -21,18 +21,29 @@
 //     to match — this file is the translation boundary between FSQ's current field name
 //     and our stored one.
 //
-// IMPORTANT — flagged prominently for pre-production-deploy review (see report): the plan
-// brief assumed `hours`/`rating`/`price` were "Places Pro" tier fields. Live research found
-// they are actually "Places Premium" fields (a tier above Pro, billed separately per
-// Foursquare's current docs) — `fsq_place_id`/`name`/`location`/`tel`/`website` are Pro;
-// `hours`/`rating`/`price`/`stats` (rating count) are Premium. Since `ProviderMatch`
-// requires these fields, this adapter requests them anyway via the `fields=` query
-// param — there is no way to satisfy the task's data contract otherwise — but this may
-// carry cost implications the plan didn't account for. Confirm current Foursquare billing
-// for Premium-tier fields before production deploy.
+// BILLING — confirmed 2026-08-26 against foursquare.com/pricing and
+// docs.foursquare.com/data-products/docs/places-pro-and-premium. This settles the
+// "confirm before production deploy" note this file used to carry.
+//
+//   Pro fields:     fsq_place_id, name, latitude, longitude, location, tel, website,
+//                   categories, date_closed
+//   Premium fields: hours, rating, price, photos, tips, description, popularity
+//                   (`stats`/rating count is not named in the docs, but it travels with
+//                   `rating` and should be treated as Premium)
+//
+// The tier is per CALL and binary: ONE Premium field makes the entire call Premium. Field
+// COUNT does not affect price at all, so trimming Pro fields saves nothing — only the
+// NUMBER of calls matters. There is no tier below Pro.
+//
+//   Pro:     first 500 calls/month free, then $15.00 CPM  (1.5¢ per call)
+//   Premium: no free allowance whatever, $18.75 CPM       (1.875¢ from the first call)
+//
+// Premium is therefore only ~25% dearer per call, but forfeits the entire free tier.
+// That is why the enrichment path below bills Premium — it needs hours/rating/price and
+// there is no way around that — while the search path further down is kept strictly Pro.
 
 import { FOURSQUARE_API_KEY } from '../secrets';
-import type { ProviderAdapter, ProviderMatch } from './types';
+import type { ProviderAdapter, ProviderCandidate, ProviderMatch, ProviderSearch } from './types';
 
 const BASE_URL = 'https://places-api.foursquare.com';
 
@@ -90,6 +101,10 @@ interface FsqStats {
   total_ratings?: number;
 }
 
+interface FsqCategory {
+  name?: string;
+}
+
 interface FsqPlace {
   fsq_place_id: string;
   name: string;
@@ -102,6 +117,7 @@ interface FsqPlace {
   rating?: number;
   price?: number;
   stats?: FsqStats;
+  categories?: FsqCategory[];
 }
 
 interface FsqSearchResponse {
@@ -208,4 +224,68 @@ export const fetchFoursquareMatch: ProviderAdapter = async (input) => {
   }
 
   return mapPlace(top);
+};
+
+// ── Free-text search ─────────────────────────────────────────────────────────
+//
+// A different contract from fetchFoursquareMatch above, on purpose. Matching VERIFIES a
+// place whose coordinates we already hold: it searches a tight 400m and rejects anything
+// beyond 200m, because a wrong match silently corrupts an existing record. Searching RANKS
+// places the user has no coordinates for, so both of those behaviours would be bugs here.
+
+// Wide enough to cover everywhere a traveller would drive to from the stop they are
+// planning — a restaurant in Bernard is a legitimate result for someone based in Bar
+// Harbor, 12km away.
+const SEARCH_AREA_RADIUS_METERS = 20000;
+
+const SEARCH_RESULT_LIMIT = 10;
+
+// PRO-TIER FIELDS ONLY — and this constant is the single place that decision lives.
+//
+// Adding any Premium field here (hours, rating, price, stats) flips EVERY search call to
+// Premium: ~25% more per call, and the loss of the 500 free Pro calls a month. Search
+// fires on every debounced keystroke burst, so it is the highest-volume call in the app
+// and the worst place to spend the free allowance.
+//
+// That is the entire cost of the switch, and it is a one-line change should the design's
+// "Seafood · 4.6 · Bernard, ME" rating on the result ROW turn out to be worth it. Today
+// it is not: the rating arrives later from place_enrichment when the detail sheet opens.
+//
+// A test asserts the Premium fields are absent, so this cannot drift by accident.
+const SEARCH_RESPONSE_FIELDS = [
+  'fsq_place_id',
+  'name',
+  'latitude',
+  'longitude',
+  'location',
+  'categories',
+].join(',');
+
+function mapCandidate(place: FsqPlace): ProviderCandidate {
+  return {
+    fsq_id: place.fsq_place_id,
+    name: place.name,
+    lat: place.latitude,
+    lon: place.longitude,
+    address: place.location?.formatted_address || place.location?.address || undefined,
+    category: place.categories?.[0]?.name,
+  };
+}
+
+export const searchFoursquarePlaces: ProviderSearch = async (input) => {
+  const data = (await fsqGet('/places/search', {
+    query: input.query,
+    ll: `${input.lat},${input.lon}`,
+    radius: String(input.radiusMeters ?? SEARCH_AREA_RADIUS_METERS),
+    limit: String(input.limit ?? SEARCH_RESULT_LIMIT),
+    sort: 'RELEVANCE',
+    fields: SEARCH_RESPONSE_FIELDS,
+  })) as FsqSearchResponse;
+
+  // Same guard as the matcher's: a result without usable coordinates cannot be placed on
+  // a map, distance-sorted, or turned into an enrichment cache key, so it is dropped
+  // rather than emitted with NaN coordinates that fail somewhere further downstream.
+  return (data.results ?? [])
+    .filter(place => typeof place.latitude === 'number' && typeof place.longitude === 'number')
+    .map(mapCandidate);
 };

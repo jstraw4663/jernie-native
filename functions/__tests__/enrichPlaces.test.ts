@@ -2,6 +2,7 @@ import { HttpsError, type CallableRequest } from 'firebase-functions/v2/https';
 import { fetchFoursquareMatch } from '../src/providers/foursquare';
 import { getEnrichment, writeEnrichment } from '../src/repository';
 import { enrichPlaces } from '../src/enrichPlaces';
+import { chargeQuota } from '../src/quota';
 import type { ProviderMatch } from '../src/providers/types';
 import type { PlaceEnrichment } from '../src/types';
 
@@ -14,9 +15,12 @@ jest.mock('../src/repository', () => ({
   writeEnrichment: jest.fn(),
 }));
 
+jest.mock('../src/quota', () => ({ chargeQuota: jest.fn() }));
+
 const mockFetch = fetchFoursquareMatch as jest.MockedFunction<typeof fetchFoursquareMatch>;
 const mockGetEnrichment = getEnrichment as jest.MockedFunction<typeof getEnrichment>;
 const mockWriteEnrichment = writeEnrichment as jest.MockedFunction<typeof writeEnrichment>;
+const mockCharge = chargeQuota as jest.MockedFunction<typeof chargeQuota>;
 
 function req(
   data: unknown,
@@ -53,6 +57,8 @@ describe('enrichPlaces', () => {
     jest.clearAllMocks();
     mockGetEnrichment.mockResolvedValue(undefined);
     mockWriteEnrichment.mockResolvedValue(undefined);
+    mockCharge.mockReset();
+    mockCharge.mockResolvedValue(undefined);
   });
 
   describe('per-settlement handling', () => {
@@ -283,6 +289,44 @@ describe('enrichPlaces', () => {
           error: 'Firestore unavailable',
         },
       ]);
+    });
+  });
+
+  // One invocation makes one Foursquare call PER PLACE, so metering invocations would
+  // under-count by up to 30x and leave the batch path effectively unmetered.
+  describe('quota', () => {
+    beforeEach(() => {
+      mockFetch.mockResolvedValue(null);
+    });
+
+    test('charges one unit per place in the batch', async () => {
+      await enrichPlaces.run(req([place('a'), place('b'), place('c')]));
+
+      expect(mockCharge).toHaveBeenCalledWith('test-uid', 'enrichPlaces', 3);
+    });
+
+    test('charges once for the whole batch, not once per chunk', async () => {
+      await enrichPlaces.run(req([place('a'), place('b'), place('c'), place('d'), place('e')]));
+
+      expect(mockCharge).toHaveBeenCalledTimes(1);
+    });
+
+    test('a refused charge means no place is ever looked up', async () => {
+      mockCharge.mockRejectedValue(new HttpsError('resource-exhausted', 'over quota'));
+
+      await expect(enrichPlaces.run(req([place('a')]))).rejects.toMatchObject({
+        code: 'resource-exhausted',
+      });
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    // An oversized batch is rejected before it is charged: the caller made a mistake and
+    // nothing was going to be spent on it.
+    test('an oversized batch is rejected without charging anything', async () => {
+      const oversized = Array.from({ length: 31 }, (_, i) => place(`k${i}`));
+
+      await expect(enrichPlaces.run(req(oversized))).rejects.toMatchObject({ code: 'invalid-argument' });
+      expect(mockCharge).not.toHaveBeenCalled();
     });
   });
 });

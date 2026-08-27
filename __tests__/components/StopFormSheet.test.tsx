@@ -42,9 +42,10 @@ jest.mock('@/src/utils/confirmDelete', () => ({
   confirmDelete: (...args: unknown[]) => mockConfirmDelete(...args),
 }));
 
-const mockGeocodeCity = jest.fn();
-jest.mock('@/src/lib/geocodeClient', () => ({
-  geocodeCity: (...args: unknown[]) => mockGeocodeCity(...args),
+const mockSearchStops = jest.fn();
+jest.mock('@/src/lib/stopSearchClient', () => ({
+  searchStops: (...args: unknown[]) => mockSearchStops(...args),
+  MIN_STOP_QUERY_LENGTH: 3,
 }));
 
 import React from 'react';
@@ -101,7 +102,7 @@ beforeEach(() => {
 
 describe('StopFormSheet — add mode (no editingStop)', () => {
   test('submitting a new stop calls addStop, not updateStop', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    mockSearchStops.mockResolvedValue([{ name: 'Portland', region: 'ME', lat: 43.66, lon: -70.26 }]);
     const onSaved = jest.fn();
     const tree = renderSheet(<StopFormSheet tripId="trip-1" onSaved={onSaved} />);
 

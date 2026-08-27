@@ -105,6 +105,10 @@ export interface Place {
   price?: string;
   difficulty?: string;
   duration?: string;
+  // Added for the add flow's "Do" card ("Starts · Duration · Permit · Meet at").
+  // `duration` above already served hikes, so only these two are new.
+  permit?: string;      // "Required" — e.g. an Acadia vehicle reservation
+  meetAt?: string;      // tour/guide meeting point, distinct from the place's own address
   distance?: string;
   photoUrl?: string;
   subcategory?: string;

@@ -7,6 +7,13 @@ import { AuthProvider } from '@/src/contexts/AuthContext';
 import { ConnectivityProvider } from '@/src/contexts/ConnectivityContext';
 import { SheetProvider } from '@/src/contexts/SheetContext';
 import { maybeSeedDevData } from '@/src/lib/devSeed';
+import { initAppCheck } from '@/src/lib/appCheck';
+
+// Module scope, not an effect: React runs child effects BEFORE parent effects, so
+// AuthProvider's initAuth() would otherwise fire before this did. App Check has to be
+// starting before anything makes a Firebase request, or the first calls of a session go
+// out unattested.
+initAppCheck();
 
 SplashScreen.preventAutoHideAsync();
 

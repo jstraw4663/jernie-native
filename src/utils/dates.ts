@@ -38,3 +38,17 @@ export function formatShortDate(iso: string): string {
   const d = new Date(iso + 'T12:00:00');
   return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
+
+/**
+ * Adds (or, with a negative delta, subtracts) whole days from a YYYY-MM-DD date.
+ *
+ * Local-date arithmetic, never UTC — `new Date('2026-08-10')` is UTC midnight, which reads
+ * as the previous day west of Greenwich and would shift every generated date by one. The
+ * Date constructor normalises out-of-range day numbers, so month, year and leap-day
+ * rollover all fall out for free.
+ */
+export function addDaysISO(dateIso: string, days: number): string {
+  const [y, m, d] = dateIso.split('-').map(Number);
+  const next = new Date(y, m - 1, d + days);
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
+}

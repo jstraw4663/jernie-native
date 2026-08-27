@@ -25,7 +25,7 @@ interface AdminPanelProps {
  *
  * Every card here reflects something the app genuinely does. The migration spec also asks for
  * a filterable realtime API call console; that needs request instrumentation around
- * enrichmentClient/geocodeClient which does not exist, and the queue and cache cards already
+ * enrichmentClient/stopSearchClient which does not exist, and the queue and cache cards already
  * answer the question it was meant to answer.
  */
 export function AdminPanel({ visible, onClose, cachedAt, fromCache, places, enrichment }: AdminPanelProps) {

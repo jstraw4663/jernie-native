@@ -14,9 +14,11 @@
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { FOURSQUARE_API_KEY } from './secrets';
+import { ENFORCE_APP_CHECK } from './appCheck';
 import { fetchFoursquareMatch } from './providers/foursquare';
 import { getEnrichment, writeEnrichment } from './repository';
 import { mergeEnrichment } from './merge';
+import { chargeQuota } from './quota';
 import type { PlaceEnrichment } from './types';
 
 // Global Constraint #10 (chunk-size alignment): the client (Task 7) chunks a trip's
@@ -90,7 +92,11 @@ export const enrichPlaces = onCall(
   // CONCURRENCY (4) chunks over up to MAX_BATCH_SIZE (30) places, each provider call
   // capped at REQUEST_TIMEOUT_MS (8s): worst case ceil(30/4) * 8s = 64s, which left
   // zero margin against the previous 60s timeout. 120s gives real headroom.
-  { secrets: [FOURSQUARE_API_KEY], timeoutSeconds: 120 },
+  {
+    secrets: [FOURSQUARE_API_KEY],
+    enforceAppCheck: ENFORCE_APP_CHECK,
+    timeoutSeconds: 120,
+  },
   async (request): Promise<EnrichPlacesResponse> => {
     // This triggers real, paid Foursquare API calls and writes client-supplied data
     // verbatim into a globally-shared, globally-readable Firestore collection — must
@@ -100,6 +106,14 @@ export const enrichPlaces = onCall(
     }
 
     const places = validatePlaces(request.data);
+
+    // ONE UNIT PER PLACE, not one per invocation. This callable makes a separate billed
+    // Foursquare call for every entry in the batch, so metering invocations would
+    // under-count by up to MAX_BATCH_SIZE and leave the most expensive path here
+    // effectively unmetered. Charged once, up front, for the whole batch — after
+    // validatePlaces, so a caller's oversized batch is rejected rather than billed.
+    await chargeQuota(request.auth.uid, 'enrichPlaces', places.length);
+
     const results: Record<string, PlaceEnrichment> = {};
 
     // Manual concurrency-limited batching loop (no new dependency): slice the input

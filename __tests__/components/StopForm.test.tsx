@@ -1,11 +1,12 @@
-const mockGeocodeCity = jest.fn();
-jest.mock('@/src/lib/geocodeClient', () => ({
-  geocodeCity: (...args: unknown[]) => mockGeocodeCity(...args),
+const mockSearchStops = jest.fn();
+jest.mock('@/src/lib/stopSearchClient', () => ({
+  searchStops: (...args: unknown[]) => mockSearchStops(...args),
+  MIN_STOP_QUERY_LENGTH: 3,
 }));
 
 // react-native-calendars' real internals (recyclerlistview, gesture handling, its own
 // header/day-cell layout) aren't what this file is testing — mock it down to a thin
-// stand-in that forwards props, same philosophy as the geocodeCity mock above. This keeps
+// stand-in that forwards props, same philosophy as the searchStops mock above. This keeps
 // the suite a true unit test of StopForm's own day-press → date-range state machine.
 jest.mock('react-native-calendars', () => {
   const ReactActual = require('react');
@@ -77,54 +78,54 @@ describe('StopForm', () => {
   });
 
   test('blurring the city field triggers a geocode lookup, same as tapping Find', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    mockSearchStops.mockResolvedValue([{ name: 'Portland', region: 'ME', lat: 43.66, lon: -70.26 }]);
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
     typeCity(tree, 'Portland, ME');
     await blurCity(tree);
 
-    expect(mockGeocodeCity).toHaveBeenCalledWith('Portland, ME');
+    expect(mockSearchStops).toHaveBeenCalledWith('Portland, ME');
   });
 
   test('blurring an empty city field does not trigger a lookup', async () => {
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
     await blurCity(tree);
-    expect(mockGeocodeCity).not.toHaveBeenCalled();
+    expect(mockSearchStops).not.toHaveBeenCalled();
   });
 
   test('blurring after an already-fresh geocode does not re-fire a redundant lookup', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    mockSearchStops.mockResolvedValue([{ name: 'Portland', region: 'ME', lat: 43.66, lon: -70.26 }]);
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
     typeCity(tree, 'Portland, ME');
     await pressFind(tree);
-    expect(mockGeocodeCity).toHaveBeenCalledTimes(1);
+    expect(mockSearchStops).toHaveBeenCalledTimes(1);
 
     await blurCity(tree);
-    expect(mockGeocodeCity).toHaveBeenCalledTimes(1); // still fresh — no second call
+    expect(mockSearchStops).toHaveBeenCalledTimes(1); // still fresh — no second call
   });
 
   test('blurring while a lookup is already in flight does not fire a second concurrent call', async () => {
-    let resolveGeocode!: (value: { found: true; lat: number; lon: number; city: string; region: string }) => void;
-    mockGeocodeCity.mockReturnValue(new Promise(resolve => { resolveGeocode = resolve; }));
+    let resolveSearch!: (value: { name: string; region: string; lat: number; lon: number }[]) => void;
+    mockSearchStops.mockReturnValue(new Promise(resolve => { resolveSearch = resolve; }));
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
     typeCity(tree, 'Portland, ME');
     act(() => { tree.root.findByProps({ testID: 'stop-form-find-button' }).props.onPress(); }); // fire, don't await — still in flight
     act(() => { tree.root.findByProps({ testID: 'stop-form-city-input' }).props.onBlur(); });
 
-    expect(mockGeocodeCity).toHaveBeenCalledTimes(1); // blur skipped it — geocodeStatus was already 'loading'
+    expect(mockSearchStops).toHaveBeenCalledTimes(1); // blur skipped it — geocodeStatus was already 'loading'
 
-    await act(async () => { resolveGeocode({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' }); });
+    await act(async () => { resolveSearch([{ name: 'Portland', region: 'ME', lat: 43.66, lon: -70.26 }]); });
   });
 
   test('submit stays disabled after a successful geocode until both dates are present', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    mockSearchStops.mockResolvedValue([{ name: 'Portland', region: 'ME', lat: 43.66, lon: -70.26 }]);
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
     typeCity(tree, 'Portland, ME');
     await pressFind(tree);
-    expect(mockGeocodeCity).toHaveBeenCalledWith('Portland, ME');
+    expect(mockSearchStops).toHaveBeenCalledWith('Portland, ME');
     expect(submitDisabled(tree)).toBe(true); // geocoded, but no dates yet
 
     pickDay(tree, '2026-08-10');
@@ -142,8 +143,8 @@ describe('StopForm', () => {
     expect(submitDisabled(tree)).toBe(true);
   });
 
-  test('a failed geocode (found: false) shows an inline error and leaves submit disabled', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: false });
+  test('a search that matches nothing shows an inline error and leaves submit disabled', async () => {
+    mockSearchStops.mockResolvedValue([]);
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
     typeCity(tree, 'Nowhereville');
@@ -156,7 +157,7 @@ describe('StopForm', () => {
   });
 
   test('a thrown/rejected geocode call shows an inline error and leaves submit disabled', async () => {
-    mockGeocodeCity.mockRejectedValue(new Error('network failure'));
+    mockSearchStops.mockRejectedValue(new Error('network failure'));
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
     typeCity(tree, 'Portland, ME');
@@ -166,8 +167,8 @@ describe('StopForm', () => {
     expect(submitDisabled(tree)).toBe(true);
   });
 
-  test('retry after a failure re-invokes geocodeCity and can succeed', async () => {
-    mockGeocodeCity.mockResolvedValueOnce({ found: false });
+  test('retry after a failure re-invokes searchStops and can succeed', async () => {
+    mockSearchStops.mockResolvedValueOnce([]);
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
     typeCity(tree, 'Portland, ME');
@@ -176,16 +177,16 @@ describe('StopForm', () => {
     await pressFind(tree);
     expect(submitDisabled(tree)).toBe(true);
 
-    mockGeocodeCity.mockResolvedValueOnce({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    mockSearchStops.mockResolvedValueOnce([{ name: 'Portland', region: 'ME', lat: 43.66, lon: -70.26 }]);
     // The retry button is the same element as Find, just relabeled.
     await pressFind(tree);
 
-    expect(mockGeocodeCity).toHaveBeenCalledTimes(2);
+    expect(mockSearchStops).toHaveBeenCalledTimes(2);
     expect(submitDisabled(tree)).toBe(false);
   });
 
   test('editing the city after a successful geocode invalidates it (stale resolution) and re-disables submit', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    mockSearchStops.mockResolvedValue([{ name: 'Portland', region: 'ME', lat: 43.66, lon: -70.26 }]);
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
     typeCity(tree, 'Portland, ME');
@@ -201,7 +202,7 @@ describe('StopForm', () => {
   });
 
   test('tapping an earlier day after a later one swaps them into the correct start/end order', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    mockSearchStops.mockResolvedValue([{ name: 'Portland', region: 'ME', lat: 43.66, lon: -70.26 }]);
     const onSubmit = jest.fn();
     const tree = renderForm(<StopForm onSubmit={onSubmit} />);
 
@@ -218,7 +219,7 @@ describe('StopForm', () => {
   });
 
   test('a third tap after a full range starts a fresh range rather than extending it', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    mockSearchStops.mockResolvedValue([{ name: 'Portland', region: 'ME', lat: 43.66, lon: -70.26 }]);
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
     typeCity(tree, 'Portland, ME');
@@ -234,7 +235,7 @@ describe('StopForm', () => {
   });
 
   test('genuinely valid calendar dates, including a leap-day edge case, still pass validation', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    mockSearchStops.mockResolvedValue([{ name: 'Portland', region: 'ME', lat: 43.66, lon: -70.26 }]);
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
     typeCity(tree, 'Portland, ME');
@@ -247,7 +248,7 @@ describe('StopForm', () => {
   });
 
   test('pressing submit when enabled calls onSubmit with exactly the resolved stop shape', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    mockSearchStops.mockResolvedValue([{ name: 'Portland', region: 'ME', lat: 43.66, lon: -70.26 }]);
     const onSubmit = jest.fn();
     const tree = renderForm(<StopForm onSubmit={onSubmit} />);
 
@@ -266,8 +267,8 @@ describe('StopForm', () => {
     });
   });
 
-  test('falls back to the typed query as city, and empty string as region, when the geocoder omits them', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: true, lat: 1, lon: 2 }); // no city/region in response
+  test('falls back to an empty region when the result carries no region code', async () => {
+    mockSearchStops.mockResolvedValue([{ name: 'Some Remote Village', lat: 1, lon: 2 }]); // no city/region in response
     const onSubmit = jest.fn();
     const tree = renderForm(<StopForm onSubmit={onSubmit} />);
 
@@ -284,7 +285,7 @@ describe('StopForm', () => {
   });
 
   test('a rejecting onSubmit shows an inline error and re-enables submit without losing the resolved geocode', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    mockSearchStops.mockResolvedValue([{ name: 'Portland', region: 'ME', lat: 43.66, lon: -70.26 }]);
     const onSubmit = jest.fn().mockRejectedValue(new Error('database/permission-denied'));
     const tree = renderForm(<StopForm onSubmit={onSubmit} />);
 
@@ -300,7 +301,7 @@ describe('StopForm', () => {
   });
 
   test('picking a new day after a submit failure clears the stale submit error', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    mockSearchStops.mockResolvedValue([{ name: 'Portland', region: 'ME', lat: 43.66, lon: -70.26 }]);
     const onSubmit = jest.fn().mockRejectedValue(new Error('database/permission-denied'));
     const tree = renderForm(<StopForm onSubmit={onSubmit} />);
 
@@ -320,7 +321,7 @@ describe('StopForm', () => {
   });
 
   test('editing the city field after a submit failure clears the stale submit error', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: true, lat: 43.66, lon: -70.26, city: 'Portland', region: 'ME' });
+    mockSearchStops.mockResolvedValue([{ name: 'Portland', region: 'ME', lat: 43.66, lon: -70.26 }]);
     const onSubmit = jest.fn().mockRejectedValue(new Error('database/permission-denied'));
     const tree = renderForm(<StopForm onSubmit={onSubmit} />);
 
@@ -338,7 +339,7 @@ describe('StopForm', () => {
   });
 
   test('editing the city field after a geocode failure clears the geocode error (existing behavior stays intact)', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: false });
+    mockSearchStops.mockResolvedValue([]);
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
 
     typeCity(tree, 'Nowhereville');
@@ -368,6 +369,189 @@ describe('StopForm', () => {
   });
 });
 
+// The point of replacing the single-result geocode. "Portland" is a town in Maine, another
+// in Oregon and another in Victoria; the old API resolved that by provider rank and the
+// form committed to a city the user never chose, with nothing on screen to say a choice
+// had been made at all.
+describe('StopForm — choosing between ambiguous matches', () => {
+  const PORTLANDS = [
+    { name: 'Portland', region: 'ME', lat: 43.6591, lon: -70.2568, context: 'Maine, United States' },
+    { name: 'Portland', region: 'OR', lat: 45.5152, lon: -122.6784, context: 'Oregon, United States' },
+    { name: 'Portland', region: 'VIC', lat: -38.3453, lon: 141.6045, context: 'Victoria, Australia' },
+  ];
+
+  // Rows carry indexed testIDs, matching BookingForm's leg rows — react-test-renderer
+  // surfaces a testID on every composite AND host node beneath a TouchableOpacity (five
+  // per row), so a shared id could not address one row unambiguously.
+  function resultRowCount(tree: renderer.ReactTestRenderer): number {
+    let count = 0;
+    while (tree.root.findAllByProps({ testID: `stop-form-result-${count}` }).length > 0) count++;
+    return count;
+  }
+
+  async function pickResult(tree: renderer.ReactTestRenderer, index: number) {
+    await act(async () => {
+      await tree.root.findAllByProps({ testID: `stop-form-result-${index}` })[0].props.onPress();
+    });
+  }
+
+  test('renders one row per match, in the order the provider ranked them', async () => {
+    mockSearchStops.mockResolvedValue(PORTLANDS);
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
+
+    typeCity(tree, 'Portland');
+    await pressFind(tree);
+
+    expect(resultRowCount(tree)).toBe(3);
+    const rendered = JSON.stringify(tree.toJSON());
+    expect(rendered).toContain('Maine, United States');
+    expect(rendered).toContain('Oregon, United States');
+    expect(rendered).toContain('Victoria, Australia');
+  });
+
+  // The whole bug, stated as a test: several matches must NOT silently resolve to the
+  // first one. Submit stays blocked until a human has actually chosen.
+  test('an ambiguous search resolves nothing on its own', async () => {
+    mockSearchStops.mockResolvedValue(PORTLANDS);
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
+
+    typeCity(tree, 'Portland');
+    await pressFind(tree);
+    pickDay(tree, '2026-08-10');
+    pickDay(tree, '2026-08-14');
+
+    expect(submitDisabled(tree)).toBe(true);
+  });
+
+  test('tapping a row resolves that stop, not the top-ranked one', async () => {
+    mockSearchStops.mockResolvedValue(PORTLANDS);
+    const onSubmit = jest.fn();
+    const tree = renderForm(<StopForm onSubmit={onSubmit} />);
+
+    typeCity(tree, 'Portland');
+    await pressFind(tree);
+    await pickResult(tree, 1);
+    pickDay(tree, '2026-08-10');
+    pickDay(tree, '2026-08-14');
+    await pressSubmit(tree);
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      city: 'Portland',
+      region: 'OR',
+      lat: 45.5152,
+      lon: -122.6784,
+      dates: { start: '2026-08-10', end: '2026-08-14' },
+    });
+  });
+
+  test('the list is dismissed once a choice is made', async () => {
+    mockSearchStops.mockResolvedValue(PORTLANDS);
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
+
+    typeCity(tree, 'Portland');
+    await pressFind(tree);
+    await pickResult(tree, 0);
+
+    expect(resultRowCount(tree)).toBe(0);
+  });
+
+  // An unambiguous query is the common case, and there is nothing to choose between when
+  // exactly one town matches — making the user tap it would be a tap that carries no
+  // information. This is what keeps "Bar Harbor, ME" a one-press flow, as it was before.
+  test('a single match needs no choosing and resolves itself', async () => {
+    mockSearchStops.mockResolvedValue([PORTLANDS[0]]);
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
+
+    typeCity(tree, 'Portland, ME');
+    await pressFind(tree);
+    pickDay(tree, '2026-08-10');
+    pickDay(tree, '2026-08-14');
+
+    expect(resultRowCount(tree)).toBe(0);
+    expect(submitDisabled(tree)).toBe(false);
+  });
+
+  test('editing the city after choosing clears the stale choice and its list', async () => {
+    mockSearchStops.mockResolvedValue(PORTLANDS);
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
+
+    typeCity(tree, 'Portland');
+    await pressFind(tree);
+    await pickResult(tree, 1);
+    pickDay(tree, '2026-08-10');
+    pickDay(tree, '2026-08-14');
+    expect(submitDisabled(tree)).toBe(false);
+
+    typeCity(tree, 'Portsmouth');
+
+    expect(submitDisabled(tree)).toBe(true);
+    expect(resultRowCount(tree)).toBe(0);
+  });
+
+  // A second search must not leave the first search's rows on screen underneath it.
+  test('a fresh search replaces the previous list rather than appending to it', async () => {
+    mockSearchStops.mockResolvedValue(PORTLANDS);
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
+
+    typeCity(tree, 'Portland');
+    await pressFind(tree);
+    expect(resultRowCount(tree)).toBe(3);
+
+    mockSearchStops.mockResolvedValue([PORTLANDS[0], PORTLANDS[1]]);
+    typeCity(tree, 'Portlan');
+    await pressFind(tree);
+
+    expect(resultRowCount(tree)).toBe(2);
+  });
+
+  // Tapping a row blurs the text field, and blur auto-searches. Without a guard the tap
+  // fires a second billed lookup and swaps the list out from under the finger that is
+  // landing on it — the user chooses a row and gets whatever replaced it.
+  test('blurring while choices are on screen does not fire another search', async () => {
+    mockSearchStops.mockResolvedValue(PORTLANDS);
+    const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
+
+    typeCity(tree, 'Portland');
+    await pressFind(tree);
+    expect(mockSearchStops).toHaveBeenCalledTimes(1);
+
+    await blurCity(tree);
+
+    expect(mockSearchStops).toHaveBeenCalledTimes(1);
+    expect(resultRowCount(tree)).toBe(3);
+  });
+
+  test('choosing a row after the blur that tapping it causes still resolves that row', async () => {
+    mockSearchStops.mockResolvedValue(PORTLANDS);
+    const onSubmit = jest.fn();
+    const tree = renderForm(<StopForm onSubmit={onSubmit} />);
+
+    typeCity(tree, 'Portland');
+    await pressFind(tree);
+    await blurCity(tree);
+    await pickResult(tree, 2);
+    pickDay(tree, '2026-08-10');
+    pickDay(tree, '2026-08-14');
+    await pressSubmit(tree);
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ region: 'VIC' }));
+  });
+
+  test('a row with no region still renders and can be chosen', async () => {
+    mockSearchStops.mockResolvedValue([{ name: 'Chamonix', lat: 45.92, lon: 6.87, context: 'France' }]);
+    const onSubmit = jest.fn();
+    const tree = renderForm(<StopForm onSubmit={onSubmit} />);
+
+    typeCity(tree, 'Chamonix');
+    await pressFind(tree);
+    pickDay(tree, '2026-08-10');
+    pickDay(tree, '2026-08-14');
+    await pressSubmit(tree);
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ city: 'Chamonix', region: '' }));
+  });
+});
+
 describe('StopForm — edit mode (initialValues)', () => {
   const INITIAL: ResolvedStop = {
     city: 'Portland',
@@ -383,7 +567,7 @@ describe('StopForm — edit mode (initialValues)', () => {
     expect(tree.root.findByProps({ testID: 'stop-form-city-input' }).props.value).toBe('Portland');
     expect(JSON.stringify(tree.toJSON())).toContain('May 22');
     expect(submitDisabled(tree)).toBe(false);
-    expect(mockGeocodeCity).not.toHaveBeenCalled();
+    expect(mockSearchStops).not.toHaveBeenCalled();
   });
 
   test('submitting with seeded initialValues calls onSubmit with exactly those values', async () => {
@@ -393,7 +577,7 @@ describe('StopForm — edit mode (initialValues)', () => {
     await pressSubmit(tree);
 
     expect(onSubmit).toHaveBeenCalledWith(INITIAL);
-    expect(mockGeocodeCity).not.toHaveBeenCalled();
+    expect(mockSearchStops).not.toHaveBeenCalled();
   });
 
   test('editing the seeded city invalidates the resolution until a fresh geocode succeeds', async () => {
@@ -403,7 +587,7 @@ describe('StopForm — edit mode (initialValues)', () => {
     typeCity(tree, 'Bangor');
     expect(submitDisabled(tree)).toBe(true);
 
-    mockGeocodeCity.mockResolvedValue({ found: true, lat: 44.8, lon: -68.77, city: 'Bangor', region: 'ME' });
+    mockSearchStops.mockResolvedValue([{ name: 'Bangor', region: 'ME', lat: 44.8, lon: -68.77 }]);
     await pressFind(tree);
     expect(submitDisabled(tree)).toBe(false);
   });
@@ -412,6 +596,6 @@ describe('StopForm — edit mode (initialValues)', () => {
     const tree = renderForm(<StopForm onSubmit={jest.fn()} />);
     expect(tree.root.findByProps({ testID: 'stop-form-city-input' }).props.value).toBe('');
     expect(submitDisabled(tree)).toBe(true);
-    expect(mockGeocodeCity).not.toHaveBeenCalled();
+    expect(mockSearchStops).not.toHaveBeenCalled();
   });
 });

@@ -32,6 +32,20 @@ if (getApps().length === 0) {
   getFirestore().settings({ ignoreUndefinedProperties: true });
 }
 
+/**
+ * The initialized Firestore handle, for other modules that need one.
+ *
+ * Exported so nothing else has to call `getFirestore()` directly. Importing this module is
+ * what applies the one-time `initializeApp()` + `settings({ ignoreUndefinedProperties })`
+ * above, and a second module doing its own `getApps().length === 0` check would skip that
+ * settings call whenever it happened to load first — leaving enrichment writes to throw on
+ * their first undefined field. Routing every caller through here makes that ordering
+ * impossible to get wrong.
+ */
+export function firestore(): ReturnType<typeof getFirestore> {
+  return getFirestore();
+}
+
 const COLLECTION = 'place_enrichment';
 
 export async function getEnrichment(canonicalKey: string): Promise<PlaceEnrichment | undefined> {
@@ -41,4 +55,36 @@ export async function getEnrichment(canonicalKey: string): Promise<PlaceEnrichme
 
 export async function writeEnrichment(canonicalKey: string, data: PlaceEnrichment): Promise<void> {
   await getFirestore().collection(COLLECTION).doc(canonicalKey).set(data);
+}
+
+// ── Route cache ──────────────────────────────────────────────────────────────
+//
+// `route_cache/{cacheKey}` holds ONLY our own derived integers — minutes and miles —
+// never Mapbox route geometry or a raw response. That distinction is deliberate and is
+// what the retention argument rests on: we are storing a number we computed, not a copy
+// of provider output. Directions is called with `overview=false` so the geometry never
+// reaches us in the first place (see providers/mapbox.ts).
+//
+// The key is derived CLIENT-side (see the root app's src/domain/routeCache.ts) and passed
+// in, exactly as enrichPlaces takes a client-derived canonicalKey. Both sides would
+// otherwise need identical rounding logic, and any drift would silently miss the cache
+// rather than fail loudly.
+
+const ROUTE_COLLECTION = 'route_cache';
+
+export interface CachedRoute {
+  /** False records a genuine "no drivable route", so it is not re-queried forever. */
+  found: boolean;
+  minutes?: number;
+  miles?: number;
+  cachedAt: number;
+}
+
+export async function getRoute(cacheKey: string): Promise<CachedRoute | undefined> {
+  const snapshot = await getFirestore().collection(ROUTE_COLLECTION).doc(cacheKey).get();
+  return snapshot.exists ? (snapshot.data() as CachedRoute) : undefined;
+}
+
+export async function writeRoute(cacheKey: string, data: CachedRoute): Promise<void> {
+  await getFirestore().collection(ROUTE_COLLECTION).doc(cacheKey).set(data);
 }

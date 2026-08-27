@@ -30,3 +30,114 @@ export type ProviderAdapter = (input: {
   lon: number;
   fsq_id?: string;
 }) => Promise<ProviderMatch | null>;
+
+// ── Search ───────────────────────────────────────────────────────────────────
+
+/**
+ * One ranked result from a free-text search. Deliberately NOT an extension of
+ * `ProviderMatch`: that shape carries phone/hours/rating/price/photos, which Foursquare
+ * bills at Premium tier and the search path never requests. Inheriting it would advertise
+ * fields a search candidate structurally cannot have, and invite a caller to read them.
+ *
+ * Enrichment is a separate, later step against `place_enrichment` — see the root app's
+ * src/hooks/useFirestoreEnrichment.ts.
+ */
+export interface ProviderCandidate {
+  fsq_id?: string;
+  name: string;
+  lat: number;
+  lon: number;
+  address?: string;
+  /** Provider's own category label, e.g. "Seafood Restaurant" — drives the eat/stay/do guess. */
+  category?: string;
+}
+
+// Contract (binding for every implementation):
+//   - THROWS on network error, timeout, or any non-2xx HTTP response.
+//   - Returns [] for a successful response that matched nothing. As with ProviderAdapter,
+//     "the call failed" and "there are no matches" are never conflated — the add sheet
+//     renders those two states completely differently (a retry vs. the manual card).
+//   - Applies NO distance rejection. That belongs to matching, which verifies a place we
+//     already have coordinates for; searching ranks places we do not.
+export type ProviderSearch = (input: {
+  query: string;
+  lat: number;
+  lon: number;
+  radiusMeters?: number;
+  limit?: number;
+}) => Promise<ProviderCandidate[]>;
+
+// ── Geographic search (stops and POIs) ───────────────────────────────────────
+
+/**
+ * One result from a place/POI search, for the Add Stop sheet.
+ *
+ * `canBeStop` and `canBeActivity` are what make the design's "a place that could be
+ * either says so, and offers both" expressible: a town is a stop, a trailhead is an
+ * activity, and something tagged both is offered as both rather than silently filed.
+ */
+export interface GeoCandidate {
+  name: string;
+  lat: number;
+  lon: number;
+  /**
+   * Formatted context line. Note this EXCLUDES the name — Camden's is "Maine, United
+   * States", not "Camden, Maine, United States" — which makes it a clean subtitle under
+   * the name rather than a repetition of it.
+   */
+  context?: string;
+  /**
+   * Short region code ("ME"), the same convention `Stop.region` uses. Its presence is
+   * what lets a search result become a Stop without a second lookup — the reason the
+   * Google geocode this replaced needed a `deriveRegion` step of its own.
+   */
+  region?: string;
+  /**
+   * Straight-line metres from the proximity anchor, supplied free by Mapbox on every
+   * result. Not a drive time — but enough to sort by, or to say "a long way from your
+   * stop", without spending a routing call.
+   */
+  distanceMetres?: number;
+  /** The provider's own type string, kept for debugging a surprising classification. */
+  featureType: string;
+  canBeStop: boolean;
+  canBeActivity: boolean;
+}
+
+// Same contract as ProviderSearch: THROWS on transport/HTTP failure, returns [] for a
+// successful search that matched nothing.
+//
+// The anchor is OPTIONAL, unlike ProviderSearch's. A stop search can legitimately happen
+// with nothing to anchor to — the onboarding wizard's first stop precedes the trip that
+// would supply one — and the alternative, making the caller invent an anchor, is worse
+// than having none: (0,0) biases every first search toward the Gulf of Guinea, and the
+// device's own location biases it toward home, which is the one place a trip is not.
+export type GeoSearch = (input: {
+  query: string;
+  lat?: number;
+  lon?: number;
+  limit?: number;
+}) => Promise<GeoCandidate[]>;
+
+// ── Routing ──────────────────────────────────────────────────────────────────
+
+export interface LatLon {
+  lat: number;
+  lon: number;
+}
+
+/**
+ * A drive between two points, reduced to the two numbers the cards actually show.
+ *
+ * Deliberately NOT the provider's response: no geometry, no legs, no steps. Keeping only
+ * derived scalars is what makes the result cacheable as our own data rather than as
+ * stored provider output.
+ */
+export interface RouteResult {
+  minutes: number;
+  miles: number;
+}
+
+// Contract: THROWS on transport/HTTP failure; returns null when the provider succeeded but
+// found no drivable route between the two points (an island, a data gap).
+export type RouteLookup = (input: { from: LatLon; to: LatLon }) => Promise<RouteResult | null>;

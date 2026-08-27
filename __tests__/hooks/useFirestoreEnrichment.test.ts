@@ -242,6 +242,109 @@ describe('useFirestoreEnrichment', () => {
     expect(result.current[keysByPlace[34]]?.rating).toBe(4.2);
   });
 
+  // The quota's client half. Everything above deliberately keeps a failed key retryable —
+  // a dropped connection or a cold-start timeout should not strand a place for the
+  // session. `resource-exhausted` is the one failure where that is wrong: the answer is
+  // already known and stays "no" until the window rolls, so re-firing on every effect run
+  // spends a Cloud Function invocation and a Firestore transaction purely to be refused
+  // again. See functions/src/quota.ts and src/domain/callableError.ts.
+  describe('over quota', () => {
+    const quotaError = () =>
+      Object.assign(new Error('Daily quota exceeded.'), { code: 'resource-exhausted' });
+
+    test('a refused key is not retried on a later effect run', async () => {
+      mockGetDocsByIds.mockResolvedValue({});
+      mockEnrichPlaces.mockRejectedValue(quotaError());
+
+      const { rerender } = renderHook(
+        ({ places }: { places: Place[] }) => useFirestoreEnrichment(places),
+        { initialProps: { places: [PLACE_WITH_COORDS] } },
+      );
+
+      await waitFor(() => expect(mockEnrichPlaces).toHaveBeenCalledTimes(1));
+      await flush();
+
+      const newPlace: Place = {
+        id: 'place-quota', tripId: 't1', stopId: 's1', name: 'Duckfat',
+        category: 'restaurant', must: false, source: 'curator', addedBy: 'u1',
+        lat: 43.66, lon: -70.25,
+      };
+      rerender({ places: [PLACE_WITH_COORDS, newPlace] });
+      await flush();
+
+      // The second run may still ask about the newly-arrived place — what it must not do
+      // is ask about the key it was already refused.
+      const askedAgain = mockEnrichPlaces.mock.calls
+        .slice(1)
+        .flatMap(([batch]: [{ canonicalKey: string }[]]) => batch.map(p => p.canonicalKey));
+      expect(askedAgain).not.toContain(EVENTIDE_KEY);
+    });
+
+    // Narrow on purpose. Latching on a transient failure would be a worse bug than the
+    // one it fixes: the place stays un-enriched for the whole mount over a blip.
+    test('a plain failure is still retried', async () => {
+      mockGetDocsByIds.mockResolvedValue({});
+      mockEnrichPlaces.mockRejectedValue(new Error('Network request failed'));
+
+      const { rerender } = renderHook(
+        ({ places }: { places: Place[] }) => useFirestoreEnrichment(places),
+        { initialProps: { places: [PLACE_WITH_COORDS] } },
+      );
+
+      await waitFor(() => expect(mockEnrichPlaces).toHaveBeenCalledTimes(1));
+      await flush();
+
+      const newPlace: Place = {
+        id: 'place-transient', tripId: 't1', stopId: 's1', name: 'Duckfat',
+        category: 'restaurant', must: false, source: 'curator', addedBy: 'u1',
+        lat: 43.66, lon: -70.25,
+      };
+      rerender({ places: [PLACE_WITH_COORDS, newPlace] });
+      await flush();
+
+      const askedAgain = mockEnrichPlaces.mock.calls
+        .slice(1)
+        .flatMap(([batch]: [{ canonicalKey: string }[]]) => batch.map(p => p.canonicalKey));
+      expect(askedAgain).toContain(EVENTIDE_KEY);
+    });
+
+    // The refusal is charged against the whole batch, not the one place that tripped it,
+    // so every key in that chunk is equally known-refused.
+    test('every key in the refused batch is latched, not just the first', async () => {
+      const second: Place = {
+        id: 'place-b', tripId: 't1', stopId: 's1', name: 'Fore Street',
+        category: 'restaurant', must: false, source: 'curator', addedBy: 'u1',
+        lat: 43.657, lon: -70.252,
+      };
+      const secondKey = canonicalPlaceKey(second.name, second.lat!, second.lon!);
+
+      mockGetDocsByIds.mockResolvedValue({});
+      mockEnrichPlaces.mockRejectedValue(quotaError());
+
+      const { rerender } = renderHook(
+        ({ places }: { places: Place[] }) => useFirestoreEnrichment(places),
+        { initialProps: { places: [PLACE_WITH_COORDS, second] } },
+      );
+
+      await waitFor(() => expect(mockEnrichPlaces).toHaveBeenCalledTimes(1));
+      await flush();
+
+      const third: Place = {
+        id: 'place-c', tripId: 't1', stopId: 's1', name: 'Duckfat',
+        category: 'restaurant', must: false, source: 'curator', addedBy: 'u1',
+        lat: 43.66, lon: -70.25,
+      };
+      rerender({ places: [PLACE_WITH_COORDS, second, third] });
+      await flush();
+
+      const askedAgain = mockEnrichPlaces.mock.calls
+        .slice(1)
+        .flatMap(([batch]: [{ canonicalKey: string }[]]) => batch.map(p => p.canonicalKey));
+      expect(askedAgain).not.toContain(EVENTIDE_KEY);
+      expect(askedAgain).not.toContain(secondKey);
+    });
+  });
+
   test('a key whose in-flight call gets discarded by cancellation is retried (not permanently lost) on the next effect run that still finds it missing', async () => {
     // Reproduces the race: A is a miss and its enrichPlaces call is dispatched but slow
     // to resolve. Before it resolves, `places` changes (B arrives), which cancels the

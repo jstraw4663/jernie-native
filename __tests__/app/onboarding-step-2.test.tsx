@@ -1,6 +1,7 @@
-const mockGeocodeCity = jest.fn();
-jest.mock('@/src/lib/geocodeClient', () => ({
-  geocodeCity: (...args: unknown[]) => mockGeocodeCity(...args),
+const mockSearchStops = jest.fn();
+jest.mock('@/src/lib/stopSearchClient', () => ({
+  searchStops: (...args: unknown[]) => mockSearchStops(...args),
+  MIN_STOP_QUERY_LENGTH: 3,
 }));
 
 // Same mock-down as StopForm.test.tsx — this file tests screen-level wiring, not the
@@ -70,7 +71,7 @@ describe('app/onboarding/step-2', () => {
   });
 
   test('a successfully resolved stop is written into the draft and advances to step-3', async () => {
-    mockGeocodeCity.mockResolvedValue({ found: true, lat: 40.78, lon: -73.97, city: 'Manhattan', region: 'NY' });
+    mockSearchStops.mockResolvedValue([{ name: 'Manhattan', region: 'NY', lat: 40.78, lon: -73.97 }]);
     const tree = renderScreen();
 
     act(() => { tree.root.findByProps({ testID: 'stop-form-city-input' }).props.onChangeText('Manhattan'); });

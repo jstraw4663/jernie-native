@@ -24,5 +24,34 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false;
     }
+
+    // Drive times between two points, keyed by rounded coordinates (see the root app's
+    // src/domain/routeCache.ts). Same shape as the enrichment collections above and for
+    // the same reason: the client reads it directly so a cache hit costs one Firestore
+    // read rather than a Cloud Function invocation plus a paid Mapbox call, while only
+    // the `routeBetween` callable — running under the Admin SDK, which bypasses these
+    // rules — ever writes.
+    //
+    // Documents hold ONLY our own derived integers (minutes, miles, cachedAt). No route
+    // geometry and no raw provider response is ever stored here.
+    match /route_cache/{routeKey} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // The per-uid and global API spend ledger (functions/src/quota.ts). Unlike every
+    // collection above, this one is closed to clients in BOTH directions.
+    //
+    // Not writable, for the obvious reason: a client that can edit its own ledger has no
+    // quota. Not readable either, which is the less obvious half — the same collection
+    // holds `g_{date}`, the pooled global counter, so a read grants any signed-in caller
+    // a live view of total platform spend and, more usefully to someone probing it,
+    // exactly how much headroom remains before the cap bites.
+    //
+    // The callables reach these docs through the Admin SDK, which bypasses rules
+    // entirely, so closing the client path costs the app nothing.
+    match /api_quota/{quotaKey} {
+      allow read, write: if false;
+    }
   }
 }

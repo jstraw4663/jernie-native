@@ -1,5 +1,6 @@
 import { stripUndefined } from '@/src/utils/stripUndefined';
 import type { ItineraryDay, ItineraryItem, ItineraryItemCategory } from '@/src/types';
+import { addDaysISO } from '@/src/utils/dates';
 import { TIMELINE_BANDS, timelineTime } from './itineraryTimeline';
 
 export interface CustomItineraryItemInput {
@@ -180,14 +181,6 @@ export interface SyncItineraryDaysInput {
 export interface SyncItineraryDaysResult {
   toAdd: ItineraryDay[];
   toRemoveIds: string[];
-}
-
-// Local-date arithmetic, never UTC — `new Date('2026-08-10')` is UTC midnight, which reads
-// as the previous day west of Greenwich and would shift every generated date by one.
-function addDaysISO(dateIso: string, days: number): string {
-  const [y, m, d] = dateIso.split('-').map(Number);
-  const next = new Date(y, m - 1, d + days);
-  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`;
 }
 
 /**

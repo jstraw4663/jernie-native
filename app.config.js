@@ -22,6 +22,26 @@ module.exports = {
     name: "Jernie",
     slug: "jernie-native",
     version: "0.7.0",
+    // Where a built app looks for OTA updates. EAS cannot write these two keys itself
+    // because this config is dynamic (it shells out to git above), which is what
+    // "Cannot automatically write to dynamic config" means — the values are not a
+    // computation, just the ones EAS would have inserted.
+    updates: {
+      url: "https://u.expo.dev/a85eae0d-8910-4bf2-9822-3fafe8cc9ebb",
+    },
+    // An update only reaches a build whose runtime version matches it, and under the
+    // appVersion policy the runtime version IS `version` above. Two consequences worth
+    // knowing before relying on this:
+    //   - Bumping `version` orphans every already-installed build from future updates
+    //     until it is rebuilt. That is the intended safety property, not a bug.
+    //   - It does NOT notice native changes. Adding a native module (app-check did;
+    //     @rnmapbox/maps will) without bumping `version` lets an update ship JS that
+    //     calls into a module the installed binary does not contain, which crashes on
+    //     launch. Switch to `{ policy: "fingerprint" }` if that trips us up — it hashes
+    //     the native dependency set and invalidates on its own.
+    runtimeVersion: {
+      policy: "appVersion",
+    },
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",

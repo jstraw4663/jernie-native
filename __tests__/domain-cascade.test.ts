@@ -4,6 +4,7 @@ import {
   parsePlacesFromSnapshot,
   buildBookingRemovalUpdates,
   buildStopRemovalUpdates,
+  buildPlaceRemovalUpdates,
   type CascadeCollections,
 } from '@/src/domain/cascade';
 import type { Booking, ItineraryDay, Place, RentalBooking } from '@/src/types';
@@ -438,5 +439,61 @@ describe('buildStopRemovalUpdates', () => {
     expect(updates['trips/trip-1/bookings/booking-r1/dropoffStopId']).toBeNull();
     // Not a full deletion — the booking itself survives, only the dangling field is patched.
     expect('trips/trip-1/bookings/booking-r1' in updates).toBe(false);
+  });
+});
+
+// ── buildPlaceRemovalUpdates ─────────────────────────────────────────────────
+// Mirrors buildBookingRemovalUpdates: deleting a saved place must not leave itinerary
+// items pointing at a placeId that no longer resolves.
+
+describe('buildPlaceRemovalUpdates', () => {
+  test('nulls the place and drops itinerary items that reference it', () => {
+    const itinerary: Record<string, ItineraryDay[]> = {
+      'stop-1': [{
+        id: 'day-1', stopId: 'stop-1', dateIso: '2026-07-10',
+        items: [
+          { id: 'i1', type: 'place', placeId: 'p1', order: 0 },
+          { id: 'i2', type: 'custom', label: 'Walk the shore path', order: 1 },
+        ],
+      }],
+    };
+
+    const updates = buildPlaceRemovalUpdates('trip-1', 'p1', itinerary);
+
+    expect(updates['trips/trip-1/places/p1']).toBeNull();
+    expect(updates['trips/trip-1/itinerary/stop-1/day-1/items']).toEqual([
+      { id: 'i2', type: 'custom', label: 'Walk the shore path', order: 1 },
+    ]);
+  });
+
+  test('leaves days that never referenced the place untouched', () => {
+    const itinerary: Record<string, ItineraryDay[]> = {
+      'stop-1': [{
+        id: 'day-1', stopId: 'stop-1', dateIso: '2026-07-10',
+        items: [{ id: 'i2', type: 'custom', label: 'Walk', order: 0 }],
+      }],
+    };
+
+    const updates = buildPlaceRemovalUpdates('trip-1', 'p1', itinerary);
+
+    expect(Object.keys(updates)).toEqual(['trips/trip-1/places/p1']);
+  });
+
+  test('cleans up references in every stop, not just the first', () => {
+    const itinerary: Record<string, ItineraryDay[]> = {
+      'stop-1': [{
+        id: 'day-1', stopId: 'stop-1', dateIso: '2026-07-10',
+        items: [{ id: 'i1', type: 'place', placeId: 'p1', order: 0 }],
+      }],
+      'stop-2': [{
+        id: 'day-9', stopId: 'stop-2', dateIso: '2026-07-14',
+        items: [{ id: 'i9', type: 'place', placeId: 'p1', order: 0 }],
+      }],
+    };
+
+    const updates = buildPlaceRemovalUpdates('trip-1', 'p1', itinerary);
+
+    expect(updates['trips/trip-1/itinerary/stop-1/day-1/items']).toEqual([]);
+    expect(updates['trips/trip-1/itinerary/stop-2/day-9/items']).toEqual([]);
   });
 });

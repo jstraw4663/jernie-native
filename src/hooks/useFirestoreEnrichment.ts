@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getDocsByIds } from '@/src/lib/firestoreBatchGet';
 import { enrichPlaces, type MissingPlace } from '@/src/lib/enrichmentClient';
 import { canonicalPlaceKey } from '@/src/domain/placeEnrichment';
+import { isOverQuota } from '@/src/domain/callableError';
 import type { Place, PlaceEnrichment } from '@/src/types';
 
 // Mirrors functions/src/enrichPlaces.ts's MAX_BATCH_SIZE — the deployed callable rejects
@@ -48,6 +49,11 @@ function chunk<T>(items: T[], size: number): T[][] {
  * it already was: enrichment is optional, and sheets fall back to curated fields when
  * it's unavailable.
  *
+ * One failure is remembered rather than merely swallowed: a callable refused for being
+ * over the API quota latches its whole batch out of enrichment for the rest of the mount,
+ * because that answer is already known and retrying it only spends invocations to be
+ * refused again. See the catch inside the effect for why the scope is the mount.
+ *
  * The returned map is keyed by canonical key — use getPlaceEnrichment() (src/domain/
  * placeEnrichment.ts) to look up a specific Place rather than indexing by place.id.
  */
@@ -56,6 +62,9 @@ export function useFirestoreEnrichment(places: Place[]): Record<string, PlaceEnr
   // Keys whose enrichPlaces call is currently pending — NOT a permanent "already tried"
   // record. See the hook's doc comment above for why entries are removed on settlement.
   const inFlightKeys = useRef<Set<string>>(new Set());
+  // Keys the API quota has already refused. The one exception to the rule above, and the
+  // reason it is a separate set: see the note on the catch that fills it.
+  const refusedKeys = useRef<Set<string>>(new Set());
 
   const placesByKey = new Map<string, { name: string; lat: number; lon: number; fsq_id?: string }>();
   places.forEach(p => {
@@ -86,7 +95,10 @@ export function useFirestoreEnrichment(places: Place[]): Record<string, PlaceEnr
         // never re-fires the callable for one that's still genuinely pending — but a
         // key whose prior call has already settled (including one whose result was
         // discarded due to cancellation) is fair game again here.
-        const misses = keys.filter(key => !(key in existing) && !inFlightKeys.current.has(key));
+        const misses = keys.filter(
+          key =>
+            !(key in existing) && !inFlightKeys.current.has(key) && !refusedKeys.current.has(key),
+        );
         if (misses.length === 0) return;
         misses.forEach(key => inFlightKeys.current.add(key));
 
@@ -106,9 +118,33 @@ export function useFirestoreEnrichment(places: Place[]): Record<string, PlaceEnr
         // "in flight" set always reflects calls genuinely still pending right now.
         Promise.allSettled(
           chunk(missingPlaces, ENRICH_BATCH_SIZE).map(batch =>
-            enrichPlaces(batch).finally(() => {
-              batch.forEach(place => inFlightKeys.current.delete(place.canonicalKey));
-            }),
+            enrichPlaces(batch)
+              // Being over quota is the one failure worth remembering. Every other one —
+              // a dropped connection, a cold start, a Foursquare timeout — clears by
+              // itself, so the released in-flight slot below is exactly right for them:
+              // the key is missing, so the next effect run tries again. A refusal is not
+              // like that. The answer is already known and stays "no" until the window
+              // rolls, so retrying it spends a Cloud Function invocation and a Firestore
+              // transaction purely to be refused again — on every render that changes the
+              // key set. The refusal is charged against the whole batch, so the whole
+              // batch is latched.
+              //
+              // Deliberately per-mount, not module-level: the burst window is a minute
+              // (functions/src/quota.ts), and re-entering a screen is a slow, user-paced
+              // retry that lines up with it rolling over. Latching for the process
+              // lifetime would strand these places long after the quota freed up.
+              //
+              // Rethrown so the Promise.allSettled below still sees a rejection and the
+              // finally still frees the in-flight slot.
+              .catch(err => {
+                if (isOverQuota(err)) {
+                  batch.forEach(place => refusedKeys.current.add(place.canonicalKey));
+                }
+                throw err;
+              })
+              .finally(() => {
+                batch.forEach(place => inFlightKeys.current.delete(place.canonicalKey));
+              }),
           ),
         ).then(settlements => {
           if (cancelled) return;

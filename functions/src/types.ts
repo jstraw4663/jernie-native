@@ -40,3 +40,13 @@ export interface PlaceEnrichment {
   // the API every time.
   fsq_not_found?: boolean;
 }
+
+// ── Add-flow candidate envelope ──────────────────────────────────────────────
+// Duplicated from the root app's src/domain/candidate.ts, for the same reason
+// PlaceEnrichment above is duplicated: `functions/` is a separate TypeScript project and
+// cannot import across that boundary. The root app's definition is the source of truth;
+// keep this in sync by hand.
+
+export type CandidateType = 'flight' | 'stay' | 'eat' | 'do' | 'drive';
+
+export type TypeConfidence = 'explicit' | 'guessed' | 'fallback';
