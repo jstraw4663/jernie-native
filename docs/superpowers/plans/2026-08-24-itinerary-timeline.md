@@ -31,6 +31,8 @@ Design: `docs/superpowers/specs/2026-08-24-itinerary-timeline-design.md`
 - Navigation/swipe follow-up: rows always reveal Details, and reveal Navigate only when the
   derived source record carries an address/location. The installed-app chooser, optional
   saved preference, and Profile setting are wired.
+- Maps device follow-up: after a fresh native build, Google Maps and Waze are both discovered
+  when installed and launch correctly on iPhone.
 - Destructive swipe follow-up: swipe right reveals Remove while Details/Navigate remain on the
   opposite swipe. A designed confirmation sheet gates every removal. Confirmed rows are hidden
   locally while the Firebase write waits behind a four-second Undo window; Undo cancels that
